@@ -73,3 +73,31 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# TypeScript
+*.tsbuildinfo
+
+# 환경변수
+.env
+
+# iOS
+ios/Pods/
+ios/build/
+
+# Android
+android/.gradle/
+android/app/release/
+android/local.properties
+
+# IDE 설정
+.vscode/
+
+# 시스템 파일
+Thumbs.db
+
+# Metro
+metro-cache/
+
+# Expo (혹시 쓰게 될 경우 대비)
+.expo/
+.expo-shared/
