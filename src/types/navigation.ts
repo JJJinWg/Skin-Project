@@ -9,4 +9,6 @@ export type RootStackParamList = {
   ReservationHistoryScreen: undefined;
   RegisterUser: undefined;
   LoginForm: undefined;
+  WriteReviewScreen: undefined;
+  DoctorDetailScreen: { id: number };
 };

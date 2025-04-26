@@ -1,3 +1,4 @@
+// 리뷰 상품 상세정보 화면
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 

@@ -1,3 +1,4 @@
+ // 진료를 예약하는 화면
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 

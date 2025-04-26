@@ -1,3 +1,5 @@
+// 회원가입 화면
+
 import React, { useState } from 'react';
 import {
   View,

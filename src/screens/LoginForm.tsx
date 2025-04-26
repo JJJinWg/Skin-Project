@@ -1,3 +1,5 @@
+// 로그인 화면
+
 import React, { useState } from 'react';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';

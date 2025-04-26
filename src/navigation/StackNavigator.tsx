@@ -9,6 +9,8 @@ import ProductDetailScreen from "../screens/ProductDetailScreen";
 import ReservationHistoryScreen from "../screens/ReservationHistoryScreen";
 import RegisterUser from "../screens/RegisterUser";
 import LoginForm from "../screens/LoginForm";
+import WriteReviewScreen from "../screens/WriteReviewScreen";
+
 const Stack = createStackNavigator();
 
 export default function StackNavigator() {
@@ -24,6 +26,8 @@ export default function StackNavigator() {
         <Stack.Screen name="ProductDetailScreen" component={ProductDetailScreen} />
         <Stack.Screen name="ReservationHistoryScreen" component={ReservationHistoryScreen} />
         <Stack.Screen name="RegisterUser" component={RegisterUser} />
+        <Stack.Screen name="WriteReviewScreen" component={WriteReviewScreen} />
+        <Stack.Screen name="DoctorDetailScreen" component={ProductDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

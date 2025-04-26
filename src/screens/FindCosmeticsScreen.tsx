@@ -1,3 +1,5 @@
+// 나의 피부에 맞는 화장품 추천 화면
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
