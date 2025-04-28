@@ -1,115 +1,76 @@
-// 로그인 화면
-
+// src/screens/LoginForm.tsx
 import React, { useState } from 'react';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { 
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Animated, Dimensions, KeyboardAvoidingView, Platform,
+  TouchableWithoutFeedback, Keyboard, Alert, useColorScheme
+} from 'react-native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation } from '@react-navigation/native';
+import { Svg, Path } from 'react-native-svg';
 import { RootStackParamList } from '../types/navigation';
 
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Image,
-  Alert,
-  useColorScheme,
-  
-} from 'react-native';
-import { Svg, Path } from 'react-native-svg';
+type LoginNavProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 const { width } = Dimensions.get('window');
 
-const LoginForm = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [email, setEmail] = useState('');
+const LoginForm: React.FC = () => {
+  const navigation = useNavigation<LoginNavProp>();
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
+  const [emailFocused,    setEmailFocused]    = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
- 
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // 애니메이션용
+  const emailLabelPos  = useState(new Animated.Value(email    ? -25 : 0))[0];
+  const emailLabelSize = useState(new Animated.Value(email    ? 12  : 16))[0];
+  const pwdLabelPos    = useState(new Animated.Value(password ? -25 : 0))[0];
+  const pwdLabelSize   = useState(new Animated.Value(password ? 12  : 16))[0];
 
   const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === 'dark';
-  
-  // Animated values for input labels
-  const emailLabelPosition = useState(new Animated.Value(email ? -25 : 0))[0];
-  const emailLabelSize = useState(new Animated.Value(email ? 12 : 16))[0];
-  const passwordLabelPosition = useState(new Animated.Value(password ? -25 : 0))[0];
-  const passwordLabelSize = useState(new Animated.Value(password ? 12 : 16))[0];
-  
-  // Animation functions
-  const animateEmailLabel = (focused: boolean) => {
-    Animated.parallel([
-      Animated.timing(emailLabelPosition, {
-        toValue: focused || email ? -25 : 0,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-      Animated.timing(emailLabelSize, {
-        toValue: focused || email ? 12 : 16,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-    ]).start();
-    setEmailFocused(focused);
-  };
-  
-  const animatePasswordLabel = (focused: boolean) => {
-    Animated.parallel([
-      Animated.timing(passwordLabelPosition, {
-        toValue: focused || password ? -25 : 0,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-      Animated.timing(passwordLabelSize, {
-        toValue: focused || password ? 12 : 16,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-    ]).start();
-    setPasswordFocused(focused);
-  };
-  
-  const handleLogin = async () => {
-    if (!email || !password) {
-      
-      Alert.alert('이메일과 비밀번호를 입력해주세요.');
-      return;
-    }
-    
-    setIsLoading(true);
-    // 로그인 API 호출 시뮬레이션
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('로그인 시도:', { email, password });
-      // 여기에 실제 로그인 로직 구현
-    }, 1500);
-  };
-  
-  const handleBiometricLogin = () => {
-    // 생체 인증 로직 구현
-    console.log('생체 인증 시도');
-  };
-  
-  // 색상 테마 설정
+  const isDarkMode  = colorScheme === 'dark';
+
   const colors = {
     background: isDarkMode ? '#121212' : '#FFFFFF',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    primary: '#FF5A5F', // 트렌디한 코랄 색상 //로그인 버튼 색상
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    textSecondary: isDarkMode ? '#AAAAAA' : '#666666',
-    border: isDarkMode ? '#333333' : '#EEEEEE',
-    inputBg: isDarkMode ? '#2A2A2A' : '#F8F8F8',
+    card:       isDarkMode ? '#1E1E1E' : '#FFFFFF',
+    primary:    '#FF5A5F',
+    text:       isDarkMode ? '#FFFFFF' : '#333333',
+    text2:      isDarkMode ? '#AAAAAA' : '#666666',
+    border:     isDarkMode ? '#333333' : '#EEEEEE',
+    inputBg:    isDarkMode ? '#2A2A2A' : '#F8F8F8',
     placeholder: isDarkMode ? '#777777' : '#999999',
   };
-  
+
+  function animateLabel(pos: Animated.Value, size: Animated.Value, focused: boolean, hasText: boolean) {
+    Animated.parallel([
+      Animated.timing(pos, {
+        toValue: focused || hasText ? -25 : 0,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+      Animated.timing(size, {
+        toValue: focused || hasText ? 12 : 16,
+        duration: 150,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }
+
+  const handleLogin = () => {
+    if (!email || !password) {
+      return Alert.alert('이메일과 비밀번호를 입력해주세요.');
+    }
+    setIsLoading(true);
+    // TODO: 실제 API 호출
+    setTimeout(() => {
+      setIsLoading(false);
+      // 로그인 성공 시 replace 사용 예:      
+      navigation.replace('Home', { userId: 'abc123' });
+    }, 1500);
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -117,37 +78,33 @@ const LoginForm = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.inner}>
-          {/* 상단 웨이브 디자인 */}
+          {/* 상단 웨이브 */}
           <View style={styles.waveContainer}>
-            <Svg height="150" width={width} viewBox={`0 0 ${width} 150`}>
+            <Svg height={150} width={width} viewBox={`0 0 ${width} 150`}>
               <Path
                 d={`M0 0L${width} 0L${width} 100C${width * 0.75} 130 ${width * 0.25} 80 0 100L0 0Z`}
                 fill={colors.primary}
               />
             </Svg>
-            <View style={styles.logoContainer}>
-              <View style={[styles.logo, { backgroundColor: '#FFFFFF' }]}>
-                <Text style={styles.logoText}>A</Text>
-              </View>
-            </View>
           </View>
-          
+
+          {/* 폼 */}
           <View style={[styles.formContainer, { backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>로그인</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.subtitle, { color: colors.text2 }]}>
               계정에 로그인하여 시작하세요
             </Text>
-            
-            {/* 이메일 입력 필드 */}
+
+            {/* 이메일 */}
             <View style={styles.inputWrapper}>
               <Animated.Text
                 style={[
                   styles.floatingLabel,
                   {
-                    top: emailLabelPosition,
+                    top:  emailLabelPos,
                     fontSize: emailLabelSize,
-                    color: emailFocused ? colors.primary : colors.textSecondary,
-                  },
+                    color: emailFocused ? colors.primary : colors.text2,
+                  }
                 ]}
               >
                 이메일
@@ -159,28 +116,35 @@ const LoginForm = () => {
                     borderColor: emailFocused ? colors.primary : colors.border,
                     backgroundColor: colors.inputBg,
                     color: colors.text,
-                  },
+                  }
                 ]}
                 value={email}
                 onChangeText={setEmail}
-                onFocus={() => animateEmailLabel(true)}
-                onBlur={() => animateEmailLabel(false)}
+                onFocus={() => {
+                  animateLabel(emailLabelPos, emailLabelSize, true, !!email);
+                  setEmailFocused(true);
+                }}
+                onBlur={() => {
+                  animateLabel(emailLabelPos, emailLabelSize, false, !!email);
+                  setEmailFocused(false);
+                }}
+                placeholder="example@mail.com"
+                placeholderTextColor={colors.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                placeholderTextColor={colors.placeholder}
               />
             </View>
-            
-            {/* 비밀번호 입력 필드 */}
+
+            {/* 비밀번호 */}
             <View style={styles.inputWrapper}>
               <Animated.Text
                 style={[
                   styles.floatingLabel,
                   {
-                    top: passwordLabelPosition,
-                    fontSize: passwordLabelSize,
-                    color: passwordFocused ? colors.primary : colors.textSecondary,
-                  },
+                    top:  pwdLabelPos,
+                    fontSize: pwdLabelSize,
+                    color: passwordFocused ? colors.primary : colors.text2,
+                  }
                 ]}
               >
                 비밀번호
@@ -192,90 +156,48 @@ const LoginForm = () => {
                     borderColor: passwordFocused ? colors.primary : colors.border,
                     backgroundColor: colors.inputBg,
                     color: colors.text,
-                  },
+                  }
                 ]}
                 value={password}
                 onChangeText={setPassword}
-                onFocus={() => animatePasswordLabel(true)}
-                onBlur={() => animatePasswordLabel(false)}
                 secureTextEntry={!isPasswordVisible}
+                onFocus={() => {
+                  animateLabel(pwdLabelPos, pwdLabelSize, true, !!password);
+                  setPasswordFocused(true);
+                }}
+                onBlur={() => {
+                  animateLabel(pwdLabelPos, pwdLabelSize, false, !!password);
+                  setPasswordFocused(false);
+                }}
+                placeholder="••••••••"
                 placeholderTextColor={colors.placeholder}
               />
               <TouchableOpacity
                 style={styles.eyeButton}
-                onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                onPress={() => setIsPasswordVisible(v => !v)}
               >
-                <Text style={{ color: colors.textSecondary }}>
-                  {isPasswordVisible ? '숨김' : '표시'}
+                <Text style={{ color: colors.text2 }}>
+                  {isPasswordVisible ? '숨기기' : '표시'}
                 </Text>
               </TouchableOpacity>
             </View>
-            
-            {/* 비밀번호 찾기 링크 */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
-                비밀번호를 잊으셨나요?
-              </Text>
-            </TouchableOpacity>
-            
-            {/* 로그인 버튼 */}
+
+            {/* 로그인 */}
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}
               onPress={handleLogin}
               disabled={isLoading}
             >
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <View style={styles.loadingDot} />
-                  <View style={styles.loadingDot} />
-                  <View style={styles.loadingDot} />
-                </View>
-              ) : (
-                <Text style={styles.loginButtonText}>로그인</Text>
-              )}
-            </TouchableOpacity>
-            
-            {/* 생체 인증 버튼 */}
-            <TouchableOpacity
-              style={[styles.biometricButton, { borderColor: colors.border }]}
-              onPress={handleBiometricLogin}
-            >
-              <Text style={[styles.biometricButtonText, { color: colors.text }]}>
-                생체 인증으로 로그인
+              <Text style={styles.loginButtonText}>
+                {isLoading ? '로딩중...' : '로그인'}
               </Text>
             </TouchableOpacity>
-            
-            {/* 소셜 로그인 섹션 */}
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
-                소셜 계정으로 로그인
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            </View>
-            
-            <View style={styles.socialButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: '#4285F4' }]}
-              >
-                <Text style={styles.socialButtonText}>Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: '#000000' }]}
-              >
-                <Text style={styles.socialButtonText}>Apple</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* 회원가입 링크 */}
+
+            {/* 회원가입 이동 예시 */}
             <View style={styles.signupContainer}>
-              <Text style={[styles.signupText, { color: colors.textSecondary }]}>
-                계정이 없으신가요?
-              </Text>
+              <Text style={{ color: colors.text2 }}>계정이 없으신가요?</Text>
               <TouchableOpacity onPress={() => navigation.navigate('RegisterUser')}>
-                <Text style={[styles.signupLink, { color: colors.primary }]}>
-                  {' '}회원가입
-                </Text>
+                <Text style={[styles.signupLink, { color: colors.primary }]}> 회원가입</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -285,173 +207,24 @@ const LoginForm = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inner: {
-    flex: 1,
-  },
-  waveContainer: {
-    height: 150,
-    width: '100%',
-    position: 'relative',
-  },
-  logoContainer: {
-    position: 'absolute',
-    top: 70,
-    alignSelf: 'center',
-    zIndex: 10,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  logoText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FF5A5F',
-  },
-  formContainer: {
-    flex: 1,
-    marginTop: -20,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  inputWrapper: {
-    marginBottom: 24,
-    position: 'relative',
-  },
-  floatingLabel: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 1,
-  },
-  input: {
-    height: 56,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    paddingTop: 16,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 16,
-    top: 18,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-  },
-  loginButton: {
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-    margin: 3,
-    opacity: 0.8,
-  },
-  biometricButton: {
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  biometricButtonText: {
-    fontSize: 16,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    paddingHorizontal: 16,
-    fontSize: 14,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-  },
-  socialButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  socialButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  signupText: {
-    fontSize: 14,
-  },
-  signupLink: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
-
 export default LoginForm;
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  inner:     { flex: 1 },
+  waveContainer: { height: 150, width: '100%', position: 'relative' },
+  formContainer: {
+    flex: 1, marginTop: -20, borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    paddingHorizontal: 24, paddingTop: 40, paddingBottom: 24,
+  },
+  title:    { fontSize: 28, fontWeight: 'bold', textAlign: 'center' },
+  subtitle: { fontSize: 16, marginBottom: 32, textAlign: 'center' },
+  inputWrapper: { marginBottom: 24, position: 'relative' },
+  floatingLabel: { position: 'absolute', left: 16, zIndex: 1 },
+  input:    { height: 56, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingTop: 16 },
+  eyeButton:{ position: 'absolute', right: 16, top: 18 },
+  loginButton:    { height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  loginButtonText:{ color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  signupContainer:{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
+  signupLink: { fontWeight: '600' },
+});
