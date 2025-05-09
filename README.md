@@ -1,97 +1,103 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+## 🛠 GitHub 협업 가이드: 기능 개발부터 병합까지 (꼭 읽어주세요!)
 
-# Getting Started
+이 프로젝트는 안정적인 협업을 위해 `main` 브랜치를 보호하고, 모든 작업을 **별도 브랜치 + Pull Request(PR)** 방식으로 관리합니다.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+### ✅ 1. 기능 개발 시작 전
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+1. **main 최신화**
+```bash
+git checkout main
+git pull origin main
 ```
 
-## Step 2: Build and run your app
+2. **작업용 브랜치 생성**
+```bash
+git checkout -b feature/이름-작업내용
+# 예: feature/jisu-review-cleaning
+```
+> `feature/`, `fix/`, `docs/` 등 prefix 사용 규칙 지켜주세요.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+---
 
-### Android
+### ✅ 2. 기능 개발 중
 
-```sh
-# Using npm
-npm run android
+1. **코드 작성**
+   - 코드 수정/추가
+   - 디렉토리 구조 유지
 
-# OR using Yarn
-yarn android
+2. **변경사항 저장**
+```bash
+git add .
+git commit -m "작업 내용 요약: mecab 기반 전처리 추가"
+```
+> 커밋 메시지는 **의미 있는 한 줄 설명**으로 남겨주세요.
+
+3. **원격 브랜치 푸시**
+```bash
+git push origin feature/이름-작업내용
 ```
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+### ✅ 3. 기능 완료 후 PR 생성
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+1. GitHub 웹에서 `Pull Request` 클릭
+2. `base`는 `main`, `compare`는 자신의 브랜치로 설정
+3. PR 제목은 작업 요약 (예: `리뷰 전처리 기능 추가`)
+4. 본문에는 **한 줄 기능 설명**, 참고 이슈, 변경파일 요약 등 작성
+5. 팀원 리뷰어 지정
 
-```sh
-bundle install
+---
+
+### ✅ 4. 코드 리뷰 & 피드백 반영
+
+- 리뷰 요청 받은 팀원은 코드 확인 후 **승인 or 피드백 댓글**
+- 필요시 추가 커밋 → PR에 자동 반영됨
+```bash
+git add .
+git commit -m "리뷰 반영: 전처리 로직 분리"
+git push
 ```
 
-Then, and every time you update your native dependencies, run:
+---
 
-```sh
-bundle exec pod install
+### ✅ 5. 병합(Merge) & 브랜치 삭제
+
+- 리뷰 승인 ≥ 1명 완료되면 `main` 브랜치로 병합 (Squash 추천)
+- 병합 후, 브랜치 삭제 (GitHub에서 버튼 제공됨)
+
+---
+
+### ✅ 6. Pull 후 다음 작업 준비
+
+모든 병합이 끝났으면 다시 main을 pull 받아 최신 상태로 시작하세요:
+```bash
+git checkout main
+git pull origin main
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## 💡 브랜치 명명 규칙
 
-# OR using Yarn
-yarn ios
-```
+| 작업 유형     | 브랜치 예시                      |
+|--------------|----------------------------------|
+| 기능 추가     | `feature/jay-login-api`          |
+| 버그 수정     | `fix/jisu-db-connection`         |
+| 문서/리드미   | `docs/update-readme`             |
+| 테스트        | `test/yeon-model-validation`     |
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## ❗주의 사항
 
-## Step 3: Modify your app
+- 절대 `main` 브랜치에서 직접 작업하지 마세요.
+- 무조건 **기능 단위로 브랜치 생성 → PR → 머지** 순서로 진행합니다.
+- 충돌 방지를 위해 작업 전 항상 `git pull origin main`을 먼저 하세요.
 
-Now that you have successfully run the app, let's make changes!
+---
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+이 가이드는 모든 기능 개발의 기본 루틴입니다.  
+작업 전에 꼭 확인하고, 팀원 모두 동일한 흐름으로 협업해 주세요 🙏
