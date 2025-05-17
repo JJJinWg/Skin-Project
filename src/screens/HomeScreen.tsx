@@ -18,8 +18,6 @@ import {
   Dimensions,
 } from 'react-native';
 
-
-
 const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
@@ -98,7 +96,14 @@ const HomeScreen = () => {
                   <Text style={styles.doctorName}>{item.name}</Text>
                   <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
                 </View>
-                <TouchableOpacity style={styles.bookButton}>
+                <TouchableOpacity 
+                  style={styles.bookButton}
+                  onPress={() => navigation.navigate('AppointmentScreen', { 
+                    doctorId: item.id,
+                    doctorName: item.name,
+                    specialty: item.specialty
+                  })}
+                >
                   <Text style={styles.bookButtonText}>예약</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -190,7 +195,10 @@ const HomeScreen = () => {
 
       {/* 하단 네비게이션 */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => navigation.navigate('HomeScreen')}
+        >
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={[styles.navText, styles.activeNavText]}>홈</Text>
         </TouchableOpacity>
@@ -201,11 +209,17 @@ const HomeScreen = () => {
           <Text style={styles.navIcon}>📝</Text>
           <Text style={styles.navText}>리뷰</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => navigation.navigate('ReservationScreen')}
+        >
           <Text style={styles.navIcon}>📅</Text>
           <Text style={styles.navText}>예약</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => navigation.navigate('LoginForm')}
+        >
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navText}>프로필</Text>
         </TouchableOpacity>

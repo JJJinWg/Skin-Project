@@ -1,3 +1,4 @@
+import 'react-native-reanimated'; // 반드시 최상단에 추가
 import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import StackNavigator from './navigation/StackNavigator'; // StackNavigator 불러오기
