@@ -4,6 +4,7 @@ export type RootStackParamList = {
   HomeScreen: undefined;
   ReservationScreen: undefined;
   SkinDiagnosisScreen: undefined;
+  SkinAnalysisResultScreen: { imageUri: string }
   FindCosmeticsScreen: undefined;
   ProductReviewScreen: undefined;
   ProductDetailScreen: { id: number };
@@ -17,6 +18,8 @@ export type RootStackParamList = {
     doctorName: string;
     specialty: string;
   };
+  
+  
   EditProfileScreen: {
     userInfo: {
       name: string
@@ -53,4 +56,8 @@ export type RootStackParamList = {
   };
   
   DiagnosisHistoryScreen: undefined
+  DiagnosisDetailScreen: {diagnosisId: number}
+
+  SkinHistoryScreen: undefined
+
 };
