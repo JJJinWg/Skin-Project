@@ -15,6 +15,7 @@ export type RootStackParamList = {
   DoctorDetailScreen: { id: number };
   FindIdScreen: undefined
   FindPasswordScreen: undefined
+  PharmacyMapScreen: undefined
   AppointmentScreen: { 
     doctorId: number;
     doctorName: string;

@@ -21,7 +21,7 @@ import SkinAnalysisResultScreen from "../screens/SkinAnalysisResultScreen"
 import SkinHistoryScreen from "../screens/SkinHistoryScreen"
 import FindPasswordScreen from "../screens/FindPasswordScreen";
 import FindIdScreen from "../screens/FindIdScreen";
-
+import PharmacyMapScreen from "../screens/PharmacyMapScreen";
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function StackNavigator() {
@@ -50,6 +50,7 @@ export default function StackNavigator() {
         <Stack.Screen name="SkinHistoryScreen" component={SkinHistoryScreen} />
         <Stack.Screen name="FindPasswordScreen" component={FindPasswordScreen} />
         <Stack.Screen name="FindIdScreen" component={FindIdScreen} />
+        <Stack.Screen name="PharmacyMapScreen" component={PharmacyMapScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
