@@ -1,5 +1,4 @@
- // 의사 전체보기
-"use client"
+ // 의사 전체보기 및 예약가능 화면
 
 import { useState, useEffect } from "react"
 import {
