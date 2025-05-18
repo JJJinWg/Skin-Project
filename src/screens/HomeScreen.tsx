@@ -42,8 +42,11 @@ const HomeScreen = () => {
             <Text style={styles.greeting}>안녕하세요 👋</Text>
             <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen", {})}>
-            <Image source={require("../assets/doctor1.png")} style={styles.profileImage} />
+          <TouchableOpacity 
+            style={styles.profileTextButton} 
+            onPress={() => navigation.navigate("ProfileScreen", {})}
+          >
+            <Text style={styles.profileButtonText}>프로필</Text>
           </TouchableOpacity>
         </View>
 
@@ -66,6 +69,7 @@ const HomeScreen = () => {
             </View>
           </LinearGradient>
         </TouchableOpacity>
+        
 
         {/* 진료 예약 섹션 */}
         <View style={styles.section}>
@@ -464,6 +468,19 @@ const styles = StyleSheet.create({
     color: "#FF9A9E",
     fontWeight: "bold",
   },
+  profileTextButton: {
+  backgroundColor: "#FF9A9E",
+  paddingVertical: 8,
+  paddingHorizontal: 16,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+},
+profileButtonText: {
+  color: "#FFFFFF",
+  fontSize: 14,
+  fontWeight: "bold",
+},
 })
 
 export default HomeScreen
