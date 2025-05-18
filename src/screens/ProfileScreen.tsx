@@ -1,4 +1,4 @@
-"use client"
+//내 정보 화면, 기본 정보,예약내역,리뷰 내역,진단 내역,설정 탭으로 구성
 
 import { useState, useEffect, useCallback } from "react"
 import {
@@ -674,7 +674,7 @@ const ProfileScreen = () => {
                     </View>
                     <TouchableOpacity
                       style={styles.viewDetailButton}
-                      onPress={() => navigation.navigate("DiagnosisHistoryScreen")}
+                      onPress={() => navigation.navigate("DiagnosisDetailScreen", { diagnosisId: item.id })}
                     >
                       <Text style={styles.viewDetailButtonText}>상세 보기</Text>
                     </TouchableOpacity>
@@ -900,8 +900,9 @@ const styles = StyleSheet.create({
   infoValue: {
     flex: 1,
     fontSize: 14,
-    color: "#212529",
+    //color: "#212529",
     fontWeight: "500",
+    color: "#6C757D",
   },
   editButton: {
     borderRadius: 12,
