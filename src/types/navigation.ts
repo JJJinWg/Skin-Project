@@ -51,4 +51,6 @@ export type RootStackParamList = {
       profileImage: any
     }
   };
+  
+  DiagnosisHistoryScreen: undefined
 };
