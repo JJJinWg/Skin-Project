@@ -1,4 +1,4 @@
-"use client"
+// 의사 예약 화면
 
 import { useState } from "react"
 import {
