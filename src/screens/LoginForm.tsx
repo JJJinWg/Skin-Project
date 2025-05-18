@@ -1,8 +1,8 @@
 // 로그인 화면
 
-import React, { useState } from 'react';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation';
+import { useState, useRef } from "react"
+import { type NavigationProp, useNavigation } from "@react-navigation/native"
+import type { RootStackParamList } from "../types/navigation"
 
 import {
   View,
@@ -16,34 +16,32 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Image,
   Alert,
   useColorScheme,
-  
-} from 'react-native';
-import { Svg, Path } from 'react-native-svg';
+  ActivityIndicator,
+} from "react-native"
+import { Svg, Path } from "react-native-svg"
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window")
 
 const LoginForm = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
- 
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [emailFocused, setEmailFocused] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
 
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === 'dark';
-  
+  const colorScheme = useColorScheme()
+  const isDarkMode = colorScheme === "dark"
+
   // Animated values for input labels
-  const emailLabelPosition = useState(new Animated.Value(email ? -25 : 0))[0];
-  const emailLabelSize = useState(new Animated.Value(email ? 12 : 16))[0];
-  const passwordLabelPosition = useState(new Animated.Value(password ? -25 : 0))[0];
-  const passwordLabelSize = useState(new Animated.Value(password ? 12 : 16))[0];
-  
+  const emailLabelPosition = useRef(new Animated.Value(email ? -25 : 0)).current
+  const emailLabelSize = useRef(new Animated.Value(email ? 12 : 16)).current
+  const passwordLabelPosition = useRef(new Animated.Value(password ? -25 : 0)).current
+  const passwordLabelSize = useRef(new Animated.Value(password ? 12 : 16)).current
+
   // Animation functions
   const animateEmailLabel = (focused: boolean) => {
     Animated.parallel([
@@ -57,10 +55,10 @@ const LoginForm = () => {
         duration: 150,
         useNativeDriver: false,
       }),
-    ]).start();
-    setEmailFocused(focused);
-  };
-  
+    ]).start()
+    setEmailFocused(focused)
+  }
+
   const animatePasswordLabel = (focused: boolean) => {
     Animated.parallel([
       Animated.timing(passwordLabelPosition, {
@@ -73,47 +71,54 @@ const LoginForm = () => {
         duration: 150,
         useNativeDriver: false,
       }),
-    ]).start();
-    setPasswordFocused(focused);
-  };
-  
+    ]).start()
+    setPasswordFocused(focused)
+  }
+
   const handleLogin = async () => {
     if (!email || !password) {
-      
-      // 이메일과 비밀번호가 입력되지 않은 경우
-      Alert.alert('이메일과 비밀번호를 입력해주세요.');
-      return;
+      Alert.alert("알림", "이메일과 비밀번호를 입력해주세요.")
+      return
     }
-    
-    setIsLoading(true);
+
+    setIsLoading(true)
     // 로그인 API 호출 시뮬레이션
     setTimeout(() => {
-      setIsLoading(false);
-      console.log('로그인 시도:', { email, password });
+      setIsLoading(false)
+      console.log("로그인 시도:", { email, password })
       // 여기에 실제 로그인 로직 구현
-    }, 1500);
-  };
-  
+      navigation.navigate("HomeScreen")
+    }, 1500)
+  }
+
   const handleBiometricLogin = () => {
     // 생체 인증 로직 구현
-    console.log('생체 인증 시도');
-  };
-  
+    console.log("생체 인증 시도")
+  }
+
+  const handleFindId = () => {
+    navigation.navigate("FindIdScreen")
+  }
+
+  const handleFindPassword = () => {
+    navigation.navigate("FindPasswordScreen")
+  }
+
   // 색상 테마 설정
   const colors = {
-    background: isDarkMode ? '#121212' : '#FFFFFF',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    primary: '#FF5A5F', //로그인 버튼 색상
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    textSecondary: isDarkMode ? '#AAAAAA' : '#666666',
-    border: isDarkMode ? '#333333' : '#EEEEEE',
-    inputBg: isDarkMode ? '#2A2A2A' : '#F8F8F8',
-    placeholder: isDarkMode ? '#777777' : '#999999',
-  };
-  
+    background: isDarkMode ? "#121212" : "#FFFFFF",
+    card: isDarkMode ? "#1E1E1E" : "#FFFFFF",
+    primary: "#FF5A5F", // 로그인 버튼 색상
+    text: isDarkMode ? "#FFFFFF" : "#333333",
+    textSecondary: isDarkMode ? "#AAAAAA" : "#666666",
+    border: isDarkMode ? "#333333" : "#EEEEEE",
+    inputBg: isDarkMode ? "#2A2A2A" : "#F8F8F8",
+    placeholder: isDarkMode ? "#777777" : "#999999",
+  }
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -127,18 +132,16 @@ const LoginForm = () => {
               />
             </Svg>
             <View style={styles.logoContainer}>
-              <View style={[styles.logo, { backgroundColor: '#FFFFFF' }]}>
+              <View style={[styles.logo, { backgroundColor: "#FFFFFF" }]}>
                 <Text style={styles.logoText}>A</Text>
               </View>
             </View>
           </View>
-          
+
           <View style={[styles.formContainer, { backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>로그인</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              계정에 로그인하여 시작하세요
-            </Text>
-            
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>계정에 로그인하여 시작하세요</Text>
+
             {/* 이메일 입력 필드 */}
             <View style={styles.inputWrapper}>
               <Animated.Text
@@ -171,7 +174,7 @@ const LoginForm = () => {
                 placeholderTextColor={colors.placeholder}
               />
             </View>
-            
+
             {/* 비밀번호 입력 필드 */}
             <View style={styles.inputWrapper}>
               <Animated.Text
@@ -202,90 +205,73 @@ const LoginForm = () => {
                 secureTextEntry={!isPasswordVisible}
                 placeholderTextColor={colors.placeholder}
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-              >
-                <Text style={{ color: colors.textSecondary }}>
-                  {isPasswordVisible ? '숨김' : '표시'}
-                </Text>
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+                <Text style={{ color: colors.textSecondary }}>{isPasswordVisible ? "숨김" : "표시"}</Text>
               </TouchableOpacity>
             </View>
-            
-            {/* 비밀번호 찾기 링크 */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
-                비밀번호를 잊으셨나요?
-              </Text>
-            </TouchableOpacity>
-            
+
+            {/* 계정 찾기 링크 */}
+            <View style={styles.accountRecoveryContainer}>
+              <TouchableOpacity onPress={handleFindId}>
+                <Text style={[styles.accountRecoveryText, { color: colors.primary }]}>아이디 찾기</Text>
+              </TouchableOpacity>
+              <Text style={[styles.accountRecoverySeparator, { color: colors.textSecondary }]}>|</Text>
+              <TouchableOpacity onPress={handleFindPassword}>
+                <Text style={[styles.accountRecoveryText, { color: colors.primary }]}>비밀번호 찾기</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* 로그인 버튼 */}
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}
               onPress={handleLogin}
-              
+
               disabled={isLoading}
             >
               {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <View style={styles.loadingDot} />
-                  <View style={styles.loadingDot} />
-                  <View style={styles.loadingDot} />
-                </View>
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={styles.loginButtonText}>로그인</Text>
               )}
             </TouchableOpacity>
-            
+
             {/* 생체 인증 버튼 */}
             <TouchableOpacity
               style={[styles.biometricButton, { borderColor: colors.border }]}
               onPress={handleBiometricLogin}
             >
-              <Text style={[styles.biometricButtonText, { color: colors.text }]}>
-                생체 인증으로 로그인
-              </Text>
+              <Text style={[styles.biometricButtonText, { color: colors.text }]}>생체 인증으로 로그인</Text>
             </TouchableOpacity>
-            
+
             {/* 소셜 로그인 섹션 */}
             <View style={styles.divider}>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>
-                소셜 계정으로 로그인
-              </Text>
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>소셜 계정으로 로그인</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
-            
+
             <View style={styles.socialButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: '#4285F4' }]}
-              >
+              <TouchableOpacity style={[styles.socialButton, { backgroundColor: "#4285F4" }]}>
                 <Text style={styles.socialButtonText}>Google</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: '#000000' }]}
-              >
+              <TouchableOpacity style={[styles.socialButton, { backgroundColor: "#000000" }]}>
                 <Text style={styles.socialButtonText}>Apple</Text>
               </TouchableOpacity>
             </View>
-            
+
             {/* 회원가입 링크 */}
             <View style={styles.signupContainer}>
-              <Text style={[styles.signupText, { color: colors.textSecondary }]}>
-                계정이 없으신가요?
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('RegisterUser')}>
-                <Text style={[styles.signupLink, { color: colors.primary }]}>
-                  {' '}회원가입
-                </Text>
+              <Text style={[styles.signupText, { color: colors.textSecondary }]}>계정이 없으신가요?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("RegisterUser")}>
+                <Text style={[styles.signupLink, { color: colors.primary }]}> 회원가입</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -296,22 +282,22 @@ const styles = StyleSheet.create({
   },
   waveContainer: {
     height: 150,
-    width: '100%',
-    position: 'relative',
+    width: "100%",
+    position: "relative",
   },
   logoContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 70,
-    alignSelf: 'center',
+    alignSelf: "center",
     zIndex: 10,
   },
   logo: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -319,8 +305,8 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FF5A5F',
+    fontWeight: "bold",
+    color: "#FF5A5F",
   },
   formContainer: {
     flex: 1,
@@ -330,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
@@ -338,21 +324,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
     marginBottom: 32,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputWrapper: {
     marginBottom: 24,
-    position: 'relative',
+    position: "relative",
   },
   floatingLabel: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     zIndex: 1,
   },
@@ -365,56 +351,48 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   eyeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 16,
     top: 18,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
+  accountRecoveryContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
     marginBottom: 24,
   },
-  forgotPasswordText: {
+  accountRecoveryText: {
+    fontSize: 14,
+  },
+  accountRecoverySeparator: {
+    marginHorizontal: 8,
     fontSize: 14,
   },
   loginButton: {
     height: 56,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   loginButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-    margin: 3,
-    opacity: 0.8,
+    fontWeight: "bold",
   },
   biometricButton: {
     height: 56,
     borderRadius: 12,
     borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 24,
   },
   biometricButtonText: {
     fontSize: 16,
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 24,
   },
   dividerLine: {
@@ -426,34 +404,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 32,
   },
   socialButton: {
     flex: 1,
     height: 48,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 8,
   },
   socialButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
   },
   signupText: {
     fontSize: 14,
   },
   signupLink: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-});
+})
 
-export default LoginForm;
+export default LoginForm
