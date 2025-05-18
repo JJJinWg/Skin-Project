@@ -1,4 +1,4 @@
- // 진료를 예약하는 화면
+ // 의사 전체보기
 "use client"
 
 import { useState, useEffect } from "react"

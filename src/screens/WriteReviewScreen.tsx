@@ -91,7 +91,7 @@ const WriteReviewScreen = () => {
     };
   }, [fadeAnim, translateAnim]);
   
-  // 샘플 제품 목록 (실제로는 API에서 가져올 것)
+  // 샘플 제품 목록 (실제로는 API에서 가져올 것) 우리는 아마 샘플로 몇개 그냥 등록하는식으로해야할거같아요.
   const sampleProducts = [
     { id: 1, name: 'Beplain 녹두 진정 토너', image: require('../assets/product1.png') },
     { id: 2, name: 'Torriden 다이브인 세럼', image: require('../assets/product2.png') },

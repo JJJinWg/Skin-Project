@@ -11,26 +11,26 @@ import ReservationHistoryScreen from "../screens/ReservationHistoryScreen";
 import RegisterUser from "../screens/RegisterUser";
 import LoginForm from "../screens/LoginForm";
 import WriteReviewScreen from "../screens/WriteReviewScreen";
+import { RootStackParamList } from '../types/navigation';
 
-
-export type RootStackParamList = {
-  HomeScreen: undefined;
-  LoginForm: undefined;
-  ReservationScreen: undefined;
-  AppointmentScreen: {
-    doctorId: number;
-    doctorName: string;
-    specialty: string;
-  };
-  SkinDiagnosisScreen: undefined;
-  FindCosmeticsScreen: undefined;
-  ProductReviewScreen: undefined;
-  ProductDetailScreen: { id: number };
-  ReservationHistoryScreen: undefined;
-  RegisterUser: undefined;
-  WriteReviewScreen: undefined;
-  DoctorDetailScreen: { id: number };
-};
+// export type RootStackParamList = {
+//   HomeScreen: undefined;
+//   LoginForm: undefined;
+//   ReservationScreen: undefined;
+//   AppointmentScreen: {
+//     doctorId: number;
+//     doctorName: string;
+//     specialty: string;
+//   };
+//   SkinDiagnosisScreen: undefined;
+//   FindCosmeticsScreen: undefined;
+//   ProductReviewScreen: undefined;
+//   ProductDetailScreen: { id: number };
+//   ReservationHistoryScreen: undefined;
+//   RegisterUser: undefined;
+//   WriteReviewScreen: undefined;
+//   DoctorDetailScreen: { id: number };
+// };
 
 const Stack = createStackNavigator<RootStackParamList>();
 

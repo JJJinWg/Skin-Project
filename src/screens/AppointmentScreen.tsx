@@ -1,5 +1,4 @@
-// 사용자가 원하는 의사를 선택 후 예약을 누르면 날짜와 시간을 선택하여 예약하는 화면입니다.
-//"use client"
+"use client"
 
 import { useState } from "react"
 import {
@@ -13,15 +12,23 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  TextInput,
 } from "react-native"
 import { Calendar, type DateData } from "react-native-calendars"
 import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native"
 import LinearGradient from "react-native-linear-gradient"
+import { launchCamera, launchImageLibrary } from "react-native-image-picker"
 
 type AppointmentScreenRouteProp = RouteProp<
   { params: { doctorId: number; doctorName: string; specialty: string } },
   "params"
 >
+
+type ImageType = {
+  uri: string
+  type?: string
+  name?: string
+}
 
 const AppointmentScreen = () => {
   const navigation = useNavigation()
@@ -33,6 +40,10 @@ const AppointmentScreen = () => {
   const [availableTimes, setAvailableTimes] = useState<string[]>([])
   const [markedDates, setMarkedDates] = useState<any>({})
   const [loading, setLoading] = useState(false)
+
+  // 증상 관련 상태 추가
+  const [symptoms, setSymptoms] = useState("")
+  const [images, setImages] = useState<ImageType[]>([])
 
   // 오늘 날짜 구하기
   const today = new Date()
@@ -124,6 +135,95 @@ const AppointmentScreen = () => {
     setSelectedTime(time)
   }
 
+  // 이미지 선택 핸들러
+  const handleSelectImage = () => {
+    Alert.alert(
+      "사진 첨부",
+      "사진을 첨부할 방법을 선택하세요",
+      [
+        {
+          text: "카메라로 촬영",
+          onPress: () => handleLaunchCamera(),
+        },
+        {
+          text: "갤러리에서 선택",
+          onPress: () => handleLaunchImageLibrary(),
+        },
+        {
+          text: "취소",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true },
+    )
+  }
+
+  // 카메라 실행 핸들러
+  const handleLaunchCamera = () => {
+    launchCamera(
+      {
+        mediaType: "photo",
+        includeBase64: false,
+        maxHeight: 800,
+        maxWidth: 800,
+      },
+      (response) => {
+        if (response.didCancel) {
+          console.log("User cancelled camera picker")
+        } else if (response.errorCode) {
+          console.log("Camera Error: ", response.errorMessage)
+        } else if (response.assets && response.assets.length > 0) {
+          const asset = response.assets[0]
+          if (asset.uri) {
+            const newImage = {
+              uri: asset.uri,
+              type: asset.type,
+              name: asset.fileName,
+            }
+            setImages([...images, newImage])
+          }
+        }
+      },
+    )
+  }
+
+  // 갤러리 실행 핸들러
+  const handleLaunchImageLibrary = () => {
+    launchImageLibrary(
+      {
+        mediaType: "photo",
+        includeBase64: false,
+        maxHeight: 800,
+        maxWidth: 800,
+        selectionLimit: 3 - images.length, // 최대 3장까지만 선택 가능
+      },
+      (response) => {
+        if (response.didCancel) {
+          console.log("User cancelled image picker")
+        } else if (response.errorCode) {
+          console.log("ImagePicker Error: ", response.errorMessage)
+        } else if (response.assets && response.assets.length > 0) {
+          const newImages = response.assets.map((asset) => ({
+            uri: asset.uri || "",
+            type: asset.type,
+            name: asset.fileName,
+          }))
+
+          // 최대 3장까지만 추가
+          const updatedImages = [...images, ...newImages].slice(0, 3)
+          setImages(updatedImages)
+        }
+      },
+    )
+  }
+
+  // 이미지 삭제 핸들러
+  const handleRemoveImage = (index: number) => {
+    const newImages = [...images]
+    newImages.splice(index, 1)
+    setImages(newImages)
+  }
+
   // 예약 완료 핸들러
   const handleConfirmAppointment = () => {
     if (!selectedDate || !selectedTime) {
@@ -137,12 +237,16 @@ const AppointmentScreen = () => {
     // 예약 API 호출 시뮬레이션
     setTimeout(() => {
       setLoading(false)
-      Alert.alert("예약 완료", `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 예약이 완료되었습니다.`, [
-        {
-          text: "확인",
-          onPress: () => navigation.goBack(),
-        },
-      ])
+      Alert.alert(
+        "예약 완료",
+        `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 예약이 완료되었습니다.${symptoms ? `\n\n증상: ${symptoms}` : ""}${images.length > 0 ? `\n\n첨부된 사진: ${images.length}장` : ""}`,
+        [
+          {
+            text: "확인",
+            onPress: () => navigation.goBack(),
+          },
+        ],
+      )
     }, 1000)
   }
 
@@ -244,6 +348,43 @@ const AppointmentScreen = () => {
             )}
           </View>
         )}
+
+        {/* 증상 입력 */}
+        <View style={styles.symptomsContainer}>
+          <Text style={styles.sectionTitle}>증상 입력</Text>
+          <TextInput
+            style={styles.symptomsInput}
+            placeholder="어떤 증상이 있으신가요? (선택사항)"
+            placeholderTextColor="#ADB5BD"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            value={symptoms}
+            onChangeText={setSymptoms}
+          />
+        </View>
+
+        {/* 사진 첨부 */}
+        <View style={styles.imagesContainer}>
+          <Text style={styles.sectionTitle}>사진 첨부 (선택사항, 최대 3장)</Text>
+          <View style={styles.imagesGrid}>
+            {images.map((image, index) => (
+              <View key={index} style={styles.imageContainer}>
+                <Image source={{ uri: image.uri }} style={styles.attachedImage} />
+                <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
+                  <Text style={styles.removeImageButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            {images.length < 3 && (
+              <TouchableOpacity style={styles.addImageButton} onPress={handleSelectImage}>
+                <Text style={styles.addImageButtonText}>+</Text>
+                <Text style={styles.addImageButtonLabel}>사진 추가</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <Text style={styles.imageHelpText}>증상과 관련된 사진을 첨부하시면 의사의 진단에 도움이 됩니다.</Text>
+        </View>
 
         {/* 선택된 예약 정보 */}
         {selectedDate && selectedTime && (
@@ -449,6 +590,105 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 20,
+  },
+  // 증상 입력 스타일
+  symptomsContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  symptomsInput: {
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: "#212529",
+    height: 100,
+    textAlignVertical: "top",
+  },
+  // 이미지 첨부 스타일
+  imagesContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 10,
+  },
+  imageContainer: {
+    width: 100,
+    height: 100,
+    marginRight: 10,
+    marginBottom: 10,
+    position: "relative",
+  },
+  attachedImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#FF9A9E",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  removeImageButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  addImageButton: {
+    width: 100,
+    height: 100,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    borderStyle: "dashed",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addImageButtonText: {
+    fontSize: 24,
+    color: "#ADB5BD",
+    marginBottom: 5,
+  },
+  addImageButtonLabel: {
+    fontSize: 12,
+    color: "#6C757D",
+  },
+  imageHelpText: {
+    fontSize: 12,
+    color: "#6C757D",
+    fontStyle: "italic",
+    marginTop: 5,
   },
   selectedInfoContainer: {
     marginHorizontal: 20,

@@ -80,6 +80,7 @@ const LoginForm = () => {
   const handleLogin = async () => {
     if (!email || !password) {
       
+      // 이메일과 비밀번호가 입력되지 않은 경우
       Alert.alert('이메일과 비밀번호를 입력해주세요.');
       return;
     }
@@ -102,7 +103,7 @@ const LoginForm = () => {
   const colors = {
     background: isDarkMode ? '#121212' : '#FFFFFF',
     card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    primary: '#FF5A5F', // 트렌디한 코랄 색상 //로그인 버튼 색상
+    primary: '#FF5A5F', //로그인 버튼 색상
     text: isDarkMode ? '#FFFFFF' : '#333333',
     textSecondary: isDarkMode ? '#AAAAAA' : '#666666',
     border: isDarkMode ? '#333333' : '#EEEEEE',
@@ -222,6 +223,7 @@ const LoginForm = () => {
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}
               onPress={handleLogin}
+              
               disabled={isLoading}
             >
               {isLoading ? (
