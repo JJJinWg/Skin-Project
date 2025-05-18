@@ -17,4 +17,38 @@ export type RootStackParamList = {
     doctorName: string;
     specialty: string;
   };
+  EditProfileScreen: {
+    userInfo: {
+      name: string
+      email: string
+      phone: string
+      birthdate: string
+      profileImage: any
+    }
+  };
+  EditReviewScreen: {
+    review: {
+      id: number;
+      productId: number;
+      productName: string;
+      productImage: any;
+      rating: number;
+      content: string;
+      date: string;
+      images?: string[];
+      likes: number;
+      helpful: number;
+    }
+  };
+ 
+
+  ProfileScreen: {
+    updatedUserInfo?: {
+      name: string
+      email: string
+      phone: string
+      birthdate: string
+      profileImage: any
+    }
+  };
 };
