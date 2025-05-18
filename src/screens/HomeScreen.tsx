@@ -53,7 +53,8 @@ const HomeScreen = () => {
         </View>
 
         {/* 메인 배너 */}
-        <TouchableOpacity style={styles.mainBanner}>
+        <TouchableOpacity style={styles.mainBanner}
+          onPress={() => navigation.navigate("PharmacyMapScreen")}>
           <LinearGradient
             colors={["#FF9A9E", "#FAD0C4"]}
             start={{ x: 0, y: 0 }}
