@@ -1,4 +1,5 @@
 // 사용자의 예약내역 확인 화면
+// 사용안함 다른걸로 대체함
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
