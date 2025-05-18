@@ -1,3 +1,5 @@
+// 홈화면
+
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
@@ -42,11 +44,8 @@ const HomeScreen = () => {
             <Text style={styles.greeting}>안녕하세요 👋</Text>
             <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.profileTextButton} 
-            onPress={() => navigation.navigate("ProfileScreen", {})}
-          >
-            <Text style={styles.profileButtonText}>프로필</Text>
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen",{})}>
+            <Image source={require("../assets/doctor1.png")} style={styles.profileImage} />
           </TouchableOpacity>
         </View>
 
@@ -69,7 +68,6 @@ const HomeScreen = () => {
             </View>
           </LinearGradient>
         </TouchableOpacity>
-        
 
         {/* 진료 예약 섹션 */}
         <View style={styles.section}>
@@ -142,6 +140,21 @@ const HomeScreen = () => {
                 </View>
                 <Text style={styles.aiTitle}>화장품 추천</Text>
                 <Text style={styles.aiDescription}>나에게 맞는 제품을 찾아보세요</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.aiCard} onPress={() => navigation.navigate("SkinHistoryScreen")}>
+              <LinearGradient
+                colors={["#FF9A9E", "#FAD0C4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.aiCardGradient}
+              >
+                <View style={styles.aiIconContainer}>
+                  <Text style={styles.aiIcon}>📊</Text>
+                </View>
+                <Text style={styles.aiTitle}>피부 관리 기록</Text>
+                <Text style={styles.aiDescription}>피부 분석 및 추천 내역을 확인하세요</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -362,7 +375,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   aiCard: {
-    width: "48%",
+    width: "31%",
     borderRadius: 16,
     overflow: "hidden",
     elevation: 4,
@@ -468,19 +481,6 @@ const styles = StyleSheet.create({
     color: "#FF9A9E",
     fontWeight: "bold",
   },
-  profileTextButton: {
-  backgroundColor: "#FF9A9E",
-  paddingVertical: 8,
-  paddingHorizontal: 16,
-  borderRadius: 20,
-  justifyContent: "center",
-  alignItems: "center",
-},
-profileButtonText: {
-  color: "#FFFFFF",
-  fontSize: 14,
-  fontWeight: "bold",
-},
 })
 
 export default HomeScreen
