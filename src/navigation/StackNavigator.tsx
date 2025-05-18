@@ -12,25 +12,9 @@ import RegisterUser from "../screens/RegisterUser";
 import LoginForm from "../screens/LoginForm";
 import WriteReviewScreen from "../screens/WriteReviewScreen";
 import { RootStackParamList } from '../types/navigation';
-
-// export type RootStackParamList = {
-//   HomeScreen: undefined;
-//   LoginForm: undefined;
-//   ReservationScreen: undefined;
-//   AppointmentScreen: {
-//     doctorId: number;
-//     doctorName: string;
-//     specialty: string;
-//   };
-//   SkinDiagnosisScreen: undefined;
-//   FindCosmeticsScreen: undefined;
-//   ProductReviewScreen: undefined;
-//   ProductDetailScreen: { id: number };
-//   ReservationHistoryScreen: undefined;
-//   RegisterUser: undefined;
-//   WriteReviewScreen: undefined;
-//   DoctorDetailScreen: { id: number };
-// };
+import ProfileScreen from "../screens/ProfileScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
+import EditReviewScreen from "../screens/EditReviewScreen";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -50,6 +34,9 @@ export default function StackNavigator() {
         <Stack.Screen name="RegisterUser" component={RegisterUser} />
         <Stack.Screen name="WriteReviewScreen" component={WriteReviewScreen} />
         <Stack.Screen name="DoctorDetailScreen" component={ProductDetailScreen} />
+        <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+        <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
+        <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
