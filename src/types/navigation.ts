@@ -13,6 +13,8 @@ export type RootStackParamList = {
   LoginForm: undefined;
   WriteReviewScreen: undefined;
   DoctorDetailScreen: { id: number };
+  FindIdScreen: undefined
+  FindPasswordScreen: undefined
   AppointmentScreen: { 
     doctorId: number;
     doctorName: string;

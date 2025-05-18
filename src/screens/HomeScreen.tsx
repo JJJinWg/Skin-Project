@@ -44,8 +44,11 @@ const HomeScreen = () => {
             <Text style={styles.greeting}>안녕하세요 👋</Text>
             <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen",{})}>
-            <Image source={require("../assets/doctor1.png")} style={styles.profileImage} />
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigation.navigate("ProfileScreen", {})}
+            >
+            <Text style={styles.profileText}>프로필</Text>
           </TouchableOpacity>
         </View>
 
@@ -244,14 +247,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
   },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "#E9ECEF",
-  },
+  // profileButton: {
+  //   width: 40,
+  //   height: 40,
+  //   borderRadius: 20,
+  //   overflow: "hidden",
+  //   borderWidth: 2,
+  //   borderColor: "#E9ECEF",
+  // },
   profileImage: {
     width: "100%",
     height: "100%",
@@ -481,6 +484,19 @@ const styles = StyleSheet.create({
     color: "#FF9A9E",
     fontWeight: "bold",
   },
+  profileButton: {
+  backgroundColor: '#FF9A9E',
+  paddingVertical: 8,
+  paddingHorizontal: 16,
+  borderRadius: 20,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+profileText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: 'bold',
+}
 })
 
 export default HomeScreen
