@@ -1,9 +1,6 @@
-// 메인 HOME 화면
-
-import React from 'react';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation';
-import LinearGradient from 'react-native-linear-gradient';
+import { type NavigationProp, useNavigation } from "@react-navigation/native"
+import type { RootStackParamList } from "../types/navigation"
+import LinearGradient from "react-native-linear-gradient"
 
 import {
   View,
@@ -16,24 +13,24 @@ import {
   SafeAreaView,
   ScrollView,
   Dimensions,
-} from 'react-native';
+} from "react-native"
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window")
 
 const HomeScreen = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
 
   const doctors = [
-    { id: 1, name: 'Dr. Kim', specialty: '피부과', image: require('../assets/doctor1.png') },
-    { id: 2, name: 'Dr. Lee', specialty: '알레르기', image: require('../assets/doctor2.png') },
-    { id: 3, name: 'Dr. Park', specialty: '피부과', image: require('../assets/doctor3.png') },
-    { id: 4, name: 'Dr. Choi', specialty: '피부과', image: require('../assets/doctor4.png') },
-  ];
+    { id: 1, name: "Dr. Kim", specialty: "피부과", image: require("../assets/doctor1.png") },
+    { id: 2, name: "Dr. Lee", specialty: "알레르기", image: require("../assets/doctor2.png") },
+    { id: 3, name: "Dr. Park", specialty: "피부과", image: require("../assets/doctor3.png") },
+    { id: 4, name: "Dr. Choi", specialty: "피부과", image: require("../assets/doctor4.png") },
+  ]
 
   const products = [
-    { id: 1, name: 'Beplain', rating: 4.44, reviews: 128, image: require('../assets/product1.png') },
-    { id: 2, name: 'Torriden', rating: 3.57, reviews: 86, image: require('../assets/product2.png') },
-  ];
+    { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
+    { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
+  ]
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -45,20 +42,17 @@ const HomeScreen = () => {
             <Text style={styles.greeting}>안녕하세요 👋</Text>
             <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Image 
-              source={require('../assets/doctor1.png')} 
-              style={styles.profileImage} 
-            />
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen", {})}>
+            <Image source={require("../assets/doctor1.png")} style={styles.profileImage} />
           </TouchableOpacity>
         </View>
 
         {/* 메인 배너 */}
         <TouchableOpacity style={styles.mainBanner}>
           <LinearGradient
-            colors={['#FF9A9E', '#FAD0C4']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 0}}
+            colors={["#FF9A9E", "#FAD0C4"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={styles.bannerGradient}
           >
             <View style={styles.bannerContent}>
@@ -77,10 +71,7 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>진료 예약</Text>
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => navigation.navigate('ReservationScreen')}
-            >
+            <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("ReservationScreen")}>
               <Text style={styles.viewAllText}>전체보기</Text>
             </TouchableOpacity>
           </View>
@@ -96,13 +87,15 @@ const HomeScreen = () => {
                   <Text style={styles.doctorName}>{item.name}</Text>
                   <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.bookButton}
-                  onPress={() => navigation.navigate('AppointmentScreen', { 
-                    doctorId: item.id,
-                    doctorName: item.name,
-                    specialty: item.specialty
-                  })}
+                  onPress={() =>
+                    navigation.navigate("AppointmentScreen", {
+                      doctorId: item.id,
+                      doctorName: item.name,
+                      specialty: item.specialty,
+                    })
+                  }
                 >
                   <Text style={styles.bookButtonText}>예약</Text>
                 </TouchableOpacity>
@@ -116,16 +109,13 @@ const HomeScreen = () => {
         {/* AI 서비스 섹션 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI 서비스</Text>
-          
+
           <View style={styles.aiSection}>
-            <TouchableOpacity
-              style={styles.aiCard}
-              onPress={() => navigation.navigate('SkinDiagnosisScreen')}
-            >
+            <TouchableOpacity style={styles.aiCard} onPress={() => navigation.navigate("SkinDiagnosisScreen")}>
               <LinearGradient
-                colors={['#A18CD1', '#FBC2EB']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
+                colors={["#A18CD1", "#FBC2EB"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.aiCardGradient}
               >
                 <View style={styles.aiIconContainer}>
@@ -135,15 +125,12 @@ const HomeScreen = () => {
                 <Text style={styles.aiDescription}>AI로 피부 상태를 분석하세요</Text>
               </LinearGradient>
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.aiCard}
-              onPress={() => navigation.navigate('FindCosmeticsScreen')}
-            >
+
+            <TouchableOpacity style={styles.aiCard} onPress={() => navigation.navigate("FindCosmeticsScreen")}>
               <LinearGradient
-                colors={['#84FAB0', '#8FD3F4']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
+                colors={["#84FAB0", "#8FD3F4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.aiCardGradient}
               >
                 <View style={styles.aiIconContainer}>
@@ -160,10 +147,7 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>인기 제품</Text>
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => navigation.navigate('ProductReviewScreen')}
-            >
+            <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("ProductReviewScreen")}>
               <Text style={styles.viewAllText}>전체보기</Text>
             </TouchableOpacity>
           </View>
@@ -175,7 +159,7 @@ const HomeScreen = () => {
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.productCard}
-                onPress={() => navigation.navigate('ProductDetailScreen', { id: item.id })}
+                onPress={() => navigation.navigate("ProductDetailScreen", { id: item.id })}
               >
                 <Image source={item.image} style={styles.productImage} />
                 <View style={styles.productInfo}>
@@ -195,85 +179,73 @@ const HomeScreen = () => {
 
       {/* 하단 네비게이션 */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('HomeScreen')}
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("HomeScreen")}>
           <Text style={styles.navIcon}>🏠</Text>
           <Text style={[styles.navText, styles.activeNavText]}>홈</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('ProductReviewScreen')}
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProductReviewScreen")}>
           <Text style={styles.navIcon}>📝</Text>
           <Text style={styles.navText}>리뷰</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('ReservationScreen')}
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ReservationScreen")}>
           <Text style={styles.navIcon}>📅</Text>
           <Text style={styles.navText}>예약</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => navigation.navigate('LoginForm')}
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen",{})}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navText}>프로필</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   greeting: {
     fontSize: 14,
-    color: '#6C757D',
+    color: "#6C757D",
     marginBottom: 4,
   },
   headerText: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontWeight: "bold",
+    color: "#212529",
   },
   profileButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 2,
-    borderColor: '#E9ECEF',
+    borderColor: "#E9ECEF",
   },
   profileImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   mainBanner: {
     marginHorizontal: 20,
     marginVertical: 15,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -282,28 +254,28 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   bannerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   bannerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 5,
   },
   bannerSubtitle: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     opacity: 0.9,
   },
   bannerIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   bannerIcon: {
     fontSize: 24,
@@ -313,25 +285,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontWeight: "bold",
+    color: "#212529",
   },
   viewAllButton: {
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: '#F1F3F5',
+    backgroundColor: "#F1F3F5",
   },
   viewAllText: {
     fontSize: 12,
-    color: '#6C757D',
+    color: "#6C757D",
   },
   doctorList: {
     paddingRight: 20,
@@ -339,12 +311,12 @@ const styles = StyleSheet.create({
   doctorCard: {
     width: width * 0.65,
     marginLeft: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -361,36 +333,36 @@ const styles = StyleSheet.create({
   },
   doctorName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontWeight: "bold",
+    color: "#212529",
     marginBottom: 4,
   },
   doctorSpecialty: {
     fontSize: 12,
-    color: '#6C757D',
+    color: "#6C757D",
   },
   bookButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: '#FF9A9E',
+    backgroundColor: "#FF9A9E",
     borderRadius: 12,
   },
   bookButtonText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
   aiSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 10,
   },
   aiCard: {
-    width: '48%',
+    width: "48%",
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -398,31 +370,31 @@ const styles = StyleSheet.create({
   aiCardGradient: {
     padding: 20,
     height: 160,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   aiIconContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 15,
     left: 15,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   aiIcon: {
     fontSize: 20,
   },
   aiTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 5,
   },
   aiDescription: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     opacity: 0.9,
   },
   productList: {
@@ -431,17 +403,17 @@ const styles = StyleSheet.create({
   productCard: {
     width: width * 0.4,
     marginLeft: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
   productImage: {
-    width: '100%',
+    width: "100%",
     height: 120,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -451,34 +423,34 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontWeight: "bold",
+    color: "#212529",
     marginBottom: 4,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   productRating: {
     fontSize: 12,
-    color: '#6C757D',
+    color: "#6C757D",
     marginRight: 4,
   },
   reviewCount: {
     fontSize: 12,
-    color: '#ADB5BD',
+    color: "#ADB5BD",
   },
   bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#F1F3F5',
+    borderTopColor: "#F1F3F5",
     paddingBottom: 25, // 아이폰 하단 영역 고려
   },
   navItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   navIcon: {
     fontSize: 24,
@@ -486,12 +458,12 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 12,
-    color: '#ADB5BD',
+    color: "#ADB5BD",
   },
   activeNavText: {
-    color: '#FF9A9E',
-    fontWeight: 'bold',
+    color: "#FF9A9E",
+    fontWeight: "bold",
   },
-});
+})
 
-export default HomeScreen;
+export default HomeScreen
