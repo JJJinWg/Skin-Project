@@ -1,4 +1,5 @@
 // 피부 검진 진단 내역과 화장품 추천 내역을 볼 수 있는 화면
+// 피부 관리 기록
 
 import { useState, useEffect } from "react"
 import {
