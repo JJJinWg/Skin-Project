@@ -1,4 +1,4 @@
-// 내정보 화면
+"use client"
 
 import { useState, useEffect, useCallback } from "react"
 import {
@@ -52,12 +52,14 @@ type Review = {
 const ProfileScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<{ params?: { updatedUserInfo?: UserInfo } }, "params">>()
-  const [activeTab, setActiveTab] = useState<"info" | "appointments" | "reviews" | "settings">("info")
+  const [activeTab, setActiveTab] = useState<"info" | "appointments" | "reviews" | "diagnoses" | "settings">("info")
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [darkModeEnabled, setDarkModeEnabled] = useState(false)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [diagnoses, setDiagnoses] = useState<any[]>([])
+  const [diagnosesLoading, setDiagnosesLoading] = useState(true)
 
   // 사용자 정보 (실제로는 API에서 가져옴)
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -173,6 +175,44 @@ const ProfileScreen = () => {
       ]
       setReviews(mockReviews)
       setReviewsLoading(false)
+    }, 1000)
+  }, [])
+
+  // 진단 내역 가져오기 (API 호출 시뮬레이션)
+  useEffect(() => {
+    setDiagnosesLoading(true)
+    setTimeout(() => {
+      const mockDiagnoses = [
+        {
+          id: 1,
+          doctorId: 1,
+          doctorName: "Dr. Kim",
+          doctorImage: require("../assets/doctor1.png"),
+          specialty: "피부과",
+          date: "2023-05-15",
+          symptoms: "얼굴에 붉은 발진과 가려움증, 건조함",
+          diagnosisContent: "접촉성 피부염으로 진단됩니다. 특정 화장품이나 세안제에 대한 알레르기 반응으로 보입니다.",
+          treatment: "스테로이드 연고를 처방해 드립니다. 하루에 두 번, 아침과 저녁에 발진 부위에 얇게 바르세요.",
+          prescriptions: ["베타메타손 연고 0.05%", "세티리진 정 10mg"],
+          followUpRequired: true,
+          followUpDate: "2023-05-29",
+        },
+        {
+          id: 2,
+          doctorId: 2,
+          doctorName: "Dr. Lee",
+          doctorImage: require("../assets/doctor2.png"),
+          specialty: "알레르기내과",
+          date: "2023-04-10",
+          symptoms: "재채기, 콧물, 눈 가려움증",
+          diagnosisContent: "계절성 알레르기성 비염입니다. 봄철 꽃가루에 대한 알레르기 반응으로 보입니다.",
+          treatment: "항히스타민제를 처방해 드립니다. 증상이 심할 때 하루 한 번 복용하세요.",
+          prescriptions: ["로라타딘 정 10mg", "플루티카손 비강 스프레이"],
+          followUpRequired: false,
+        },
+      ]
+      setDiagnoses(mockDiagnoses)
+      setDiagnosesLoading(false)
     }, 1000)
   }, [])
 
@@ -409,6 +449,12 @@ const ProfileScreen = () => {
           <Text style={[styles.tabButtonText, activeTab === "reviews" && styles.activeTabButtonText]}>리뷰 내역</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.tabButton, activeTab === "diagnoses" && styles.activeTabButton]}
+          onPress={() => setActiveTab("diagnoses")}
+        >
+          <Text style={[styles.tabButtonText, activeTab === "diagnoses" && styles.activeTabButtonText]}>진단 내역</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.tabButton, activeTab === "settings" && styles.activeTabButton]}
           onPress={() => setActiveTab("settings")}
         >
@@ -586,6 +632,72 @@ const ProfileScreen = () => {
                     style={styles.writeReviewButtonGradient}
                   >
                     <Text style={styles.writeReviewButtonText}>제품 둘러보기</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* 진단 내역 탭 */}
+        {activeTab === "diagnoses" && (
+          <View style={styles.diagnosesContainer}>
+            {diagnosesLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>진단 내역을 불러오는 중...</Text>
+              </View>
+            ) : diagnoses.length > 0 ? (
+              <FlatList
+                data={diagnoses}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.diagnosisCard}>
+                    <View style={styles.diagnosisHeader}>
+                      <Image source={item.doctorImage} style={styles.doctorImageSmall} />
+                      <View style={styles.diagnosisHeaderInfo}>
+                        <Text style={styles.doctorName}>{item.doctorName}</Text>
+                        <Text style={styles.specialty}>{item.specialty}</Text>
+                        <Text style={styles.diagnosisDate}>{formatDate(item.date)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.diagnosisSummary}>
+                      <Text style={styles.diagnosisLabel}>주요 증상:</Text>
+                      <Text style={styles.diagnosisText} numberOfLines={2}>
+                        {item.symptoms}
+                      </Text>
+                    </View>
+                    <View style={styles.diagnosisSummary}>
+                      <Text style={styles.diagnosisLabel}>진단:</Text>
+                      <Text style={styles.diagnosisText} numberOfLines={2}>
+                        {item.diagnosisContent}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.viewDetailButton}
+                      onPress={() => navigation.navigate("DiagnosisHistoryScreen")}
+                    >
+                      <Text style={styles.viewDetailButtonText}>상세 보기</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                contentContainerStyle={styles.diagnosisList}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : (
+              <View style={styles.noDiagnosisContainer}>
+                <Text style={styles.noDiagnosisText}>진단 내역이 없습니다.</Text>
+                <Text style={styles.noDiagnosisSubtext}>의사의 진단을 받은 후에 이곳에서 확인할 수 있습니다.</Text>
+                <TouchableOpacity
+                  style={styles.makeAppointmentButton}
+                  onPress={() => navigation.navigate("ReservationScreen")}
+                >
+                  <LinearGradient
+                    colors={["#FF9A9E", "#FAD0C4"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.makeAppointmentButtonGradient}
+                  >
+                    <Text style={styles.makeAppointmentButtonText}>진료 예약하기</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -1108,6 +1220,87 @@ const styles = StyleSheet.create({
   },
   deleteAccountText: {
     color: "#EF4444",
+  },
+  // 진단 내역 탭 스타일
+  diagnosesContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  diagnosisList: {
+    paddingBottom: 20,
+  },
+  diagnosisCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  diagnosisHeader: {
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  doctorImageSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  diagnosisHeaderInfo: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  diagnosisDate: {
+    fontSize: 12,
+    color: "#ADB5BD",
+  },
+  diagnosisSummary: {
+    marginBottom: 8,
+  },
+  diagnosisLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#212529",
+    marginBottom: 4,
+  },
+  diagnosisText: {
+    fontSize: 14,
+    color: "#495057",
+    lineHeight: 20,
+  },
+  viewDetailButton: {
+    alignSelf: "flex-end",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+    marginTop: 8,
+  },
+  viewDetailButtonText: {
+    fontSize: 12,
+    color: "#6C757D",
+  },
+  noDiagnosisContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 50,
+  },
+  noDiagnosisText: {
+    fontSize: 16,
+    color: "#6C757D",
+    marginBottom: 8,
+  },
+  noDiagnosisSubtext: {
+    fontSize: 14,
+    color: "#ADB5BD",
+    textAlign: "center",
+    marginBottom: 20,
   },
 })
 
