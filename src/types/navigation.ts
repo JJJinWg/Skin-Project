@@ -1,6 +1,9 @@
 // filepath: c:\Users\tmdgu\Desktop\univ\Skin-Project\src\types\navigation.ts
 
 export type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  Home: undefined;
   HomeScreen: undefined;
   ReservationScreen: undefined;
   SkinDiagnosisScreen: undefined;

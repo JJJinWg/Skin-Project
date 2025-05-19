@@ -17,6 +17,8 @@ import {
 import { type NavigationProp, useNavigation, useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { useDispatch } from 'react-redux'
+import { logout } from '../store/authSlice'
 
 type Appointment = {
   id: number
@@ -75,6 +77,8 @@ const ProfileScreen = () => {
 
   // 리뷰 내역 (실제로는 API에서 가져옴)
   const [reviews, setReviews] = useState<Review[]>([])
+
+  const dispatch = useDispatch()
 
   // 예약 내역 가져오기 (API 호출 시뮬레이션)
   useEffect(() => {
@@ -245,15 +249,11 @@ const ProfileScreen = () => {
       "로그아웃",
       "정말 로그아웃 하시겠습니까?",
       [
-        {
-          text: "취소",
-          style: "cancel",
-        },
+        { text: "취소", style: "cancel" },
         {
           text: "로그아웃",
           onPress: () => {
-            // 실제로는 로그아웃 API 호출 후 로그인 화면으로 이동
-            navigation.navigate("LoginForm")
+            dispatch(logout())
           },
         },
       ],

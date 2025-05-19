@@ -3,6 +3,10 @@
 import { useState, useRef } from "react"
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
+import { useDispatch } from 'react-redux'
+import { setCredentials } from '../store/authSlice'
+import { authService } from '../services/authService'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import {
   View,
@@ -25,7 +29,8 @@ import { Svg, Path } from "react-native-svg"
 const { width } = Dimensions.get("window")
 
 const LoginForm = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
+  const dispatch = useDispatch()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Login'>>()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
@@ -80,15 +85,12 @@ const LoginForm = () => {
       Alert.alert("알림", "이메일과 비밀번호를 입력해주세요.")
       return
     }
-
-    setIsLoading(true)
-    // 로그인 API 호출 시뮬레이션
-    setTimeout(() => {
-      setIsLoading(false)
-      console.log("로그인 시도:", { email, password })
-      // 여기에 실제 로그인 로직 구현
-      navigation.navigate("HomeScreen")
-    }, 1500)
+    try {
+      const data = await authService.login({ email, password })
+      dispatch(setCredentials({ token: data.token }))
+    } catch (error) {
+      Alert.alert("로그인 실패", "이메일과 비밀번호를 확인해주세요.")
+    }
   }
 
   const handleBiometricLogin = () => {
@@ -97,11 +99,11 @@ const LoginForm = () => {
   }
 
   const handleFindId = () => {
-    navigation.navigate("FindIdScreen")
+    navigation.navigate('FindIdScreen');
   }
 
   const handleFindPassword = () => {
-    navigation.navigate("FindPasswordScreen")
+    navigation.navigate('FindPasswordScreen');
   }
 
   // 색상 테마 설정
@@ -225,7 +227,6 @@ const LoginForm = () => {
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}
               onPress={handleLogin}
-
               disabled={isLoading}
             >
               {isLoading ? (
