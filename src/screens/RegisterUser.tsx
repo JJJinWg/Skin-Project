@@ -47,7 +47,7 @@ const RegisterUser: React.FC = () => {
       [
         {
           text: '확인',
-          onPress: () => navigation.navigate('HomeScreen'), // HomeScreen으로 이동
+          onPress: () => navigation.navigate('LoginForm'), // LoginForm 으로 이동
         },
       ],
       { cancelable: false }
