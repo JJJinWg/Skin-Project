@@ -1,11 +1,13 @@
 import sys
 import os
+# main.py (수정 후)
+print("🔥 main.py에서 보는 DATABASE_URL:", os.getenv("DATABASE_URL"))
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from core.database import SessionLocal
 from schemas import ReviewCreate
-from crud import create_review
 from fastapi import FastAPI
 from product_description.crawler import crawl_olive_young_reviews
 from fastapi import HTTPException, status
@@ -15,8 +17,23 @@ from recommendation import recommend_endpoint, RecommendQuery
 from fastapi import Body
 from fastapi import FastAPI, Body
 from recommendation import recommend_endpoint, RecommendQuery
+from fastapi.middleware.cors import CORSMiddleware
+from schemas import UserLogin
+from core.security import verify_password
+from core.database import Base, engine
+from core.models import db_models
+Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 개발 중엔 * 허용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()
@@ -25,9 +42,25 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/reviews")
-def post_review(review: ReviewCreate, db: Session = Depends(get_db)):
-    return create_review(db, review)
+
+@app.post("/login")
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = get_user_by_username(db, user.username)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="존재하지 않는 사용자입니다")
+
+    if not verify_password(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+
+    return {
+        "message": "로그인 성공",
+        "user": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email
+        }
+    }
+
 
 
 @app.get("/crawl")

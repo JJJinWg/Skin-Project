@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
+from pydantic import BaseModel
+from datetime import datetime
 
 class GenderEnum(str, Enum):
     male = "male"
@@ -41,3 +43,16 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class ReviewCreate(BaseModel):
+    username: str
+    review_text: str
+    skin_type: str
+    skin_concern: str
+    sensitivity: str
+    rating: float
+    created_at: datetime | None = None
