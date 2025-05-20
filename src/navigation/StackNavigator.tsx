@@ -38,12 +38,12 @@ const StackNavigator = () => {
           // 비인증 상태의 스택
           <>
             <Stack.Screen 
-              name="Login" 
+              name="LoginForm" 
               component={LoginForm}
               options={{ headerShown: false }}
             />
             <Stack.Screen 
-              name="Register" 
+              name="RegisterUser" 
               component={RegisterUser}
               options={{ headerShown: false }}
             />
@@ -54,10 +54,12 @@ const StackNavigator = () => {
           // 인증 상태의 스택
           <>
             <Stack.Screen 
-              name="Home" 
+              name="HomeScreen" 
               component={HomeScreen}
               options={{ headerShown: false }}
             />
+            
+            
             <Stack.Screen name="ReservationScreen" component={ReservationScreen} />
             <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} /> 
             <Stack.Screen name="FindCosmeticsScreen" component={FindCosmeticsScreen} />
