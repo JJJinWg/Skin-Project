@@ -1,14 +1,20 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from database import Base
+from core.database import Base
 from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    password = Column(String)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    phone_number = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)  # ✅ 필드 이름 맞춰야 함
+    gender = Column(String)
+    age = Column(Integer)
+    skin_type = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class SkinAnalysis(Base):
     __tablename__ = "skin_analysis"

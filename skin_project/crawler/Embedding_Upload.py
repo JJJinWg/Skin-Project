@@ -41,7 +41,7 @@ def get_embedding(text):
 vectors = []
 
 # ✅ 테스트용으로 5개만 처리
-for i, row in df.head(5).iterrows():
+for i, row in df.iterrows():
     combined = f"{row['skin_type']} | {row['review']}"
     embedding = get_embedding(combined)
     if not embedding:
