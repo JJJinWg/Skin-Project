@@ -155,9 +155,9 @@ const ProductReviewScreen = () => {
           <View style={styles.headerContent}>
             <TouchableOpacity 
               style={styles.backButton}
-              onPress={() => navigation.goBack()}
+              
             >
-              <Text style={styles.backButtonText}>←</Text>
+              
             </TouchableOpacity>
             <Animated.View style={[styles.headerTitleContainer, { opacity: headerOpacity }]}>
               <Text style={styles.headerTitle}>제품 리뷰</Text>
