@@ -23,8 +23,8 @@ const { width } = Dimensions.get('window');
 const categories = [
   { id: 'all', name: '전체' },
   { id: 'skincare', name: '스킨케어' },
-  { id: 'makeup', name: '메이크업' },
-  { id: 'suncare', name: '선케어' },
+  { id: 'toner', name: '토너' },
+  { id: 'serum', name: '세럼' },
   { id: 'cleansing', name: '클렌징' },
 ];
 
@@ -154,10 +154,10 @@ const ProductReviewScreen = () => {
         >
           <View style={styles.headerContent}>
             <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
+              
+              
             >
-              <Text style={styles.backButtonText}>←</Text>
+              
             </TouchableOpacity>
             <Animated.View style={[styles.headerTitleContainer, { opacity: headerOpacity }]}>
               <Text style={styles.headerTitle}>제품 리뷰</Text>

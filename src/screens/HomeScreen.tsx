@@ -44,17 +44,13 @@ const HomeScreen = () => {
             <Text style={styles.greeting}>안녕하세요 👋</Text>
             <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigation.navigate("ProfileScreen", {})}
-            >
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen", {})}>
             <Text style={styles.profileText}>프로필</Text>
           </TouchableOpacity>
         </View>
 
         {/* 메인 배너 */}
-        <TouchableOpacity style={styles.mainBanner}
-          onPress={() => navigation.navigate("PharmacyMapScreen")}>
+        <TouchableOpacity style={styles.mainBanner} onPress={() => navigation.navigate("PharmacyMapScreen")}>
           <LinearGradient
             colors={["#FF9A9E", "#FAD0C4"]}
             start={{ x: 0, y: 0 }}
@@ -87,7 +83,16 @@ const HomeScreen = () => {
             horizontal
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.doctorCard}>
+              <TouchableOpacity
+                style={styles.doctorCard}
+                onPress={() =>
+                  navigation.navigate("DoctorDetailScreen", {
+                    doctorId: item.id,
+                    doctorName: item.name,
+                    doctorSpecialty: item.specialty,
+                  })
+                }
+              >
                 <Image source={item.image} style={styles.doctorImage} />
                 <View style={styles.doctorInfo}>
                   <Text style={styles.doctorName}>{item.name}</Text>
@@ -95,13 +100,14 @@ const HomeScreen = () => {
                 </View>
                 <TouchableOpacity
                   style={styles.bookButton}
-                  onPress={() =>
+                  onPress={(e) => {
+                    e.stopPropagation() // 부모 터치 이벤트 방지
                     navigation.navigate("AppointmentScreen", {
                       doctorId: item.id,
                       doctorName: item.name,
-                      specialty: item.specialty,
+                      doctorSpecialty: item.specialty,
                     })
-                  }
+                  }}
                 >
                   <Text style={styles.bookButtonText}>예약</Text>
                 </TouchableOpacity>
@@ -167,7 +173,7 @@ const HomeScreen = () => {
         {/* 제품 리뷰 섹션 */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>인기 제품</Text>
+            <Text style={styles.sectionTitle}>인기 제품 리뷰</Text>
             <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("ProductReviewScreen")}>
               <Text style={styles.viewAllText}>전체보기</Text>
             </TouchableOpacity>
@@ -212,7 +218,7 @@ const HomeScreen = () => {
           <Text style={styles.navIcon}>📅</Text>
           <Text style={styles.navText}>예약</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen",{})}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen", {})}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navText}>프로필</Text>
         </TouchableOpacity>
@@ -248,14 +254,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
   },
-  // profileButton: {
-  //   width: 40,
-  //   height: 40,
-  //   borderRadius: 20,
-  //   overflow: "hidden",
-  //   borderWidth: 2,
-  //   borderColor: "#E9ECEF",
-  // },
+  
   profileImage: {
     width: "100%",
     height: "100%",
@@ -486,18 +485,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   profileButton: {
-  backgroundColor: '#FF9A9E',
-  paddingVertical: 8,
-  paddingHorizontal: 16,
-  borderRadius: 20,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-profileText: {
-  color: 'white',
-  fontSize: 16,
-  fontWeight: 'bold',
-}
+    backgroundColor: "#FF9A9E",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 })
 
 export default HomeScreen
