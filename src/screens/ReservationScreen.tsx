@@ -1,4 +1,6 @@
- // 의사 전체보기 및 예약가능 화면
+"use client"
+
+// 의사 전체보기 및 예약가능 화면
 
 import { useState, useEffect } from "react"
 import {
@@ -38,7 +40,6 @@ const ReservationScreen = () => {
 
   const specialties = [
     { id: "all", name: "전체" },
-    //{ id: "dermatology", name: "피부과" },
     
   ]
 
@@ -49,7 +50,7 @@ const ReservationScreen = () => {
       const doctorsData = [
         {
           id: 1,
-          name: "Dr. Kim",
+          name: "김민수 원장",
           specialty: "피부과",
           rating: 4.9,
           reviews: 124,
@@ -168,7 +169,7 @@ const ReservationScreen = () => {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} >
-  
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진료 예약</Text>
         <View style={styles.placeholder} />
@@ -180,7 +181,7 @@ const ReservationScreen = () => {
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="찾으시는 의사의 이름을 입력하세요."
+            placeholder="의사 또는 전문분야 검색"
             placeholderTextColor="#ADB5BD"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -225,37 +226,42 @@ const ReservationScreen = () => {
           data={filteredDoctors}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.doctorCard}
-              onPress={() =>
-                navigation.navigate("AppointmentScreen", {
-                  doctorId: item.id,
-                  doctorName: item.name,
-                  specialty: item.specialty,
-                })
-              }
-            >
-              <Image source={item.image} style={styles.doctorImage} />
-              <View style={styles.doctorInfo}>
-                <View style={styles.doctorNameRow}>
-                  <Text style={styles.doctorName}>{item.name}</Text>
-                  {item.available && (
-                    <View style={styles.availableBadge}>
-                      <Text style={styles.availableBadgeText}>예약가능</Text>
-                    </View>
-                  )}
+            <View style={styles.doctorCard}>
+              {/* 의사 프로필 영역 - 터치 시 상세정보로 이동 */}
+              <TouchableOpacity
+                style={styles.doctorProfileArea}
+                onPress={() =>
+                  navigation.navigate("DoctorDetailScreen", {
+                    doctorId: item.id,
+                    doctorName: item.name,
+                    doctorSpecialty: item.specialty,
+                  })
+                }
+              >
+                <Image source={item.image} style={styles.doctorImage} />
+                <View style={styles.doctorInfo}>
+                  <View style={styles.doctorNameRow}>
+                    <Text style={styles.doctorName}>{item.name}</Text>
+                    {item.available && (
+                      <View style={styles.availableBadge}>
+                        <Text style={styles.availableBadgeText}>예약가능</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
+                  <View style={styles.ratingContainer}>
+                    {renderStars(item.rating)}
+                    <Text style={styles.ratingText}>{item.rating}</Text>
+                    <Text style={styles.reviewCount}>({item.reviews})</Text>
+                  </View>
+                  <View style={styles.nextAvailableContainer}>
+                    <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
+                    <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
+                  </View>
                 </View>
-                <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
-                <View style={styles.ratingContainer}>
-                  {renderStars(item.rating)}
-                  <Text style={styles.ratingText}>{item.rating}</Text>
-                  <Text style={styles.reviewCount}>({item.reviews})</Text>
-                </View>
-                <View style={styles.nextAvailableContainer}>
-                  <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
-                  <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
+
+              {/* 예약 버튼 영역 */}
               <LinearGradient
                 colors={["#FF9A9E", "#FAD0C4"]}
                 start={{ x: 0, y: 0 }}
@@ -264,18 +270,19 @@ const ReservationScreen = () => {
               >
                 <TouchableOpacity
                   style={styles.bookButton}
-                  onPress={() =>
+                  onPress={(e) => {
+                    e.stopPropagation()
                     navigation.navigate("AppointmentScreen", {
                       doctorId: item.id,
                       doctorName: item.name,
-                      specialty: item.specialty,
+                      doctorSpecialty: item.specialty,
                     })
-                  }
+                  }}
                 >
                   <Text style={styles.bookButtonText}>예약하기</Text>
                 </TouchableOpacity>
               </LinearGradient>
-            </TouchableOpacity>
+            </View>
           )}
           contentContainerStyle={styles.doctorList}
           showsVerticalScrollIndicator={false}
@@ -410,6 +417,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  doctorProfileArea: {
+    marginBottom: 15,
+  },
   doctorImage: {
     width: 80,
     height: 80,
@@ -418,7 +428,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   doctorInfo: {
-    marginBottom: 15,
+    marginBottom: 0,
   },
   doctorNameRow: {
     flexDirection: "row",
