@@ -173,7 +173,7 @@ const HomeScreen = () => {
         {/* 제품 리뷰 섹션 */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>인기 제품</Text>
+            <Text style={styles.sectionTitle}>인기 제품 리뷰</Text>
             <TouchableOpacity style={styles.viewAllButton} onPress={() => navigation.navigate("ProductReviewScreen")}>
               <Text style={styles.viewAllText}>전체보기</Text>
             </TouchableOpacity>
