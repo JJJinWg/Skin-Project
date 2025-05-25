@@ -38,10 +38,8 @@ const ReservationScreen = () => {
 
   const specialties = [
     { id: "all", name: "전체" },
-    { id: "dermatology", name: "피부과" },
-    { id: "allergy", name: "알레르기" },
-    { id: "cosmetic", name: "성형외과" },
-    { id: "internal", name: "내과" },
+    //{ id: "dermatology", name: "피부과" },
+    
   ]
 
   // 의사 데이터 가져오기 (실제로는 API에서 가져옴)
@@ -182,7 +180,7 @@ const ReservationScreen = () => {
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="의사 또는 전문분야 검색"
+            placeholder="찾으시는 의사의 이름을 입력하세요."
             placeholderTextColor="#ADB5BD"
             value={searchQuery}
             onChangeText={setSearchQuery}
