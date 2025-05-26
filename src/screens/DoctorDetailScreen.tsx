@@ -1,5 +1,5 @@
 // 의사 상세 정보 화면
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,17 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../types/navigation';
+import { appointmentService } from '../services/appointmentService';
 
 const DoctorDetailScreen: React.FC = () => {
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  
   const doctor = {
     id: 1,
     name: 'Dr. Kim',
@@ -21,8 +29,11 @@ const DoctorDetailScreen: React.FC = () => {
   };
 
   const handleReservation = () => {
-    console.log('예약 버튼 클릭');
-    // 예약 로직 추가
+    navigation.navigate('AppointmentScreen', {
+      doctorId: doctor.id,
+      doctorName: doctor.name,
+      specialty: doctor.specialty
+    });
   };
 
   return (

@@ -23,6 +23,7 @@ export type RootStackParamList = {
     doctorId: number;
     doctorName: string;
     specialty: string;
+    doctorImage?: any;
   };
   
   
