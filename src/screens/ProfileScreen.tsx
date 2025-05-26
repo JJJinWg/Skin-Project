@@ -12,7 +12,6 @@ import {
   StatusBar,
   Image,
   Switch,
-  FlatList,
   Alert,
 } from "react-native"
 import { type NavigationProp, useNavigation, useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native"
@@ -538,16 +537,23 @@ const ProfileScreen = () => {
             {/* 예약 내역 탭 */}
             {activeTab === "appointments" && (
               <View style={styles.appointmentsContainer}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>최근 예약 내역</Text>
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => navigation.navigate("ReservationScreen")}
+                  >
+                    <Text style={styles.viewAllText}>전체보기</Text>
+                  </TouchableOpacity>
+                </View>
                 {loading ? (
                   <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>예약 내역을 불러오는 중...</Text>
                   </View>
                 ) : appointments.length > 0 ? (
-                  <FlatList
-                    data={appointments}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View style={styles.appointmentCard}>
+                  <View style={styles.appointmentsList}>
+                    {appointments.map((item) => (
+                      <View key={item.id.toString()} style={styles.appointmentCard}>
                         <View style={styles.appointmentHeader}>
                           <Text style={styles.doctorName}>{item.doctorName}</Text>
                           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
@@ -577,10 +583,8 @@ const ProfileScreen = () => {
                           </View>
                         )}
                       </View>
-                    )}
-                    contentContainerStyle={styles.appointmentsList}
-                    showsVerticalScrollIndicator={false}
-                  />
+                    ))}
+                  </View>
                 ) : (
                   <View style={styles.noAppointmentsContainer}>
                     <Text style={styles.noAppointmentsText}>예약 내역이 없습니다.</Text>
@@ -610,11 +614,9 @@ const ProfileScreen = () => {
                     <Text style={styles.loadingText}>리뷰 내역을 불러오는 중...</Text>
                   </View>
                 ) : reviews.length > 0 ? (
-                  <FlatList
-                    data={reviews}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View style={styles.reviewCard}>
+                  <View style={styles.reviewsList}>
+                    {reviews.map((item) => (
+                      <View key={item.id.toString()} style={styles.reviewCard}>
                         <View style={styles.reviewHeader}>
                           <Image source={item.productImage} style={styles.productImage} />
                           <View style={styles.reviewHeaderInfo}>
@@ -650,10 +652,8 @@ const ProfileScreen = () => {
                           </TouchableOpacity>
                         </View>
                       </View>
-                    )}
-                    contentContainerStyle={styles.reviewsList}
-                    showsVerticalScrollIndicator={false}
-                  />
+                    ))}
+                  </View>
                 ) : (
                   <View style={styles.noReviewsContainer}>
                     <Text style={styles.noReviewsText}>작성한 리뷰가 없습니다.</Text>
@@ -683,11 +683,9 @@ const ProfileScreen = () => {
                     <Text style={styles.loadingText}>진단 내역을 불러오는 중...</Text>
                   </View>
                 ) : diagnoses.length > 0 ? (
-                  <FlatList
-                    data={diagnoses}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View style={styles.diagnosisCard}>
+                  <View style={styles.diagnosisList}>
+                    {diagnoses.map((item) => (
+                      <View key={item.id.toString()} style={styles.diagnosisCard}>
                         <View style={styles.diagnosisHeader}>
                           <Image source={item.doctorImage} style={styles.doctorImageSmall} />
                           <View style={styles.diagnosisHeaderInfo}>
@@ -715,10 +713,8 @@ const ProfileScreen = () => {
                           <Text style={styles.viewDetailButtonText}>상세 보기</Text>
                         </TouchableOpacity>
                       </View>
-                    )}
-                    contentContainerStyle={styles.diagnosisList}
-                    showsVerticalScrollIndicator={false}
-                  />
+                    ))}
+                  </View>
                 ) : (
                   <View style={styles.noDiagnosisContainer}>
                     <Text style={styles.noDiagnosisText}>진단 내역이 없습니다.</Text>
@@ -909,6 +905,31 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     backgroundColor: "#F8F9FA",
+  },
+  // 섹션 헤더 스타일 (예약 내역용)
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#212529",
+  },
+  viewAllButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: "#6C757D",
+    fontWeight: "500",
   },
   // 기본 정보 탭 스타일
   infoContainer: {

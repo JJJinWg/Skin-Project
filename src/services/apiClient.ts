@@ -2,6 +2,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from './authService';
 
 const API_BASE_URL = 'https://your-backend.example.com/api'; // TODO: 실제 백엔드 URL로 교체
 
