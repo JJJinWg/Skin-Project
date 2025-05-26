@@ -1,22 +1,30 @@
 
 // 의사 상세 정보 화면
-import React, { useState, useEffect } from 'react
+
+import React, { useState, useEffect } from 'react'
+
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Image,
+  FlatList,
   Alert,
-} from 'react-native';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types/navigation';
-import { appointmentService } from '../services/appointmentService';
+} from 'react-native'
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
+import { StackNavigationProp } from '@react-navigation/stack'
+import type { RootStackParamList } from '../types/navigation'
+import LinearGradient from 'react-native-linear-gradient'
+import { appointmentService } from '../services/appointmentService'
 
 const DoctorDetailScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>()
+  const [activeTab, setActiveTab] = useState<'info' | 'reviews'>('info')
+  const [reviews, setReviews] = useState<any[]>([])
   
   const doctor = {
     id: 1,
@@ -24,17 +32,66 @@ const DoctorDetailScreen: React.FC = () => {
     specialty: '피부과',
     rating: 4.9,
     reviews: 124,
+    reviewCount: 124,
     description: '피부과 전문의로 10년 이상의 경력을 보유하고 있습니다.',
     image: require('../assets/doctor1.png'),
-  };
+    hospital: '서울대학교병원',
+    experience: '10년',
+    education: ['서울대학교 의과대학 졸업', '서울대학교병원 피부과 전공의'],
+    workingHours: {
+      weekday: '09:00 - 18:00',
+      weekend: '09:00 - 13:00'
+    },
+    consultationFee: '50,000원'
+  }
+
+  // 날짜 포맷 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    return `${year}년 ${month}월 ${day}일`
+  }
+
+  // 별점 렌더링 함수
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating)
+    const halfStar = rating - fullStars >= 0.5
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0)
+
+    return (
+      <View style={styles.starsContainer}>
+        {[...Array(fullStars)].map((_, i) => (
+          <Text key={`full-${i}`} style={styles.starIcon}>
+            ★
+          </Text>
+        ))}
+        {halfStar && <Text style={styles.starIcon}>★</Text>}
+        {[...Array(emptyStars)].map((_, i) => (
+          <Text key={`empty-${i}`} style={[styles.starIcon, styles.emptyStar]}>
+            ★
+          </Text>
+        ))}
+      </View>
+    )
+  }
 
   const handleReservation = () => {
     navigation.navigate('AppointmentScreen', {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty
-    });
-  };
+    })
+  }
+
+  const handleBookAppointment = () => {
+    navigation.navigate('AppointmentScreen', {
+      doctorId: doctor.id,
+      doctorName: doctor.name,
+      specialty: doctor.specialty
+    })
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -259,6 +316,7 @@ const styles = StyleSheet.create({
   },
   emptyStar: {
     color: "#E9ECEF",
+
   },
   ratingText: {
     fontSize: 14,
@@ -293,6 +351,7 @@ const styles = StyleSheet.create({
     color: "#FF9A9E",
     fontWeight: "bold",
   },
+
   infoContent: {
     padding: 20,
   },
@@ -312,12 +371,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
     marginBottom: 12,
+
   },
   description: {
     fontSize: 14,
     color: "#495057",
     lineHeight: 20,
   },
+
   experienceContainer: {
     marginBottom: 10,
   },
@@ -344,6 +405,7 @@ const styles = StyleSheet.create({
     color: "#6C757D",
   },
   infoValue: {
+
     fontSize: 14,
     fontWeight: "500",
     color: "#212529",

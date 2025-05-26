@@ -12,14 +12,13 @@ import {
   StatusBar,
   Image,
   Switch,
-  FlatList,
   Alert,
 } from "react-native"
 import { type NavigationProp, useNavigation, useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
-import { useDispatch } from 'react-redux'
-import { logout } from '../store/authSlice'
+import { useDispatch } from "react-redux"
+import { logout } from "../store/authSlice"
 import { appointmentService } from '../services/appointmentService'
 import { diagnosisService } from '../services/diagnosisService'
 import { reviewService } from '../services/reviewService'
@@ -74,8 +73,6 @@ const ProfileScreen = () => {
   // 리뷰 내역 (실제로는 API에서 가져옴)
   const [reviews, setReviews] = useState<Review[]>([])
 
-  const dispatch = useDispatch()
-
   // 사용자 정보 가져오기
 
   useEffect(() => {
@@ -91,7 +88,7 @@ const ProfileScreen = () => {
     loadUserInfo()
   }, [])
 
-  // 예약 내역 가져오기
+  // 예약 내역 가져오기 (실제 API 호출)
   useEffect(() => {
     const loadAppointments = async () => {
       setLoading(true)
@@ -123,7 +120,7 @@ const ProfileScreen = () => {
     loadAppointments()
   }, [])
 
-  // 리뷰 내역 가져오기
+  // 리뷰 내역 가져오기 (실제 API 호출)
   useEffect(() => {
     const loadReviews = async () => {
       setReviewsLoading(true)
@@ -142,7 +139,7 @@ const ProfileScreen = () => {
     loadReviews()
   }, [])
 
-  // 진단 내역 가져오기
+  // 진단 내역 가져오기 (실제 API 호출)
   useEffect(() => {
     const loadDiagnoses = async () => {
       setDiagnosesLoading(true)
@@ -406,122 +403,48 @@ const ProfileScreen = () => {
         <View style={styles.placeholder} />
       </View>
 
-      {/* 프로필 헤더 */}
-      <View style={styles.profileHeader}>
-        <TouchableOpacity style={styles.profileImageContainer} onPress={handleChangeProfileImage}>
-          <Image source={userInfo?.profileImage || require("../assets/doctor1.png")} style={styles.profileImage} />
-          <View style={styles.editIconContainer}>
-            <Text style={styles.editIcon}>✎</Text>
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.profileName}>{userInfo?.name || '사용자'}</Text>
-        <Text style={styles.profileEmail}>{userInfo?.email || ''}</Text>
-      </View>
-
-      {/* 탭 메뉴 */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "info" && styles.activeTabButton]}
-          onPress={() => setActiveTab("info")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "info" && styles.activeTabButtonText]}>기본 정보</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "appointments" && styles.activeTabButton]}
-          onPress={() => setActiveTab("appointments")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "appointments" && styles.activeTabButtonText]}>
-            예약 내역
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "reviews" && styles.activeTabButton]}
-          onPress={() => setActiveTab("reviews")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "reviews" && styles.activeTabButtonText]}>리뷰 내역</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "diagnoses" && styles.activeTabButton]}
-          onPress={() => setActiveTab("diagnoses")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "diagnoses" && styles.activeTabButtonText]}>진단 내역</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "settings" && styles.activeTabButton]}
-          onPress={() => setActiveTab("settings")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "settings" && styles.activeTabButtonText]}>설정</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 탭 콘텐츠 */}
-      <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        {/* 기본 정보 탭 */}
-        {activeTab === "info" && (
-          <View style={styles.infoContainer}>
-            {userInfo ? (
-              <>
-                <View style={styles.infoCard}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>이름</Text>
-                    <Text style={styles.infoValue}>{userInfo.name}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>이메일</Text>
-                    <Text style={styles.infoValue}>{userInfo.email}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>전화번호</Text>
-                    <Text style={styles.infoValue}>{userInfo.phone}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>생년월일</Text>
-                    <Text style={styles.infoValue}>{formatDate(userInfo.birthdate)}</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => navigation.navigate("EditProfileScreen", { userInfo })}
-                >
-                  <LinearGradient
-                    colors={["#FF9A9E", "#FAD0C4"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.editButtonGradient}
-                  >
-                    <Text style={styles.editButtonText}>정보 수정</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* 예약 내역 탭 */}
-        {activeTab === "appointments" && (
-          <View style={styles.appointmentsContainer}>
-            <View style={styles.appointmentsHeader}>
-              <Text style={styles.appointmentsTitle}>최근 예약 내역</Text>
-              <TouchableOpacity 
-                style={styles.viewAllButton}
-                onPress={() => navigation.navigate("ReservationHistoryScreen")}
-              >
-                <Text style={styles.viewAllButtonText}>전체 보기</Text>
-              </TouchableOpacity>
+      {/* 로그인하지 않은 경우 로그인 유도 화면 표시 */}
+      {!isLoggedIn ? (
+        <View style={styles.loginPromptContainer}>
+          <View style={styles.loginPromptContent}>
+            <View style={styles.loginPromptIcon}>
+              <Text style={styles.loginPromptIconText}>👤</Text>
             </View>
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>예약 내역을 불러오는 중...</Text>
+            <Text style={styles.loginPromptTitle}>로그인이 필요합니다</Text>
+            <Text style={styles.loginPromptMessage}>프로필 정보를 확인하려면{"\n"}로그인을 해주세요</Text>
+          </View>
 
+          <View style={styles.loginPromptBottom}>
+            <Text style={styles.loginRequiredText}>로그인을 하셔야 이용할 수 있습니다.</Text>
+            <TouchableOpacity
+              style={styles.loginPromptButton}
+              onPress={() => {
+                dispatch(logout()) // 인증 상태를 false로 변경
+              }}
+            >
+              <LinearGradient
+                colors={["#FF9A9E", "#FAD0C4"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loginPromptButtonGradient}
+              >
+                <Text style={styles.loginPromptButtonText}>로그인</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* 프로필 헤더 */}
+          <View style={styles.profileHeader}>
+            <TouchableOpacity style={styles.profileImageContainer} onPress={handleChangeProfileImage}>
+              <Image source={userInfo?.profileImage || require("../assets/doctor1.png")} style={styles.profileImage} />
+              <View style={styles.editIconContainer}>
+                <Text style={styles.editIcon}>✎</Text>
               </View>
             </TouchableOpacity>
-            <Text style={styles.profileName}>{userInfo.name}</Text>
-            <Text style={styles.profileEmail}>{userInfo.email}</Text>
+            <Text style={styles.profileName}>{userInfo?.name || '사용자'}</Text>
+            <Text style={styles.profileEmail}>{userInfo?.email || ''}</Text>
           </View>
 
           {/* 탭 메뉴 */}
@@ -569,54 +492,75 @@ const ProfileScreen = () => {
             {/* 기본 정보 탭 */}
             {activeTab === "info" && (
               <View style={styles.infoContainer}>
-                <View style={styles.infoCard}>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>이름</Text>
-                    <Text style={styles.infoValue}>{userInfo.name}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>이메일</Text>
-                    <Text style={styles.infoValue}>{userInfo.email}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>전화번호</Text>
-                    <Text style={styles.infoValue}>{userInfo.phone}</Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>생년월일</Text>
-                    <Text style={styles.infoValue}>{formatDate(userInfo.birthdate)}</Text>
-                  </View>
-                </View>
 
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => navigation.navigate("EditProfileScreen", { userInfo })}
-                >
-                  <LinearGradient
-                    colors={["#FF9A9E", "#FAD0C4"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.editButtonGradient}
-                  >
-                    <Text style={styles.editButtonText}>정보 수정</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                {userInfo ? (
+                  <>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>이름</Text>
+                        <Text style={styles.infoValue}>{userInfo.name}</Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>이메일</Text>
+                        <Text style={styles.infoValue}>{userInfo.email}</Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>전화번호</Text>
+                        <Text style={styles.infoValue}>{userInfo.phone}</Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>생년월일</Text>
+                        <Text style={styles.infoValue}>{formatDate(userInfo.birthdate)}</Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => navigation.navigate("EditProfileScreen", { userInfo })}
+                    >
+                      <LinearGradient
+                        colors={["#FF9A9E", "#FAD0C4"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.editButtonGradient}
+                      >
+                        <Text style={styles.editButtonText}>정보 수정</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+                  </View>
+                )}
+
               </View>
             )}
 
             {/* 예약 내역 탭 */}
             {activeTab === "appointments" && (
               <View style={styles.appointmentsContainer}>
+
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>최근 예약 내역</Text>
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => navigation.navigate("ReservationScreen")}
+                  >
+                    <Text style={styles.viewAllText}>전체보기</Text>
+                  </TouchableOpacity>
+                </View>
+
                 {loading ? (
                   <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>예약 내역을 불러오는 중...</Text>
                   </View>
                 ) : appointments.length > 0 ? (
-                  <FlatList
-                    data={appointments}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View style={styles.appointmentCard}>
+
+                  <View style={styles.appointmentsList}>
+                    {appointments.map((item) => (
+                      <View key={item.id.toString()} style={styles.appointmentCard}>
+
                         <View style={styles.appointmentHeader}>
                           <Text style={styles.doctorName}>{item.doctorName}</Text>
                           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
@@ -646,10 +590,10 @@ const ProfileScreen = () => {
                           </View>
                         )}
                       </View>
-                    )}
-                    contentContainerStyle={styles.appointmentsList}
-                    showsVerticalScrollIndicator={false}
-                  />
+
+                    ))}
+                  </View>
+
                 ) : (
                   <View style={styles.noAppointmentsContainer}>
                     <Text style={styles.noAppointmentsText}>예약 내역이 없습니다.</Text>
@@ -672,28 +616,56 @@ const ProfileScreen = () => {
             )}
 
 
-        {/* 진단 내역 탭 */}
-        {activeTab === "diagnoses" && (
-          <View style={styles.diagnosesContainer}>
-            {diagnosesLoading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>진단 내역을 불러오는 중...</Text>
-              </View>
-            ) : diagnoses.length > 0 ? (
-              <View style={styles.diagnosisList}>
-                {diagnoses.map((item) => (
-                  <View key={item.id.toString()} style={styles.diagnosisCard}>
-                    <View style={styles.diagnosisHeader}>
-                      <Image source={item.doctorImage} style={styles.doctorImageSmall} />
-                      <View style={styles.diagnosisHeaderInfo}>
-                        <Text style={styles.doctorName}>{item.doctorName}</Text>
-                        <Text style={styles.specialty}>{item.specialty}</Text>
-                        <Text style={styles.diagnosisDate}>{formatDate(item.date)}</Text>
+            {/* 리뷰 내역 탭 */}
+            {activeTab === "reviews" && (
+              <View style={styles.reviewsContainer}>
+                {reviewsLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>리뷰 내역을 불러오는 중...</Text>
+                  </View>
+                ) : reviews.length > 0 ? (
+                  <View style={styles.reviewsList}>
+                    {reviews.map((item) => (
+                      <View key={item.id.toString()} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <Image source={item.productImage} style={styles.productImage} />
+                          <View style={styles.reviewHeaderInfo}>
+                            <Text style={styles.productName}>{item.productName}</Text>
+                            <View style={styles.ratingContainer}>
+                              {renderStars(item.rating)}
+                              <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                            </View>
+                            <Text style={styles.reviewDate}>{formatDate(item.date)}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.reviewContent}>{item.content}</Text>
+                        {item.images && item.images.length > 0 && (
+                          <View style={styles.reviewImagesContainer}>
+                            {item.images.map((image, index) => (
+                              <Image key={index} source={{ uri: image }} style={styles.reviewImage} />
+                            ))}
+                          </View>
+                        )}
+                        <View style={styles.reviewStats}>
+                          <Text style={styles.reviewStatsText}>👍 {item.likes} 명이 좋아합니다</Text>
+                          <Text style={styles.reviewStatsText}>🙌 {item.helpful} 명이 도움됐습니다</Text>
+                        </View>
+                        <View style={styles.reviewActions}>
+                          <TouchableOpacity style={styles.reviewActionButton} onPress={() => handleEditReview(item)}>
+                            <Text style={styles.reviewActionButtonText}>수정</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.reviewActionButton, styles.deleteButton]}
+                            onPress={() => handleDeleteReview(item.id)}
+                          >
+                            <Text style={styles.deleteButtonText}>삭제</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    )}
-                    contentContainerStyle={styles.reviewsList}
-                    showsVerticalScrollIndicator={false}
-                  />
+
+                    ))}
+                  </View>
+
                 ) : (
                   <View style={styles.noReviewsContainer}>
                     <Text style={styles.noReviewsText}>작성한 리뷰가 없습니다.</Text>
@@ -711,25 +683,8 @@ const ProfileScreen = () => {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.noDiagnosisContainer}>
-                <Text style={styles.noDiagnosisText}>진단 내역이 없습니다.</Text>
-                <Text style={styles.noDiagnosisSubtext}>의사의 진단을 받은 후에 이곳에서 확인할 수 있습니다.</Text>
-                <TouchableOpacity
-                  style={styles.makeAppointmentButton}
-                  onPress={() => navigation.navigate("ReservationScreen")}
-                >
-                  <LinearGradient
-                    colors={["#FF9A9E", "#FAD0C4"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.makeAppointmentButtonGradient}
-                  >
-                    <Text style={styles.makeAppointmentButtonText}>진료 예약하기</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+
+                )}
 
               </View>
             )}
@@ -742,11 +697,11 @@ const ProfileScreen = () => {
                     <Text style={styles.loadingText}>진단 내역을 불러오는 중...</Text>
                   </View>
                 ) : diagnoses.length > 0 ? (
-                  <FlatList
-                    data={diagnoses}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View style={styles.diagnosisCard}>
+
+                  <View style={styles.diagnosisList}>
+                    {diagnoses.map((item) => (
+                      <View key={item.id.toString()} style={styles.diagnosisCard}>
+
                         <View style={styles.diagnosisHeader}>
                           <Image source={item.doctorImage} style={styles.doctorImageSmall} />
                           <View style={styles.diagnosisHeaderInfo}>
@@ -774,10 +729,10 @@ const ProfileScreen = () => {
                           <Text style={styles.viewDetailButtonText}>상세 보기</Text>
                         </TouchableOpacity>
                       </View>
-                    )}
-                    contentContainerStyle={styles.diagnosisList}
-                    showsVerticalScrollIndicator={false}
-                  />
+
+                    ))}
+                  </View>
+
                 ) : (
                   <View style={styles.noDiagnosisContainer}>
                     <Text style={styles.noDiagnosisText}>진단 내역이 없습니다.</Text>
@@ -969,6 +924,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F9FA",
   },
+  // 섹션 헤더 스타일 (예약 내역용)
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#212529",
+  },
+  viewAllButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: "#6C757D",
+    fontWeight: "500",
+  },
   // 기본 정보 탭 스타일
   infoContainer: {
     padding: 20,
@@ -1019,28 +999,6 @@ const styles = StyleSheet.create({
   appointmentsContainer: {
     flex: 1,
     padding: 20,
-  },
-  appointmentsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  appointmentsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  viewAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#FF9A9E",
-  },
-  viewAllButtonText: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    fontWeight: "500",
   },
   loadingContainer: {
     flex: 1,
