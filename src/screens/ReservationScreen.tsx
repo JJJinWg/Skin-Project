@@ -169,8 +169,8 @@ const ReservationScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton} >
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진료 예약</Text>
         <View style={styles.placeholder} />
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    
     justifyContent: "center",
     alignItems: "center",
   },

@@ -166,8 +166,7 @@ ${diagnosis.followUpRequired ? `추적 관찰: ${diagnosis.followUpDate ? format
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton}>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진단 상세</Text>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
@@ -285,7 +284,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },

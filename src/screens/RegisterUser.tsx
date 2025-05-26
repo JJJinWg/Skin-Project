@@ -1,6 +1,6 @@
 // 회원가입 화면
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,9 @@ const RegisterUser: React.FC = () => {
     address: '',
     phone: '',
   });
+
+  // RTK Query 회원가입 훅 사용
+  const [register, { isLoading, isSuccess, isError, error, data }] = useRegisterMutation();
 
   const handleChange = (name: string, value: string) => {
     setFormData({

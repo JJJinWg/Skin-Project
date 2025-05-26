@@ -20,26 +20,32 @@ export const api = createApi({
   endpoints: (builder) => ({
     // 로그인 엔드포인트 (목업 데이터 사용)
     login: builder.mutation<LoginResponse, LoginRequest>({
-      queryFn: async (credentials) => {
+      queryFn: async (credentials, { dispatch }) => {
         console.log('Mock login attempt with:', credentials);
         // 실제 API 호출 대신 목업 데이터 반환
         // API가 준비되면 이 부분을 실제 API 호출로 변경합니다.
         await new Promise(resolve => setTimeout(resolve, 1000)); // 네트워크 지연 시뮬레이션
 
-        if (credentials.email === 'test@example.com' && credentials.password === 'password') {
+        // 목업: 모든 이메일/비밀번호 조합 허용 (빈 값만 체크)
+        if (credentials.email && credentials.password) {
           const mockUserData: LoginResponse = {
-            accessToken: 'mock-access-token-12345',
-            refreshToken: 'mock-refresh-token-67890',
+            accessToken: `mock-access-token-${Date.now()}`,
+            refreshToken: `mock-refresh-token-${Date.now()}`,
             user: {
-              id: 1,
-              email: 'test@example.com',
-              name: 'Test User',
-              // ... 기타 필요한 유저 정보
+              id: Math.floor(Math.random() * 1000) + 1,
+              email: credentials.email,
+              name: credentials.email.split('@')[0], // 이메일에서 이름 추출
             },
           };
+          
           // AsyncStorage에 목업 토큰 저장 (실제 로직과 유사하게)
           await AsyncStorage.setItem('accessToken', mockUserData.accessToken);
           await AsyncStorage.setItem('refreshToken', mockUserData.refreshToken);
+          
+          // authSlice 상태 업데이트
+          const { setCredentials } = await import('./authSlice');
+          dispatch(setCredentials({ token: mockUserData.accessToken }));
+          
           return { data: mockUserData };
         } else {
           return { error: { status: 401, data: 'Invalid credentials' } };
@@ -77,11 +83,16 @@ export const api = createApi({
 
     // 로그아웃 엔드포인트 (목업)
     logout: builder.mutation<LogoutResponse, void>({
-      queryFn: async () => {
+      queryFn: async (_, { dispatch }) => {
         console.log('Mock logout attempt');
         // AsyncStorage에서 토큰 삭제
         await AsyncStorage.removeItem('accessToken');
         await AsyncStorage.removeItem('refreshToken');
+        
+        // authSlice 상태 업데이트
+        const { logout } = await import('./authSlice');
+        dispatch(logout());
+        
         await new Promise(resolve => setTimeout(resolve, 500)); // 약간의 지연 시뮬레이션
         return { data: { success: true, message: '로그아웃 되었습니다.' } };
       },
