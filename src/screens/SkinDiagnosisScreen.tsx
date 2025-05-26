@@ -111,8 +111,8 @@ const SkinDiagnosisScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton} >
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AI 피부 검진</Text>
         <View style={styles.placeholder} />
