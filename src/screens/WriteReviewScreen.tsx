@@ -175,12 +175,12 @@ const WriteReviewScreen = () => {
       >
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            
+            
           >
-            <Text style={styles.backButtonText}>←</Text>
+            
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>리뷰 작성</Text>
+          <Text style={styles.headerTitle}>             리뷰 작성</Text>
           <TouchableOpacity 
             style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmitReview}
