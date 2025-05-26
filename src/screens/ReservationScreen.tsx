@@ -1,6 +1,6 @@
  // 의사 전체보기 및 예약가능 화면
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -178,7 +178,6 @@ const ReservationScreen = () => {
                   doctorId: item.id,
                   doctorName: item.name,
                   specialty: item.specialty,
-                  doctorImage: item.image,
                 })
               }
             >
