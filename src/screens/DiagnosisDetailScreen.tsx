@@ -180,8 +180,8 @@ ${diagnosis.followUpRequired ? `추적 관찰: ${diagnosis.followUpDate ? format
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진단 상세</Text>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>

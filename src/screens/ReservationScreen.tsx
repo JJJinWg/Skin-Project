@@ -1,6 +1,4 @@
-"use client"
-
-// 의사 전체보기 및 예약가능 화면
+ // 의사 전체보기 및 예약가능 화면
 
 import React, { useState, useEffect } from "react"
 import {
@@ -39,9 +37,7 @@ const ReservationScreen = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSpecialty, setSelectedSpecialty] = useState("all")
 
-
   const [specialties, setSpecialties] = useState<any[]>([])
-
 
   // 데이터 가져오기
   useEffect(() => {
@@ -117,8 +113,8 @@ const ReservationScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진료 예약</Text>
         <View style={styles.placeholder} />
@@ -205,9 +201,7 @@ const ReservationScreen = () => {
                   <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
                   <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
                 </View>
-              </TouchableOpacity>
-
-              {/* 예약 버튼 영역 */}
+              </View>
               <LinearGradient
                 colors={["#FF9A9E", "#FAD0C4"]}
                 start={{ x: 0, y: 0 }}
@@ -216,19 +210,18 @@ const ReservationScreen = () => {
               >
                 <TouchableOpacity
                   style={styles.bookButton}
-                  onPress={(e) => {
-                    e.stopPropagation()
+                  onPress={() =>
                     navigation.navigate("AppointmentScreen", {
                       doctorId: item.id,
                       doctorName: item.name,
-                      doctorSpecialty: item.specialty,
+                      specialty: item.specialty,
                     })
-                  }}
+                  }
                 >
                   <Text style={styles.bookButtonText}>예약하기</Text>
                 </TouchableOpacity>
               </LinearGradient>
-            </View>
+            </TouchableOpacity>
           )}
           contentContainerStyle={styles.doctorList}
           showsVerticalScrollIndicator={false}
@@ -363,9 +356,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  doctorProfileArea: {
-    marginBottom: 15,
-  },
   doctorImage: {
     width: 80,
     height: 80,
@@ -374,7 +364,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   doctorInfo: {
-    marginBottom: 0,
+    marginBottom: 15,
   },
   doctorNameRow: {
     flexDirection: "row",

@@ -433,8 +433,8 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{showResults ? "맞춤 화장품 추천" : "화장품 추천받기"}</Text>
         <View style={styles.placeholder} />
