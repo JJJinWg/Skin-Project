@@ -651,7 +651,7 @@ const FindPasswordScreen = () => {
                 }
               }}
             >
-              
+              <Text style={styles.backButtonText}>←</Text>
             </TouchableOpacity>
           </View>
 

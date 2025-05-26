@@ -25,7 +25,6 @@ import SkinHistoryScreen from "../screens/SkinHistoryScreen"
 import FindPasswordScreen from "../screens/FindPasswordScreen";
 import FindIdScreen from "../screens/FindIdScreen";
 import PharmacyMapScreen from "../screens/PharmacyMapScreen";
-import DoctorDetailScreen  from "../screens/DoctorDetailScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -39,12 +38,12 @@ const StackNavigator = () => {
           // 비인증 상태의 스택
           <>
             <Stack.Screen 
-              name="LoginForm" 
+              name="Login" 
               component={LoginForm}
               options={{ headerShown: false }}
             />
             <Stack.Screen 
-              name="RegisterUser" 
+              name="Register" 
               component={RegisterUser}
               options={{ headerShown: false }}
             />
@@ -55,12 +54,10 @@ const StackNavigator = () => {
           // 인증 상태의 스택
           <>
             <Stack.Screen 
-              name="HomeScreen" 
+              name="Home" 
               component={HomeScreen}
               options={{ headerShown: false }}
             />
-            
-            
             <Stack.Screen name="ReservationScreen" component={ReservationScreen} />
             <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} /> 
             <Stack.Screen name="FindCosmeticsScreen" component={FindCosmeticsScreen} />
@@ -69,7 +66,7 @@ const StackNavigator = () => {
             <Stack.Screen name="ReservationHistoryScreen" component={ReservationHistoryScreen} />
             <Stack.Screen name="RegisterUser" component={RegisterUser} />
             <Stack.Screen name="WriteReviewScreen" component={WriteReviewScreen} />
-            <Stack.Screen name="DoctorDetailScreen" component={DoctorDetailScreen} />
+            <Stack.Screen name="DoctorDetailScreen" component={ProductDetailScreen} />
             <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
             <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
