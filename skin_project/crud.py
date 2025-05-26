@@ -1,15 +1,12 @@
 from sqlalchemy.orm import Session
-<<<<<<< HEAD
 from core.models.db_models import User
 from schemas import UserCreate
 from core.security import hash_password
 from core.security import hash_password
 
-=======
 from models.db_models import User
 from schemas import UserCreate
 from core.security import hash_password
->>>>>>> main
 
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
