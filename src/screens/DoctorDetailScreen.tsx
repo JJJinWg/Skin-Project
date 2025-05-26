@@ -1,180 +1,40 @@
-// 의사 상세정보 화면
 
-import { useState, useEffect } from "react"
+// 의사 상세 정보 화면
+import React, { useState, useEffect } from 'react
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
-  StatusBar,
-  Image,
-  FlatList,
-} from "react-native"
-import { type NavigationProp, useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
-import type { RootStackParamList } from "../types/navigation"
-import LinearGradient from "react-native-linear-gradient"
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../types/navigation';
+import { appointmentService } from '../services/appointmentService';
 
-type Doctor = {
-  id: number
-  name: string
-  specialty: string
-  image: any
-  experience: string
-  hospital: string
-  rating: number
-  reviewCount: number
-  description: string
-  education: string[]
-  workingHours: {
-    weekday: string
-    weekend: string
-  }
-  consultationFee: string
-}
+const DoctorDetailScreen: React.FC = () => {
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  
+  const doctor = {
+    id: 1,
+    name: 'Dr. Kim',
+    specialty: '피부과',
+    rating: 4.9,
+    reviews: 124,
+    description: '피부과 전문의로 10년 이상의 경력을 보유하고 있습니다.',
+    image: require('../assets/doctor1.png'),
+  };
 
-type Review = {
-  id: number
-  patientName: string
-  rating: number
-  content: string
-  date: string
-  helpful: number
-}
-
-type DoctorDetailScreenRouteProp = RouteProp<RootStackParamList, "DoctorDetailScreen">
-
-const DoctorDetailScreen = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
-  const route = useRoute<DoctorDetailScreenRouteProp>()
-  const { doctorId } = route.params
-
-  const [doctor, setDoctor] = useState<Doctor | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"info" | "reviews">("info")
-
-  // 의사 정보 가져오기 (API 호출 시뮬레이션)
-  useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      // 목 데이터 - 실제로는 API에서 doctorId로 조회
-      const mockDoctor: Doctor = {
-        id: doctorId,
-        name: "김민수 원장",
-        specialty: "피부과 전문의",
-        image: require("../assets/doctor1.png"),
-        experience: "15년",
-        hospital: "서울피부과의원",
-        rating: 4.8,
-        reviewCount: 127,
-        description:
-          "피부과 전문의로 15년간 다양한 피부 질환 치료에 전념해왔습니다. 특히 아토피, 여드름, 알레르기성 피부염 치료에 전문성을 가지고 있으며, 환자 개개인의 피부 상태에 맞는 맞춤형 치료를 제공합니다.",
-        education: [
-          "서울대학교 의과대학 졸업",
-          "서울대학교병원 피부과 전공의",
-          "대한피부과학회 정회원",
-          "대한미용피부과학회 정회원",
-        ],
-        workingHours: {
-          weekday: "09:00 - 18:00",
-          weekend: "09:00 - 13:00",
-        },
-        consultationFee: "50,000원",
-      }
-
-      const mockReviews: Review[] = [
-        {
-          id: 1,
-          patientName: "김**",
-          rating: 5,
-          content: "아토피로 고생했는데 김원장님 덕분에 많이 좋아졌어요. 친절하게 설명해주시고 치료 효과도 좋았습니다.",
-          date: "2023-05-20",
-          helpful: 12,
-        },
-        {
-          id: 2,
-          patientName: "이**",
-          rating: 4,
-          content: "여드름 치료받았는데 확실히 효과가 있었어요. 다만 대기시간이 조금 길었습니다.",
-          date: "2023-05-15",
-          helpful: 8,
-        },
-        {
-          id: 3,
-          patientName: "박**",
-          rating: 5,
-          content: "피부 알레르기로 방문했는데 정확한 진단과 치료로 빠르게 회복되었습니다. 추천합니다!",
-          date: "2023-05-10",
-          helpful: 15,
-        },
-      ]
-
-      setDoctor(mockDoctor)
-      setReviews(mockReviews)
-      setLoading(false)
-    }, 1000)
-  }, [doctorId])
-
-  // 뒤로가기
-  const handleBackPress = () => {
-    navigation.goBack()
-  }
-
-  // 예약하기
-  const handleBookAppointment = () => {
-    if (doctor) {
-      navigation.navigate("AppointmentScreen", {
-        doctorId: doctor.id,
-        doctorName: doctor.name,
-        doctorSpecialty: doctor.specialty,
-      })
-    }
-  }
-
-  // 별점 렌더링
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const halfStar = rating - fullStars >= 0.5
-    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0)
-
-    return (
-      <View style={styles.starsContainer}>
-        {[...Array(fullStars)].map((_, i) => (
-          <Text key={`full-${i}`} style={styles.starIcon}>
-            ★
-          </Text>
-        ))}
-        {halfStar && <Text style={styles.starIcon}>★</Text>}
-        {[...Array(emptyStars)].map((_, i) => (
-          <Text key={`empty-${i}`} style={[styles.starIcon, styles.emptyStar]}>
-            ★
-          </Text>
-        ))}
-      </View>
-    )
-  }
-
-  // 날짜 포맷
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
-    const day = date.getDate()
-    return `${year}.${month}.${day}`
-  }
-
-  if (loading || !doctor) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>의사 정보를 불러오는 중...</Text>
-        </View>
-      </SafeAreaView>
-    )
-  }
+  const handleReservation = () => {
+    navigation.navigate('AppointmentScreen', {
+      doctorId: doctor.id,
+      doctorName: doctor.name,
+      specialty: doctor.specialty
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>

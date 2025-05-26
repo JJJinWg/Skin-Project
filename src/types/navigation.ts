@@ -25,7 +25,8 @@ export type RootStackParamList = {
   AppointmentScreen: { 
     doctorId: number;
     doctorName: string;
-    doctorSpecialty: string;
+    specialty: string;
+    doctorImage?: any;
   };
   
   
