@@ -40,6 +40,7 @@ const RegisterUser: React.FC = () => {
     });
   };
 
+
   // 유효성 검사 함수들
   const validateEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
