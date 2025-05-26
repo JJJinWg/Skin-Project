@@ -1,8 +1,6 @@
 
 // 의사 상세 정보 화면
-
 import React, { useState, useEffect } from 'react'
-
 import {
   View,
   Text,
@@ -316,7 +314,6 @@ const styles = StyleSheet.create({
   },
   emptyStar: {
     color: "#E9ECEF",
-
   },
   ratingText: {
     fontSize: 14,
@@ -351,7 +348,6 @@ const styles = StyleSheet.create({
     color: "#FF9A9E",
     fontWeight: "bold",
   },
-
   infoContent: {
     padding: 20,
   },
@@ -371,14 +367,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
     marginBottom: 12,
-
   },
   description: {
     fontSize: 14,
     color: "#495057",
     lineHeight: 20,
   },
-
   experienceContainer: {
     marginBottom: 10,
   },
@@ -405,7 +399,6 @@ const styles = StyleSheet.create({
     color: "#6C757D",
   },
   infoValue: {
-
     fontSize: 14,
     fontWeight: "500",
     color: "#212529",

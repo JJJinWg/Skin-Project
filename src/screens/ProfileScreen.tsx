@@ -74,7 +74,6 @@ const ProfileScreen = () => {
   const [reviews, setReviews] = useState<Review[]>([])
 
   // 사용자 정보 가져오기
-
   useEffect(() => {
     const loadUserInfo = async () => {
       try {
@@ -492,7 +491,6 @@ const ProfileScreen = () => {
             {/* 기본 정보 탭 */}
             {activeTab === "info" && (
               <View style={styles.infoContainer}>
-
                 {userInfo ? (
                   <>
                     <View style={styles.infoCard}>
@@ -533,14 +531,12 @@ const ProfileScreen = () => {
                     <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
                   </View>
                 )}
-
               </View>
             )}
 
             {/* 예약 내역 탭 */}
             {activeTab === "appointments" && (
               <View style={styles.appointmentsContainer}>
-
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>최근 예약 내역</Text>
                   <TouchableOpacity 
@@ -550,17 +546,14 @@ const ProfileScreen = () => {
                     <Text style={styles.viewAllText}>전체보기</Text>
                   </TouchableOpacity>
                 </View>
-
                 {loading ? (
                   <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>예약 내역을 불러오는 중...</Text>
                   </View>
                 ) : appointments.length > 0 ? (
-
                   <View style={styles.appointmentsList}>
                     {appointments.map((item) => (
                       <View key={item.id.toString()} style={styles.appointmentCard}>
-
                         <View style={styles.appointmentHeader}>
                           <Text style={styles.doctorName}>{item.doctorName}</Text>
                           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
@@ -590,10 +583,8 @@ const ProfileScreen = () => {
                           </View>
                         )}
                       </View>
-
                     ))}
                   </View>
-
                 ) : (
                   <View style={styles.noAppointmentsContainer}>
                     <Text style={styles.noAppointmentsText}>예약 내역이 없습니다.</Text>
@@ -614,7 +605,6 @@ const ProfileScreen = () => {
                 )}
               </View>
             )}
-
 
             {/* 리뷰 내역 탭 */}
             {activeTab === "reviews" && (
@@ -662,10 +652,8 @@ const ProfileScreen = () => {
                           </TouchableOpacity>
                         </View>
                       </View>
-
                     ))}
                   </View>
-
                 ) : (
                   <View style={styles.noReviewsContainer}>
                     <Text style={styles.noReviewsText}>작성한 리뷰가 없습니다.</Text>
@@ -683,9 +671,7 @@ const ProfileScreen = () => {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-
                 )}
-
               </View>
             )}
 
@@ -697,11 +683,9 @@ const ProfileScreen = () => {
                     <Text style={styles.loadingText}>진단 내역을 불러오는 중...</Text>
                   </View>
                 ) : diagnoses.length > 0 ? (
-
                   <View style={styles.diagnosisList}>
                     {diagnoses.map((item) => (
                       <View key={item.id.toString()} style={styles.diagnosisCard}>
-
                         <View style={styles.diagnosisHeader}>
                           <Image source={item.doctorImage} style={styles.doctorImageSmall} />
                           <View style={styles.diagnosisHeaderInfo}>
@@ -729,10 +713,8 @@ const ProfileScreen = () => {
                           <Text style={styles.viewDetailButtonText}>상세 보기</Text>
                         </TouchableOpacity>
                       </View>
-
                     ))}
                   </View>
-
                 ) : (
                   <View style={styles.noDiagnosisContainer}>
                     <Text style={styles.noDiagnosisText}>진단 내역이 없습니다.</Text>
