@@ -17,6 +17,7 @@ import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import React from "react"
 
 const SkinDiagnosisScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
