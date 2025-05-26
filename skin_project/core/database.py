@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 # database.py
+=======
+>>>>>>> main
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+<<<<<<< HEAD
 from dotenv import load_dotenv
 import os
 
@@ -17,6 +21,10 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL 환경변수가 설정되지 않았습니다.")
 
 # ✅ SQLAlchemy 설정
+=======
+DATABASE_URL = "postgresql://postgres:jin55330@localhost:5432/skin_project"
+
+>>>>>>> main
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()

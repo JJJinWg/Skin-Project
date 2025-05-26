@@ -1,13 +1,17 @@
 import sys
 import os
+<<<<<<< HEAD
 # main.py (수정 후)
 print("🔥 main.py에서 보는 DATABASE_URL:", os.getenv("DATABASE_URL"))
 
+=======
+>>>>>>> main
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from core.database import SessionLocal
 from schemas import ReviewCreate
+<<<<<<< HEAD
 from fastapi import FastAPI
 from product_description.crawler import crawl_olive_young_reviews
 from fastapi import HTTPException, status
@@ -23,10 +27,17 @@ from core.security import verify_password
 from core.database import Base, engine
 from core.models import db_models
 Base.metadata.create_all(bind=engine)
+=======
+from crud import create_review
+from fastapi import FastAPI
+from product_description.crawler import crawl_olive_young_reviews
+
+>>>>>>> main
 
 
 app = FastAPI()
 
+<<<<<<< HEAD
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 개발 중엔 * 허용
@@ -35,6 +46,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+=======
+>>>>>>> main
 def get_db():
     db = SessionLocal()
     try:
@@ -42,6 +55,7 @@ def get_db():
     finally:
         db.close()
 
+<<<<<<< HEAD
 
 @app.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
@@ -61,6 +75,11 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         }
     }
 
+=======
+@app.post("/reviews")
+def post_review(review: ReviewCreate, db: Session = Depends(get_db)):
+    return create_review(db, review)
+>>>>>>> main
 
 
 @app.get("/crawl")
@@ -71,6 +90,7 @@ def run_crawler():
         "review_count": len(df),
         "samples": df.head(3).to_dict(orient="records")  # 예시 몇 개 보여줌
     }
+<<<<<<< HEAD
 
 @app.post("/signup", response_model=UserResponse)
 def signup(user: UserCreate, db: Session = Depends(get_db)):
@@ -92,3 +112,5 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
 @app.post("/recommend")
 def get_recommendation(query: RecommendQuery = Body(...)):
     return recommend_endpoint(query)
+=======
+>>>>>>> main
