@@ -14,6 +14,10 @@ const AppContent = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 임시: AsyncStorage 초기화 (테스트용)
+        await AsyncStorage.clear();
+        console.log('AsyncStorage cleared for testing');
+        
         const token = await AsyncStorage.getItem('accessToken');
         if (token) {
           dispatch(setCredentials({ token }));
