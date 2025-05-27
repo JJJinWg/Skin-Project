@@ -1,6 +1,6 @@
 // 회원가입 화면
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,27 +11,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 
 import { useNavigation } from '@react-navigation/native'; // React Navigation 사용
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
-import { authService } from '../services/authService';
+import { useRegisterMutation } from '../store/api'; // RTK Query 훅 임포트
 
 const RegisterUser: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList, 'RegisterUser'>>(); // 네비게이션 객체 가져오기
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     gender: '',
     age: '',
     email: '',
     password: '',
-    confirmPassword: '',
     address: '',
     phone: '',
   });
+
+  // RTK Query 회원가입 훅 사용
+  const [register, { isLoading, isSuccess, isError, error, data }] = useRegisterMutation();
 
   const handleChange = (name: string, value: string) => {
     setFormData({
@@ -40,94 +40,47 @@ const RegisterUser: React.FC = () => {
     });
   };
 
-  // 유효성 검사 함수들
-  const validateEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
-
-  const validatePassword = (password: string) => {
-    // 8자 이상, 영문자, 숫자, 특수문자 포함
-    const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
-    return regex.test(password);
-  };
-
-  const validatePhone = (phone: string) => {
-    const regex = /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/;
-    return regex.test(phone);
-  };
-
-  const validateAge = (age: string) => {
-    const numAge = parseInt(age);
-    return !isNaN(numAge) && numAge >= 1 && numAge <= 120;
-  };
-
-  const handleSubmit = async () => {
-    // 필수 필드 검사
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      Alert.alert('알림', '필수 항목을 모두 입력해주세요.');
+  const handleSubmit = async () => { // async 추가
+    // 간단한 유효성 검사 (필요에 따라 강화)
+    if (!formData.email || !formData.password || !formData.name) {
+      Alert.alert('알림', '이름, 이메일, 비밀번호는 필수 입력 항목입니다.');
       return;
     }
-
-    // 이메일 형식 검사
-    if (!validateEmail(formData.email)) {
-      Alert.alert('알림', '올바른 이메일 형식이 아닙니다.');
-      return;
-    }
-
-    // 비밀번호 검사
-    if (!validatePassword(formData.password)) {
-      Alert.alert('알림', '비밀번호는 8자 이상이어야 하며, 영문자, 숫자, 특수문자를 각각 하나 이상 포함해야 합니다.');
-      return;
-    }
-
-    // 비밀번호 확인
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert('알림', '비밀번호가 일치하지 않습니다.');
-      return;
-    }
-
-    // 전화번호 검사
-    if (formData.phone && !validatePhone(formData.phone)) {
-      Alert.alert('알림', '올바른 전화번호 형식이 아닙니다.');
-      return;
-    }
-
-    // 나이 검사
-    if (formData.age && !validateAge(formData.age)) {
-      Alert.alert('알림', '올바른 나이를 입력해주세요.');
-      return;
-    }
-
     try {
-      setIsLoading(true);
-      await authService.register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        gender: formData.gender,
-        age: formData.age,
-        address: formData.address,
-        phone: formData.phone,
-      });
+      // register 뮤테이션 호출 (formData 전체를 전달)
+      await register(formData).unwrap(); 
+      // isSuccess, data 등을 사용하여 성공 처리 (아래 useEffect에서 처리)
+    } catch (err) {
+      // isError, error 등을 사용하여 에러 처리 (아래 useEffect에서 처리)
+      // unwrap() 사용 시 에러는 여기서 catch 가능 (또는 useEffect에서 공통 처리)
+    }
+  };
 
+  // 회원가입 성공/실패 처리 로직
+  useEffect(() => { 
+    if (isSuccess && data) {  // 현재 항상 성공
       Alert.alert(
         '회원가입 완료',
-        '회원가입이 완료되었습니다.',
+        data.message || '회원가입이 완료되었습니다.',
         [
           {
             text: '확인',
-            onPress: () => navigation.navigate('LoginForm'),
+            // 회원가입 후 로그인 화면으로 이동하여 방금 만든 계정으로 로그인 유도
+            onPress: () => navigation.replace('Login'),
           },
         ],
         { cancelable: false }
       );
-    } catch (error) {
-      Alert.alert('회원가입 실패', error instanceof Error ? error.message : '회원가입 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
     }
-  };
+    if (isError && error) {
+      if (typeof error === 'object' && error !== null && 'status' in error) {
+        const errorData = (error as any).data;
+        Alert.alert('회원가입 실패', (typeof errorData === 'string' ? errorData : errorData?.message) || '회원가입 중 오류가 발생했습니다.');
+      } else {
+        Alert.alert('회원가입 실패', '알 수 없는 오류가 발생했습니다.');
+      }
+    }
+  }, [isSuccess, isError, error, data, navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -140,7 +93,7 @@ const RegisterUser: React.FC = () => {
 
         {/* 이름 */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>이름 *</Text>
+          <Text style={styles.label}>이름</Text>
           <TextInput
             style={styles.input}
             value={formData.name}
@@ -177,7 +130,7 @@ const RegisterUser: React.FC = () => {
 
         {/* 이메일 */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>이메일 *</Text>
+          <Text style={styles.label}>이메일</Text>
           <TextInput
             style={styles.input}
             value={formData.email}
@@ -185,31 +138,17 @@ const RegisterUser: React.FC = () => {
             placeholder="이메일을 입력하세요"
             placeholderTextColor="#aaa"
             keyboardType="email-address"
-            autoCapitalize="none"
           />
         </View>
 
         {/* 비밀번호 */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>비밀번호 *</Text>
+          <Text style={styles.label}>비밀번호</Text>
           <TextInput
             style={styles.input}
             value={formData.password}
             onChangeText={(value) => handleChange('password', value)}
             placeholder="비밀번호를 입력하세요"
-            placeholderTextColor="#aaa"
-            secureTextEntry
-          />
-        </View>
-
-        {/* 비밀번호 확인 */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>비밀번호 확인 *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.confirmPassword}
-            onChangeText={(value) => handleChange('confirmPassword', value)}
-            placeholder="비밀번호를 다시 입력하세요"
             placeholderTextColor="#aaa"
             secureTextEntry
           />
@@ -241,16 +180,8 @@ const RegisterUser: React.FC = () => {
         </View>
 
         {/* 회원가입 버튼 */}
-        <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]} 
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>회원가입</Text>
-          )}
+        <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+          <Text style={styles.buttonText}>{isLoading ? '가입 처리 중...' : '회원가입'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -301,9 +232,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
-  },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',

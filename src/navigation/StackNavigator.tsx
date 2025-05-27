@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
-import { RootState } from '../store/store';
+import { RootState } from '../store/index';
 import HomeScreen from "../screens/HomeScreen";
 import ReservationScreen from "../screens/ReservationScreen";
 import AppointmentScreen from "../screens/AppointmentScreen"; 

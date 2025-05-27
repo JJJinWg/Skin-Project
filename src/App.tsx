@@ -2,9 +2,9 @@ import 'react-native-reanimated'; // 반드시 최상단에 추가
 import React, { useEffect } from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { Provider } from 'react-redux';
-import { store } from './store/store';
+import { store } from './store/index';
 import { useDispatch } from 'react-redux';
-import { logout } from './store/authSlice';
+import { logout, setCredentials } from './store/authSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import StackNavigator from './navigation/StackNavigator'; // StackNavigator 불러오기
 
@@ -15,7 +15,9 @@ const AppContent = () => {
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem('accessToken');
-        if (!token) {
+        if (token) {
+          dispatch(setCredentials({ token }));
+        } else {
           dispatch(logout());
         }
       } catch (error) {
