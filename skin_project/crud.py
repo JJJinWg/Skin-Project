@@ -1,12 +1,14 @@
 from sqlalchemy.orm import Session
-from core.models.db_models import User
-from schemas import UserCreate
-from core.security import hash_password
+from core.models.db_models import User, Review
+from schemas import UserCreate, ReviewCreate
 from core.security import hash_password
 
-from models.db_models import User
-from schemas import UserCreate
-from core.security import hash_password
+def create_review(db: Session, review: ReviewCreate):
+    db_review = Review(**review.dict())
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
 
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
