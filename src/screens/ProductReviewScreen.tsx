@@ -1,5 +1,5 @@
 // 리뷰 전체 확인 및 검색,작성
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import {
@@ -14,112 +14,83 @@ import {
   TextInput,
   Dimensions,
   Animated,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { productService } from '../services/productService';
+import { Product, Category } from '../data/dummyProducts';
 
 const { width } = Dimensions.get('window');
 
-// 카테고리 데이터
-const categories = [
-  { id: 'all', name: '전체' },
-  { id: 'skincare', name: '스킨케어' },
-  { id: 'makeup', name: '메이크업' },
-  { id: 'suncare', name: '선케어' },
-  { id: 'cleansing', name: '클렌징' },
-];
-
-// 리뷰 데이터 (실제로는 API에서 가져올 것)
-const reviews = [
-  {
-    id: 1,
-    productName: 'Beplain 녹두 진정 토너',
-    brand: 'Beplain',
-    rating: 4.5,
-    reviewCount: 128,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '피부좋아짐',
-      content: '민감성 피부에 딱 좋아요! 자극 없이 진정되는 느낌이에요.',
-      date: '2일 전',
-      rating: 5,
-      likes: 24,
-    },
+// Product를 Review 형태로 변환하는 헬퍼 함수
+const convertProductToReview = (product: Product) => ({
+  id: product.id,
+  productName: product.name,
+  brand: product.brand,
+  rating: product.rating,
+  reviewCount: product.reviewCount,
+  image: product.image,
+  latestReview: product.latestReview || {
+    user: '익명',
+    content: '아직 리뷰가 없습니다.',
+    date: '최근',
+    rating: product.rating,
+    likes: 0,
   },
-  {
-    id: 2,
-    productName: 'Torriden 다이브인 세럼',
-    brand: 'Torriden',
-    rating: 4.2,
-    reviewCount: 86,
-    image: require('../assets/product2.png'),
-    latestReview: {
-      user: '화장품매니아',
-      content: '수분감이 오래 지속되고 흡수도 잘 돼요. 가성비 좋은 제품입니다.',
-      date: '1주일 전',
-      rating: 4,
-      likes: 18,
-    },
-  },
-  {
-    id: 3,
-    productName: '아이소이 불가리안 로즈 세럼',
-    brand: 'isoi',
-    rating: 4.7,
-    reviewCount: 215,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '로즈덕후',
-      content: '향이 너무 좋고 피부결이 정돈되는 느낌이에요. 꾸준히 쓰고 있어요.',
-      date: '3일 전',
-      rating: 5,
-      likes: 42,
-    },
-  },
-  {
-    id: 4,
-    productName: '라운드랩 자작나무 수분 크림',
-    brand: 'Round Lab',
-    rating: 4.3,
-    reviewCount: 167,
-    image: require('../assets/product2.png'),
-    latestReview: {
-      user: '수분부족',
-      content: '건조한 피부에 수분을 채워주는 느낌이에요. 가볍게 발리고 좋아요.',
-      date: '5일 전',
-      rating: 4,
-      likes: 31,
-    },
-  },
-  {
-    id: 5,
-    productName: '코스알엑스 스네일 무친 에센스',
-    brand: 'COSRX',
-    rating: 4.6,
-    reviewCount: 324,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '달팽이덕후',
-      content: '트러블 진정에 효과가 좋아요. 꾸준히 사용하면 피부결이 확실히 좋아져요.',
-      date: '1일 전',
-      rating: 5,
-      likes: 56,
-    },
-  },
-];
+});
 
 const ProductReviewScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [scrollY] = useState(new Animated.Value(0));
+  
+  // 상태 관리
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // 검색 기능
-  const filteredReviews = reviews.filter(review => {
-    const matchesSearch = review.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         review.brand.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || review.brand.toLowerCase().includes(selectedCategory);
-    return matchesSearch && matchesCategory;
-  });
+  // 데이터 로딩
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [productsData, categoriesData] = await Promise.all([
+        productService.getProducts(),
+        productService.getCategories(),
+      ]);
+      setProducts(productsData);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('데이터 로딩 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 새로고침
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  // 컴포넌트 마운트 시 데이터 로딩
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // 검색 및 필터링된 리뷰 데이터
+  const filteredReviews = products
+    .map(convertProductToReview)
+    .filter(review => {
+      const matchesSearch = review.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           review.brand.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || 
+                             products.find(p => p.id === review.id)?.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
 
   // 헤더 애니메이션
   const headerHeight = scrollY.interpolate({
@@ -223,16 +194,40 @@ const ProductReviewScreen = () => {
         />
       </View>
       
+      {/* 로딩 화면 */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF9A9E" />
+          <Text style={styles.loadingText}>데이터를 불러오는 중...</Text>
+        </View>
+      )}
+
       {/* 리뷰 목록 */}
-      <Animated.FlatList
-        data={filteredReviews}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.reviewList}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
+      {!loading && (
+        <Animated.FlatList
+          data={filteredReviews}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.reviewList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#FF9A9E']}
+              tintColor="#FF9A9E"
+              progressViewOffset={200}
+            />
+          }
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+              <Text style={styles.emptySubText}>다른 검색어를 시도해보세요</Text>
+            </View>
+          }
         renderItem={({ item }) => (
           <TouchableOpacity 
             style={styles.reviewCard}
@@ -276,7 +271,8 @@ const ProductReviewScreen = () => {
             </View>
           </TouchableOpacity>
         )}
-      />
+        />
+      )}
       
       {/* 리뷰 작성 버튼 */}
       <TouchableOpacity 
@@ -546,6 +542,33 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 200,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6C757D',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6C757D',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#ADB5BD',
   },
 });
 
