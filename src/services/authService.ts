@@ -11,6 +11,10 @@ interface RegisterData {
   email: string;
   password: string;
   name: string;
+  gender: string;
+  age: string;
+  address: string;
+  phone: string;
 }
 
 export const authService = {
@@ -27,20 +31,9 @@ export const authService = {
 
   async register(data: RegisterData) {
     try {
-      // TODO: 실제 API 엔드포인트로 변경
-      const response = await fetch('http://your-api-endpoint/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
-      return await response.json();
+      // 임시로 성공 응답 반환
+      await AsyncStorage.setItem('userData', JSON.stringify(data));
+      return { success: true, message: '회원가입이 완료되었습니다.' };
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
