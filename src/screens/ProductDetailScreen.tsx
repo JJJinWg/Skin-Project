@@ -1,6 +1,5 @@
-// 리뷰 상품 상세정보화면
-
-import { useState, useEffect, useRef } from "react"
+// 가격 비교 상품 상세 화면
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,237 +11,228 @@ import {
   Image,
   FlatList,
   Dimensions,
-  Alert,
-} from "react-native"
-import { type NavigationProp, useNavigation, type RouteProp, useRoute } from "@react-navigation/native"
-import type { RootStackParamList } from "../types/navigation"
-import LinearGradient from "react-native-linear-gradient"
+  Switch,
+  Linking,
+} from 'react-native';
+import { type NavigationProp, useNavigation, type RouteProp, useRoute } from '@react-navigation/native';
+import type { RootStackParamList } from '../types/navigation';
+import LinearGradient from 'react-native-linear-gradient';
 
-const { width } = Dimensions.get("window")
+const { width } = Dimensions.get('window');
 
-type Product = {
-  id: number
-  name: string
-  brand: string
-  price: number
-  originalPrice?: number
-  rating: number
-  reviews: number
-  images: any[]
-  description: string
-  howToUse: string
-  keyIngredients: string[]
-  allIngredients: string[]
-  category: string
-  skinType: string[]
-}
-
-type Review = {
-  id: number
-  userName: string
-  userImage: any
-  rating: number
-  content: string
-  date: string
-  images?: string[]
-  likes: number
-  helpful: number
-  skinType: string
-  age: number
-}
+type ShopInfo = {
+  id: number;
+  name: string;
+  logo: any;
+  price: number;
+  shipping: string;
+  shippingFee: number;
+  installment: string;
+  isFreeShipping: boolean;
+  isLowestPrice?: boolean;
+  isCardDiscount?: boolean;
+};
 
 const ProductDetailScreen = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>()
-  const route = useRoute<RouteProp<RootStackParamList, "ProductDetailScreen">>()
-  const { id } = route.params
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'ProductDetailScreen'>>();
+  const { id } = route.params;
 
-  const [product, setProduct] = useState<Product | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [activeTab, setActiveTab] = useState<"info" | "reviews" | "ingredients">("info")
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const scrollViewRef = useRef<ScrollView>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [includeShipping, setIncludeShipping] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // 상품 데이터 가져오기 (실제로는 API에서 가져옴)
-  useEffect(() => {
-    setTimeout(() => {
-      const productData: Product = {
-        id: id,
-        name: "Centella Unscented Serum",
-        brand: "COSRX",
-        price: 16800,
-        originalPrice: 21000,
-        rating: 4.6,
-        reviews: 1247,
-        images: [
-          require("../assets/product1.png"),
-          require("../assets/product2.png"),
-          require("../assets/product1.png"),
-        ],
-        description:
-          "센텔라 아시아티카 추출물이 함유된 진정 세럼으로, 민감하고 트러블이 있는 피부를 케어해줍니다. 무향료 제품으로 예민한 피부도 안심하고 사용할 수 있습니다.",
-        howToUse:
-          "1. 세안 후 토너로 피부결을 정돈합니다.\n2. 적당량을 손바닥에 덜어 얼굴 전체에 부드럽게 발라줍니다.\n3. 손바닥으로 가볍게 눌러 흡수시켜줍니다.\n4. 아침, 저녁으로 사용하세요.",
-        keyIngredients: ["센텔라 아시아티카 추출물", "나이아신아마이드", "히알루론산"],
-        allIngredients: [
-          "Centella Asiatica Extract",
-          "Aqua",
-          "Niacinamide",
-          "Pentylene Glycol",
-          "1,2-Hexanediol",
-          "Sodium Hyaluronate",
-          "Panthenol",
-          "Madecassoside",
-          "Asiaticoside",
-          "Asiatic Acid",
-          "Madecassic Acid",
-        ],
-        category: "세럼",
-        skinType: ["민감성", "트러블성", "건성"],
-      }
+  // 상품 이미지
+  const productImages = [
+    require('../assets/product1.png'),
+    require('../assets/product2.png'),
+    
+  ];
 
-      const reviewsData: Review[] = [
-        {
-          id: 1,
-          userName: "김민지",
-          userImage: require("../assets/doctor1.png"),
-          rating: 5.0,
-          content:
-            "정말 순하고 좋아요! 트러블이 많았는데 이거 쓰고 나서 많이 진정됐어요. 무향료라서 향에 민감한 저도 잘 맞네요.",
-          date: "2023-11-15",
-          images: ["https://example.com/review1.jpg"],
-          likes: 24,
-          helpful: 18,
-          skinType: "민감성",
-          age: 25,
-        },
-        {
-          id: 2,
-          userName: "이서연",
-          userImage: require("../assets/doctor2.png"),
-          rating: 4.5,
-          content:
-            "흡수가 빠르고 끈적임이 없어서 좋습니다. 아침에 발라도 메이크업이 밀리지 않아요. 다만 보습력은 조금 아쉬워요.",
-          date: "2023-11-10",
-          likes: 15,
-          helpful: 12,
-          skinType: "복합성",
-          age: 28,
-        },
-        {
-          id: 3,
-          userName: "박지현",
-          userImage: require("../assets/doctor1.png"),
-          rating: 4.0,
-          content:
-            "가격 대비 괜찮은 제품이에요. 센텔라 성분이 들어있어서 진정 효과는 있는 것 같아요. 꾸준히 써봐야겠어요.",
-          date: "2023-11-05",
-          likes: 8,
-          helpful: 6,
-          skinType: "지성",
-          age: 22,
-        },
-      ]
+  // 쇼핑몰 정보
+  const [shops, setShops] = useState<ShopInfo[]>([
+    {
+      id: 1,
+      name: 'HIMART',
+      logo: require('../assets/shop_himart.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 6개월',
+      isFreeShipping: true,
+      isLowestPrice: true,
+    },
+    {
+      id: 2,
+      name: '네이버쇼핑',
+      logo: require('../assets/shop_naver.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 24개월',
+      isFreeShipping: true,
+    },
+    
+    {
+      id: 3,
+      name: 'G마켓',
+      logo: require('../assets/shop_gmarket.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 24개월',
+      isFreeShipping: true,
+    },
+    {
+      id: 4,
+      name: '11번가',
+      logo: require('../assets/shop_11st.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 22개월',
+      isFreeShipping: true,
+    },
+    {
+      id: 5,
+      name: '쿠팡',
+      logo: require('../assets/shop_coupang.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '',
+      isFreeShipping: true,
+    },
+    {
+      id: 6,
+      name: '오늘의집',
+      logo: require('../assets/shop_ohouse.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 6개월',
+      isFreeShipping: true,
+    },
+    {
+      id: 7,
+      name: '롯데ON',
+      logo: require('../assets/shop_lotte.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '',
+      isFreeShipping: true,
+    },
+    {
+      id: 8,
+      name: 'AUCTION',
+      logo: require('../assets/shop_auction.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 24개월',
+      isFreeShipping: true,
+    },
+    {
+      id: 9,
+      name: '이마트몰',
+      logo: require('../assets/shop_emart.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 3개월',
+      isFreeShipping: true,
+    },
+    {
+      id: 10,
+      name: 'SSG.COM',
+      logo: require('../assets/shop_ssg.png'),
+      price: 239000,
+      shipping: '무료배송',
+      shippingFee: 0,
+      installment: '최대 3개월',
+      isFreeShipping: true,
+    },
+    
+    
+  ]);
 
-      setProduct(productData)
-      setReviews(reviewsData)
-      setLoading(false)
-    }, 1000)
-  }, [id])
+  // 최저가 계산
+  const getLowestPrice = () => {
+    if (includeShipping) {
+      return shops.reduce((min, shop) => {
+        const totalPrice = shop.price + shop.shippingFee;
+        return totalPrice < min ? totalPrice : min;
+      }, shops[0].price + shops[0].shippingFee);
+    } else {
+      return shops.reduce((min, shop) => (shop.price < min ? shop.price : min), shops[0].price);
+    }
+  };
 
-  // 별점 렌더링 함수
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const halfStar = rating - fullStars >= 0.5
-    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0)
+  // 최저가 포맷팅
+  const formatPrice = (price: number) => {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
 
-    return (
-      <View style={styles.starsContainer}>
-        {[...Array(fullStars)].map((_, i) => (
-          <Text key={`full-${i}`} style={styles.starIcon}>
-            ★
-          </Text>
-        ))}
-        {halfStar && <Text style={styles.starIcon}>★</Text>}
-        {[...Array(emptyStars)].map((_, i) => (
-          <Text key={`empty-${i}`} style={[styles.starIcon, styles.emptyStar]}>
-            ★
-          </Text>
-        ))}
-      </View>
-    )
-  }
+  // 썸네일 렌더링
+  const renderThumbnail = ({ item, index }: { item: any; index: number }) => (
+    <TouchableOpacity
+      style={[styles.thumbnailContainer, currentImageIndex === index && styles.activeThumbnail]}
+      onPress={() => setCurrentImageIndex(index)}
+    >
+      <Image source={item} style={styles.thumbnail} />
+    </TouchableOpacity>
+  );
 
-  // 이미지 슬라이더 렌더링
-  const renderImageSlider = () => {
-    if (!product) return null
-
-    return (
-      <View style={styles.imageSliderContainer}>
-        <FlatList
-          data={product.images}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, index) => index.toString()}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / width)
-            setCurrentImageIndex(index)
-          }}
-          renderItem={({ item }) => <Image source={item} style={styles.productImage} />}
-        />
-        <View style={styles.imageIndicator}>
-          {product.images.map((_, index) => (
-            <View key={index} style={[styles.indicatorDot, currentImageIndex === index && styles.indicatorDotActive]} />
-          ))}
+  // 쇼핑몰 아이템 렌더링
+  const renderShopItem = ({ item }: { item: ShopInfo }) => (
+    <TouchableOpacity
+      style={styles.shopItem}
+      onPress={() => {
+        // 실제로는 해당 쇼핑몰 상품 페이지로 이동
+        Linking.openURL('https://www.example.com');
+      }}
+    >
+      <View style={styles.shopHeader}>
+        <Image source={item.logo} style={styles.shopLogo} />
+        <View style={styles.shopInfo}>
+          <Text style={styles.shopName}>{item.name}</Text>
+          {item.installment ? <Text style={styles.installmentText}>{item.installment}</Text> : null}
         </View>
-      </View>
-    )
-  }
-
-  // 리뷰 아이템 렌더링
-  const renderReviewItem = ({ item }: { item: Review }) => (
-    <View style={styles.reviewItem}>
-      <View style={styles.reviewHeader}>
-        <Image source={item.userImage} style={styles.reviewUserImage} />
-        <View style={styles.reviewUserInfo}>
-          <Text style={styles.reviewUserName}>{item.userName}</Text>
-          <Text style={styles.reviewUserDetails}>
-            {item.skinType} • {item.age}세
-          </Text>
-          <View style={styles.reviewRatingContainer}>
-            {renderStars(item.rating)}
-            <Text style={styles.reviewDate}>{item.date}</Text>
+        {item.isLowestPrice && (
+          <View style={styles.lowestPriceBadge}>
+            <Text style={styles.lowestPriceText}>최저가</Text>
           </View>
-        </View>
+        )}
+        {item.isCardDiscount && (
+          <View style={styles.cardDiscountBadge}>
+            <Text style={styles.cardDiscountText}>카드할인</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.reviewContent}>{item.content}</Text>
-      {item.images && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {item.images.map((image, index) => (
-            <Image key={index} source={{ uri: image }} style={styles.reviewImage} />
-          ))}
-        </ScrollView>
-      )}
-      <View style={styles.reviewActions}>
-        <TouchableOpacity style={styles.reviewActionButton}>
-          <Text style={styles.reviewActionText}>👍 {item.likes}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.reviewActionButton}>
-          <Text style={styles.reviewActionText}>🙌 도움됨 {item.helpful}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
 
-  if (loading || !product) {
+      <View style={styles.priceRow}>
+        <Text style={styles.shopPrice}>{formatPrice(item.price)}원</Text>
+        <Text style={styles.shippingText}>{item.shipping}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  useEffect(() => {
+    // 데이터 로딩 시뮬레이션
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  }, []);
+
+  if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>상품 정보를 불러오는 중...</Text>
         </View>
       </SafeAreaView>
-    )
+    );
   }
 
   return (
@@ -254,620 +244,365 @@ const ProductDetailScreen = () => {
         <TouchableOpacity style={styles.backButton} >
           
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>상품 상세</Text>
+        <Text style={styles.headerTitle}>상품 가격비교</Text>
         <TouchableOpacity style={styles.shareButton}>
           <Text style={styles.shareButtonText}>⋯</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView ref={scrollViewRef} style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 상품 이미지 슬라이더 */}
-        {renderImageSlider()}
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* 상품 이미지 */}
+        <View style={styles.imageContainer}>
+          <Image source={productImages[currentImageIndex]} style={styles.mainImage} />
+        </View>
 
-        {/* 상품 기본 정보 */}
+        {/* 썸네일 목록 */}
+        <View style={styles.thumbnailsContainer}>
+          <FlatList
+            data={productImages}
+            renderItem={renderThumbnail}
+            keyExtractor={(_, index) => index.toString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.thumbnailsList}
+          />
+        </View>
+
+        {/* 상품 정보 */}
         <View style={styles.productInfoContainer}>
-          <Text style={styles.brandName}>{product.brand}</Text>
-          <Text style={styles.productName}>{product.name}</Text>
-
-          <View style={styles.ratingContainer}>
-            {renderStars(product.rating)}
-            <Text style={styles.ratingText}>{product.rating}</Text>
-            <Text style={styles.reviewCount}>({product.reviews}개 리뷰)</Text>
+          <View style={styles.productMetaRow}>
+            <Text style={styles.productMetaText}>등록일: 2024.11.</Text>
+            <Text style={styles.productMetaSeparator}>|</Text>
+            <Text style={styles.productMetaText}>제조사: Creative</Text>
           </View>
-
-          <View style={styles.priceContainer}>
-            {product.originalPrice && (
-              <Text style={styles.originalPrice}>₩{product.originalPrice.toLocaleString()}</Text>
-            )}
-            <Text style={styles.price}>₩{product.price.toLocaleString()}</Text>
-            {product.originalPrice && (
-              <Text style={styles.discountRate}>
-                {Math.round((1 - product.price / product.originalPrice) * 100)}% 할인
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.skinTypeContainer}>
-            <Text style={styles.skinTypeLabel}>추천 피부타입:</Text>
-            <View style={styles.skinTypeTags}>
-              {product.skinType.map((type, index) => (
-                <View key={index} style={styles.skinTypeTag}>
-                  <Text style={styles.skinTypeTagText}>{type}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* 탭 메뉴 */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === "info" && styles.activeTabButton]}
-            onPress={() => setActiveTab("info")}
-          >
-            <Text style={[styles.tabButtonText, activeTab === "info" && styles.activeTabButtonText]}>상품정보</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === "reviews" && styles.activeTabButton]}
-            onPress={() => setActiveTab("reviews")}
-          >
-            <Text style={[styles.tabButtonText, activeTab === "reviews" && styles.activeTabButtonText]}>
-              리뷰 ({product.reviews})
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === "ingredients" && styles.activeTabButton]}
-            onPress={() => setActiveTab("ingredients")}
-          >
-            <Text style={[styles.tabButtonText, activeTab === "ingredients" && styles.activeTabButtonText]}>
-              성분분석
-            </Text>
+          
+          <TouchableOpacity style={styles.brandButton}>
+            <Text style={styles.brandButtonText}>Creative 브랜드로그</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 탭 콘텐츠 */}
-        <View style={styles.tabContent}>
-          {activeTab === "info" && (
-            <View style={styles.infoTab}>
-              <View style={styles.infoSection}>
-                <Text style={styles.infoSectionTitle}>상품 설명</Text>
-                <Text style={styles.infoSectionContent}>{product.description}</Text>
-              </View>
+        {/* 최저가 정보 */}
+        <View style={styles.lowestPriceContainer}>
+          <View style={styles.lowestPriceHeader}>
+            <Text style={styles.lowestPriceLabel}>최저가</Text>
+            <Text style={styles.lowestPriceValue}>{formatPrice(getLowestPrice())}원</Text>
+            
+          </View>
 
-              <View style={styles.infoSection}>
-                <Text style={styles.infoSectionTitle}>사용법</Text>
-                <Text style={styles.infoSectionContent}>{product.howToUse}</Text>
-              </View>
+          
+        </View>
 
-              <View style={styles.infoSection}>
-                <Text style={styles.infoSectionTitle}>주요 성분</Text>
-                <View style={styles.keyIngredients}>
-                  {product.keyIngredients.map((ingredient, index) => (
-                    <View key={index} style={styles.keyIngredientItem}>
-                      <Text style={styles.keyIngredientText}>{ingredient}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {activeTab === "reviews" && (
-            <View style={styles.reviewsTab}>
-              <View style={styles.reviewsSummary}>
-                <View style={styles.reviewsRating}>
-                  <Text style={styles.reviewsRatingNumber}>{product.rating}</Text>
-                  {renderStars(product.rating)}
-                </View>
-                <Text style={styles.reviewsCount}>{product.reviews}개의 리뷰</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.writeReviewButton}
-                onPress={() => navigation.navigate("WriteReviewScreen")}
-              >
-                <Text style={styles.writeReviewButtonText}>리뷰 작성하기</Text>
-              </TouchableOpacity>
-
-              <FlatList
-                data={reviews}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderReviewItem}
-                scrollEnabled={false}
-                ItemSeparatorComponent={() => <View style={styles.reviewSeparator} />}
-              />
-            </View>
-          )}
-
-          {activeTab === "ingredients" && (
-            <View style={styles.ingredientsTab}>
-              <View style={styles.ingredientsHeader}>
-                <Text style={styles.ingredientsTitle}>전체 성분</Text>
-                <Text style={styles.ingredientsCount}>{product.allIngredients.length}개 성분</Text>
-              </View>
-
-              <View style={styles.ingredientsList}>
-                {product.allIngredients.map((ingredient, index) => (
-                  <View key={index} style={styles.ingredientItem}>
-                    <Text style={styles.ingredientName}>{ingredient}</Text>
-                    <View style={styles.ingredientSafety}>
-                      <Text style={styles.ingredientSafetyText}>안전</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.ingredientsNote}>
-                <Text style={styles.ingredientsNoteText}>
-                  * 성분 안전도는 일반적인 기준이며, 개인의 피부 상태에 따라 다를 수 있습니다.
-                </Text>
-              </View>
-            </View>
-          )}
+        {/* 쇼핑몰 목록 */}
+        <View style={styles.shopsContainer}>
+          <Text style={styles.shopsTitle}>쇼핑몰별 가격</Text>
+          <FlatList
+            data={shops}
+            renderItem={renderShopItem}
+            keyExtractor={(item) => item.id.toString()}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.shopSeparator} />}
+          />
         </View>
       </ScrollView>
 
-      {/* 하단 액션 버튼 */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity
-          style={styles.cartButton}
-          onPress={() => Alert.alert("장바구니", "장바구니에 추가되었습니다.")}
-        >
-          <Text style={styles.cartButtonText}>장바구니</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buyButton}>
-          <LinearGradient
-            colors={["#FF9A9E", "#FAD0C4"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.buyButtonGradient}
-          >
-            <Text style={styles.buyButtonText}>바로 구매</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     fontSize: 16,
-    color: "#6C757D",
+    color: '#6C757D',
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
+    borderBottomColor: '#F1F3F5',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
+    fontWeight: 'bold',
+    color: '#212529',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#212529",
+    fontWeight: 'bold',
+    color: '#212529',
   },
   shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shareButtonText: {
     fontSize: 20,
-    color: "#212529",
+    color: '#212529',
   },
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: '#F8F9FA',
   },
-  imageSliderContainer: {
-    position: "relative",
-    backgroundColor: "#FFFFFF",
-  },
-  productImage: {
-    width: width,
+  imageContainer: {
+    width: '100%',
     height: width,
-    resizeMode: "cover",
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  imageIndicator: {
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+  mainImage: {
+    width: '80%',
+    height: '80%',
+    resizeMode: 'contain',
   },
-  indicatorDot: {
-    width: 8,
-    height: 8,
+  thumbnailsContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
+  },
+  thumbnailsList: {
+    paddingHorizontal: 15,
+  },
+  thumbnailContainer: {
+    width: 60,
+    height: 60,
+    marginRight: 10,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    overflow: 'hidden',
   },
-  indicatorDotActive: {
-    backgroundColor: "#FFFFFF",
+  activeThumbnail: {
+    borderColor: '#4263EB',
+    borderWidth: 2,
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   productInfoContainer: {
-    backgroundColor: "#FFFFFF",
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 15,
     marginBottom: 10,
   },
-  brandName: {
+  productMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  productMetaText: {
+    fontSize: 12,
+    color: '#6C757D',
+  },
+  productMetaSeparator: {
+    fontSize: 12,
+    color: '#CED4DA',
+    marginHorizontal: 8,
+  },
+  brandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 4,
+  },
+  brandButtonText: {
     fontSize: 14,
-    color: "#6C757D",
-    marginBottom: 4,
+    color: '#4263EB',
   },
-  productName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 12,
+  lowestPriceContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    marginBottom: 10,
   },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
+  lowestPriceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
   },
-  starsContainer: {
-    flexDirection: "row",
-    marginRight: 8,
-  },
-  starIcon: {
+  lowestPriceLabel: {
     fontSize: 16,
-    color: "#FFC107",
-    marginRight: 2,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginRight: 10,
   },
-  emptyStar: {
-    color: "#E9ECEF",
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginRight: 8,
-  },
-  reviewCount: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  originalPrice: {
-    fontSize: 16,
-    color: "#ADB5BD",
-    textDecorationLine: "line-through",
-    marginRight: 8,
-  },
-  price: {
+  lowestPriceValue: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#212529",
+    fontWeight: 'bold',
+    color: '#4263EB',
+    flex: 1,
+  },
+  buyButton: {
+    backgroundColor: '#212529',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  buyButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  shippingToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  shippingToggleLabel: {
+    fontSize: 14,
+    color: '#495057',
     marginRight: 8,
   },
-  discountRate: {
+  shopsContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    marginBottom: 80, // 하단 버튼 공간 확보
+  },
+  shopsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 15,
+  },
+  shopItem: {
+    paddingVertical: 15,
+  },
+  shopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  shopLogo: {
+    width: 60,
+    height: 24,
+    resizeMode: 'contain',
+    marginRight: 10,
+  },
+  shopInfo: {
+    flex: 1,
+  },
+  shopName: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#FF6B6B",
+    fontWeight: 'bold',
+    color: '#212529',
   },
-  skinTypeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  installmentText: {
+    fontSize: 12,
+    color: '#6C757D',
+    marginTop: 2,
   },
-  skinTypeLabel: {
-    fontSize: 14,
-    color: "#6C757D",
-    marginRight: 8,
-  },
-  skinTypeTags: {
-    flexDirection: "row",
-  },
-  skinTypeTag: {
-    backgroundColor: "#E3F2FD",
+  lowestPriceBadge: {
+    backgroundColor: '#E9FAF1',
     paddingVertical: 4,
     paddingHorizontal: 8,
-    borderRadius: 12,
-    marginRight: 6,
-  },
-  skinTypeTagText: {
-    fontSize: 12,
-    color: "#1976D2",
-    fontWeight: "500",
-  },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  activeTabButton: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#FF9A9E",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  activeTabButtonText: {
-    color: "#FF9A9E",
-    fontWeight: "bold",
-  },
-  tabContent: {
-    backgroundColor: "#FFFFFF",
-    marginBottom: 100,
-  },
-  infoTab: {
-    padding: 20,
-  },
-  infoSection: {
-    marginBottom: 24,
-  },
-  infoSectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 8,
-  },
-  infoSectionContent: {
-    fontSize: 14,
-    color: "#495057",
-    lineHeight: 22,
-  },
-  keyIngredients: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  keyIngredientItem: {
-    backgroundColor: "#F8F9FA",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  keyIngredientText: {
-    fontSize: 12,
-    color: "#495057",
-  },
-  reviewsTab: {
-    padding: 20,
-  },
-  reviewsSummary: {
-    alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  reviewsRating: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  reviewsRatingNumber: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#212529",
-    marginRight: 12,
-  },
-  reviewsCount: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  writeReviewButton: {
-    backgroundColor: "#F8F9FA",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-  },
-  writeReviewButtonText: {
-    fontSize: 14,
-    color: "#495057",
-    fontWeight: "500",
-  },
-  reviewItem: {
-    marginBottom: 20,
-  },
-  reviewHeader: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  reviewUserImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  reviewUserInfo: {
-    flex: 1,
-  },
-  reviewUserName: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 2,
-  },
-  reviewUserDetails: {
-    fontSize: 12,
-    color: "#6C757D",
-    marginBottom: 4,
-  },
-  reviewRatingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: "#ADB5BD",
+    borderRadius: 4,
     marginLeft: 8,
   },
-  reviewContent: {
-    fontSize: 14,
-    color: "#495057",
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  reviewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  reviewActions: {
-    flexDirection: "row",
-    marginTop: 12,
-  },
-  reviewActionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  reviewActionText: {
+  lowestPriceText: {
     fontSize: 12,
-    color: "#6C757D",
+    color: '#0CA678',
+    fontWeight: 'bold',
   },
-  reviewSeparator: {
-    height: 1,
-    backgroundColor: "#F1F3F5",
-    marginVertical: 20,
-  },
-  ingredientsTab: {
-    padding: 20,
-  },
-  ingredientsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  ingredientsTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  ingredientsCount: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  ingredientsList: {
-    marginBottom: 20,
-  },
-  ingredientItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  ingredientName: {
-    fontSize: 14,
-    color: "#495057",
-    flex: 1,
-  },
-  ingredientSafety: {
-    backgroundColor: "#D4EDDA",
-    paddingVertical: 2,
+  cardDiscountBadge: {
+    backgroundColor: '#E7F5FF',
+    paddingVertical: 4,
     paddingHorizontal: 8,
-    borderRadius: 8,
+    borderRadius: 4,
+    marginLeft: 8,
   },
-  ingredientSafetyText: {
-    fontSize: 10,
-    color: "#155724",
-    fontWeight: "500",
-  },
-  ingredientsNote: {
-    backgroundColor: "#F8F9FA",
-    padding: 12,
-    borderRadius: 8,
-  },
-  ingredientsNoteText: {
+  cardDiscountText: {
     fontSize: 12,
-    color: "#6C757D",
-    lineHeight: 18,
+    color: '#339AF0',
+    fontWeight: 'bold',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shopPrice: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginRight: 10,
+  },
+  shippingText: {
+    fontSize: 14,
+    color: '#6C757D',
+  },
+  shopSeparator: {
+    height: 1,
+    backgroundColor: '#F1F3F5',
   },
   bottomActions: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "#F1F3F5",
+    borderTopColor: '#F1F3F5',
   },
-  cartButton: {
+  priceAlertButton: {
     flex: 1,
-    paddingVertical: 15,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    alignItems: "center",
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 4,
+    alignItems: 'center',
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "#E9ECEF",
+    borderColor: '#E9ECEF',
   },
-  cartButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#495057",
+  priceAlertButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#495057',
   },
-  buyButton: {
+  bottomBuyButton: {
     flex: 2,
-    borderRadius: 8,
-    overflow: "hidden",
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  buyButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
+  bottomBuyButtonGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
   },
-  buyButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFFFFF",
+  bottomBuyButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-})
+});
 
-export default ProductDetailScreen
+export default ProductDetailScreen;
