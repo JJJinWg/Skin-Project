@@ -24,8 +24,8 @@ from core.security import verify_password, create_access_token
 from jose import JWTError, jwt
 from schemas import Token
 from core.models.db_models import User
-
-
+from fastapi import FastAPI
+from recommendation import router as recommend_router
 
 
 app = FastAPI()
