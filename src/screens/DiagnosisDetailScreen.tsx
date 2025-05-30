@@ -144,7 +144,7 @@ ${diagnosis.followUpRequired ? `추적 관찰: ${diagnosis.followUpDate ? format
     navigation.navigate("AppointmentScreen", {
       doctorId: diagnosis.doctorId,
       doctorName: diagnosis.doctorName,
-      specialty: diagnosis.specialty,
+      doctorSpecialty: diagnosis.specialty,
     })
   }
 
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },
