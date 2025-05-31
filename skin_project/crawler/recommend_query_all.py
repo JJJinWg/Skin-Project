@@ -23,7 +23,7 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 # 4. AI 분석 결과 (입력 부분 바꿔서 실험!)
-ai_results = ["지성", "모공", "블랙헤드"]
+ai_results = ["염증성", "색소침착", "건성"]
 query = " ".join(ai_results)
 query_embedding = model.encode([query])[0].tolist()
 
@@ -80,7 +80,6 @@ for category, index_name in INDEXES.items():
         final_recommend_list.append({
             "카테고리": category,
             "제품명": pname,
-            "대표리뷰": review_row.get("review", ""),
             "피부타입": review_row.get("skin_type", "")
         })
 
@@ -91,10 +90,10 @@ prompt = (
     f"추천 제품과 리뷰:\n"
 )
 for p in final_recommend_list:
-    prompt += f"- {p['카테고리']} | {p['제품명']}: \"{p['대표리뷰']}\"\n"
+    prompt += f"- {p['카테고리']} | {p['제품명']}:\"\n"
 
 prompt += (
-    "위에서 각 카테고리(토너, 앰플, 크림)별로 딱 1개씩, 총 3개만 이름과 추천 이유를 각각 한 줄로 아주 간단하게 추천해줘. "
+    "위에서 각 카테고리(토너, 앰플, 크림)별로 딱 1개씩, 총 3개만 이름과 추천 이유(추천 이유는 조금 자세히)를 각각 한 줄로 아주 간단하게 추천해줘. "
     "예: '라운드랩 자작나무 토너 - 민감 피부에 진정효과 검증.'"
 )
 
