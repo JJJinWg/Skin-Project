@@ -16,13 +16,13 @@ import {
 } from "react-native"
 import { Calendar, type DateData } from "react-native-calendars"
 import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native"
+import { StackNavigationProp } from '@react-navigation/stack'
+import { RootStackParamList } from '../types/navigation'
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import { appointmentService } from '../services/appointmentService'
 
-type AppointmentScreenRouteProp = RouteProp<
-  { params: { doctorId: number; doctorName: string; specialty: string } },
-  "params"
->
+type AppointmentScreenRouteProp = RouteProp<RootStackParamList, 'AppointmentScreen'>
 
 type ImageType = {
   uri: string
@@ -31,9 +31,9 @@ type ImageType = {
 }
 
 const AppointmentScreen = () => {
-  const navigation = useNavigation()
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>()
   const route = useRoute<AppointmentScreenRouteProp>()
-  const { doctorId, doctorName, specialty } = route.params
+  const { doctorId, doctorName, specialty, doctorImage } = route.params
 
   const [selectedDate, setSelectedDate] = useState("")
   const [selectedTime, setSelectedTime] = useState("")
@@ -54,52 +54,20 @@ const AppointmentScreen = () => {
   maxDate.setDate(today.getDate() + 30)
   const maxDateString = maxDate.toISOString().split("T")[0]
 
-  // 선택 가능한 시간대 생성 (실제로는 API에서 가져올 수 있음)
-  const generateAvailableTimes = (date: string) => {
-    // 실제 앱에서는 API를 통해 해당 날짜의 가능한 시간을 가져옵니다
+  // 선택 가능한 시간대 생성 (개선된 버전)
+  const generateAvailableTimes = async (date: string) => {
     setLoading(true)
-
-    setTimeout(() => {
-      const times = []
-      const startHour = 9 // 오전 9시부터
-      const endHour = 18 // 오후 6시까지
-
-      // 주말인지 확인
-      const selectedDate = new Date(date)
-      const dayOfWeek = selectedDate.getDay()
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-      if (isWeekend) {
-        // 주말에는 시간이 더 적게 제공됨
-        for (let hour = 10; hour <= 15; hour++) {
-          if (Math.random() > 0.3) {
-            // 70% 확률로 시간 슬롯 생성
-            times.push(`${hour}:00`)
-          }
-          if (Math.random() > 0.5) {
-            // 50% 확률로 30분 슬롯 생성
-            times.push(`${hour}:30`)
-          }
-        }
-      } else {
-        // 평일
-        for (let hour = startHour; hour <= endHour; hour++) {
-          if (Math.random() > 0.2) {
-            // 80% 확률로 시간 슬롯 생성
-            times.push(`${hour}:00`)
-          }
-          if (Math.random() > 0.3) {
-            // 70% 확률로 30분 슬롯 생성
-            times.push(`${hour}:30`)
-          }
-        }
-      }
-
-      // 시간 순으로 정렬
-      times.sort()
+    
+    try {
+      const times = await appointmentService.getAvailableTimeSlots(doctorId, date)
       setAvailableTimes(times)
+    } catch (error) {
+      console.error('시간 조회 실패:', error)
+      Alert.alert('오류', '예약 가능한 시간을 불러오는데 실패했습니다.')
+      setAvailableTimes([])
+    } finally {
       setLoading(false)
-    }, 500) // 로딩 효과를 위한 지연
+    }
   }
 
   // 날짜 선택 핸들러
@@ -225,30 +193,62 @@ const AppointmentScreen = () => {
   }
 
   // 예약 완료 핸들러
-  const handleConfirmAppointment = () => {
+  const handleConfirmAppointment = async () => {
     if (!selectedDate || !selectedTime) {
-      Alert.alert("알림", "날짜와 시간을 모두 선택해주세요.")
-      return
+      Alert.alert('알림', '날짜와 시간을 선택해주세요.');
+      return;
     }
 
-    // 여기서 실제로는 API를 통해 예약 정보를 서버에 전송합니다
-    setLoading(true)
+    if (!symptoms) {
+      Alert.alert('알림', '증상을 입력해주세요.');
+      return;
+    }
 
-    // 예약 API 호출 시뮬레이션
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      setLoading(true);
+
+      // TODO: 실제 API 엔드포인트로 변경
+      const appointmentData = {
+        doctorId,
+        doctorName,
+        specialty,
+        date: selectedDate,
+        time: selectedTime,
+        symptoms,
+        images: images.map(img => ({
+          uri: img.uri,
+          type: img.type,
+          name: img.name
+        }))
+      };
+
+      // API 호출 시뮬레이션
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 예약 완료 후 처리
       Alert.alert(
-        "예약 완료",
-        `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 예약이 완료되었습니다.${symptoms ? `\n\n증상: ${symptoms}` : ""}${images.length > 0 ? `\n\n첨부된 사진: ${images.length}장` : ""}`,
+        '예약 완료',
+        '진료 예약이 완료되었습니다.',
         [
           {
-            text: "확인",
-            onPress: () => navigation.goBack(),
+            text: '확인',
+            onPress: () => {
+              // 홈 화면으로 이동
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'HomeScreen' }],
+              });
+            },
           },
         ],
-      )
-    }, 1000)
-  }
+        { cancelable: false }
+      );
+    } catch (error) {
+      Alert.alert('예약 실패', '예약 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 시간 포맷 변환 (24시간 -> 12시간)
   const formatTime = (time: string) => {
@@ -280,8 +280,8 @@ const AppointmentScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton} >
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진료 예약</Text>
         <View style={styles.placeholder} />
@@ -290,7 +290,7 @@ const AppointmentScreen = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* 의사 정보 */}
         <View style={styles.doctorInfoCard}>
-          <Image source={require("../assets/doctor1.png")} style={styles.doctorImage} />
+          <Image source={doctorImage || require("../assets/doctor1.png")} style={styles.doctorImage} />
           <Text style={styles.doctorName}>{doctorName}</Text>
           <Text style={styles.doctorSpecialty}>{specialty}</Text>
         </View>
@@ -328,7 +328,10 @@ const AppointmentScreen = () => {
           <View style={styles.timeSelectionContainer}>
             <Text style={styles.sectionTitle}>시간 선택</Text>
             {loading ? (
-              <ActivityIndicator size="large" color="#FF9A9E" style={styles.loader} />
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FF9A9E" />
+                <Text style={styles.loadingText}>예약 가능한 시간을 확인하고 있습니다...</Text>
+              </View>
             ) : availableTimes.length > 0 ? (
               <View style={styles.timeGrid}>
                 {availableTimes.map((time, index) => (
@@ -344,7 +347,10 @@ const AppointmentScreen = () => {
                 ))}
               </View>
             ) : (
-              <Text style={styles.noTimesText}>선택한 날짜에 예약 가능한 시간이 없습니다.</Text>
+              <View style={styles.noTimesContainer}>
+                <Text style={styles.noTimesText}>선택한 날짜에 예약 가능한 시간이 없습니다.</Text>
+                <Text style={styles.noTimesSubText}>다른 날짜를 선택해 주세요.</Text>
+              </View>
             )}
           </View>
         )}
@@ -459,7 +465,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -582,11 +588,30 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
   },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#6C757D",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  noTimesContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
   noTimesText: {
     fontSize: 14,
     color: "#6C757D",
     textAlign: "center",
-    paddingVertical: 20,
+    marginBottom: 5,
+  },
+  noTimesSubText: {
+    fontSize: 12,
+    color: "#ADB5BD",
+    textAlign: "center",
   },
   loader: {
     marginVertical: 20,

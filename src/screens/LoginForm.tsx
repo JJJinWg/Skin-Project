@@ -3,9 +3,7 @@
 import { useState, useRef } from "react"
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
-import { useDispatch } from 'react-redux'
-import { setCredentials } from '../store/authSlice'
-import { authService } from '../services/authService'
+import { useLoginMutation } from '../store/api'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 
 import {
@@ -29,14 +27,15 @@ import { Svg, Path } from "react-native-svg"
 const { width } = Dimensions.get("window")
 
 const LoginForm = () => {
-  const dispatch = useDispatch()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Login'>>()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
+
+  // RTK Query 로그인 훅 사용
+  const [login, { isLoading }] = useLoginMutation()
 
   const colorScheme = useColorScheme()
   const isDarkMode = colorScheme === "dark"
@@ -85,10 +84,12 @@ const LoginForm = () => {
       Alert.alert("알림", "이메일과 비밀번호를 입력해주세요.")
       return
     }
+    
     try {
-      const data = await authService.login({ email, password })
-      dispatch(setCredentials({ token: data.token }))
+      await login({ email, password }).unwrap()
+      // 로그인 성공 시 자동으로 네비게이션됨 (StackNavigator에서 인증 상태 확인)
     } catch (error) {
+      console.error('Login error:', error)
       Alert.alert("로그인 실패", "이메일과 비밀번호를 확인해주세요.")
     }
   }
@@ -263,7 +264,7 @@ const LoginForm = () => {
             {/* 회원가입 링크 */}
             <View style={styles.signupContainer}>
               <Text style={[styles.signupText, { color: colors.textSecondary }]}>계정이 없으신가요?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate("RegisterUser")}>
+              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
                 <Text style={[styles.signupLink, { color: colors.primary }]}> 회원가입</Text>
               </TouchableOpacity>
             </View>

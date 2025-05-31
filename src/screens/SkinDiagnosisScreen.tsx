@@ -17,6 +17,7 @@ import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import React from "react"
 
 const SkinDiagnosisScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
@@ -110,10 +111,10 @@ const SkinDiagnosisScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity  >
+          
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI 피부 검진</Text>
+        <Text style={styles.headerTitle}>         AI 피부 검진</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    
     justifyContent: "center",
     alignItems: "center",
   },

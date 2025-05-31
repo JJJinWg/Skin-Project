@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
-import { RootState } from '../store/store';
+import { RootState } from '../store/index';
 import HomeScreen from "../screens/HomeScreen";
 import ReservationScreen from "../screens/ReservationScreen";
 import AppointmentScreen from "../screens/AppointmentScreen"; 
@@ -17,7 +17,7 @@ import { RootStackParamList } from '../types/navigation';
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import EditReviewScreen from "../screens/EditReviewScreen";
-// import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
+import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
 import DiagnosisDetailScreen from "../screens/DiagnosisDetailScreen";
 import SkinDiagnosisScreen from "../screens/SkinDiagnosisScreen"
 import SkinAnalysisResultScreen from "../screens/SkinAnalysisResultScreen"
@@ -70,7 +70,7 @@ const StackNavigator = () => {
             <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
             <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
-            {/* //<Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} /> */}
+            <Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} />
             <Stack.Screen name="DiagnosisDetailScreen" component={DiagnosisDetailScreen} />
             <Stack.Screen name="SkinAnalysisResultScreen" component={SkinAnalysisResultScreen} />
             <Stack.Screen name="SkinDiagnosisScreen" component={SkinDiagnosisScreen} />
