@@ -57,7 +57,6 @@ for category, index_name in INDEXES.items():
         final_recommend_list.append({
             "카테고리": category,
             "제품명": pname,
-            "대표리뷰": review_row["review"],
             "피부타입": review_row["skin_type"],
             "별점": review_row["star"]
         })
@@ -69,7 +68,7 @@ prompt = (
     f"추천 제품과 리뷰:\n"
 )
 for p in final_recommend_list:
-    prompt += f"- {p['카테고리']} | {p['제품명']} (별점: {p['별점']}): \"{p['대표리뷰']}\"\n"
+    prompt += f"- {p['카테고리']} | {p['제품명']} (별점: {p['별점']}):\"\n"
 
 prompt += (
     "위에서 각 카테고리(토너, 앰플, 크림)별로 딱 1개씩, 총 3개만 이름과 추천 이유를 각각 한 줄로 아주 간단하게 추천해줘. "
