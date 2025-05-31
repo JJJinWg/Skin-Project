@@ -28,7 +28,14 @@ from core.models.db_models import User
 
 
 
-app = FastAPI()
+app = FastAPI()  
+from recommendation import router as recommend_router
+app.include_router(recommend_router)
+from dotenv import load_dotenv
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "default-key")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 app.add_middleware(
     CORSMiddleware,
