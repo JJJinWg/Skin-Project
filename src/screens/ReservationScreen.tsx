@@ -16,11 +16,13 @@ import {
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { appointmentService } from "../services/appointmentService"
 
 type Doctor = {
   id: number
   name: string
   specialty: string
+  specialization?: string
   rating: number
   reviews: number
   available: boolean
@@ -44,77 +46,38 @@ const ReservationScreen = () => {
     { id: "internal", name: "내과" },
   ]
 
-  // 의사 데이터 가져오기 (실제로는 API에서 가져옴)
+  // 의사 데이터 가져오기 (실제 API에서 가져옴)
   useEffect(() => {
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      const doctorsData = [
-        {
-          id: 1,
-          name: "Dr. Kim",
-          specialty: "피부과",
-          rating: 4.9,
-          reviews: 124,
-          available: true,
-          nextAvailable: "오늘 17:30",
-          image: require("../assets/doctor1.png"),
-        },
-        {
-          id: 2,
-          name: "Dr. Lee",
-          specialty: "알레르기",
-          rating: 4.7,
-          reviews: 98,
-          available: true,
-          nextAvailable: "내일 10:00",
-          image: require("../assets/doctor2.png"),
-        },
-        {
-          id: 3,
-          name: "Dr. Park",
-          specialty: "피부과",
-          rating: 4.8,
-          reviews: 156,
-          available: false,
-          nextAvailable: "모레 13:30",
-          image: require("../assets/doctor3.png"),
-        },
-        {
-          id: 4,
-          name: "Dr. Choi",
-          specialty: "성형외과",
-          rating: 4.6,
-          reviews: 87,
-          available: true,
-          nextAvailable: "오늘 15:00",
-          image: require("../assets/doctor4.png"),
-        },
-        {
-          id: 5,
-          name: "Dr. Jung",
-          specialty: "내과",
-          rating: 4.5,
-          reviews: 112,
-          available: true,
-          nextAvailable: "내일 11:30",
-          image: require("../assets/doctor1.png"),
-        },
-        {
-          id: 6,
-          name: "Dr. Kang",
-          specialty: "알레르기",
-          rating: 4.3,
-          reviews: 76,
-          available: false,
-          nextAvailable: "모레 09:00",
-          image: require("../assets/doctor2.png"),
-        },
-      ]
+    const loadDoctors = async () => {
+      try {
+        setLoading(true)
+        console.log('📋 예약 화면 의사 목록 로딩 중...')
+        const doctorsData = await appointmentService.getReservationDoctors()
+        
+        // API 데이터를 화면에 맞게 변환
+        const transformedDoctors = doctorsData.map((doctor: any) => ({
+          id: doctor.id,
+          name: doctor.name,
+          specialty: doctor.specialization || doctor.specialty,
+          specialization: doctor.specialization,
+          rating: 4.5, // 기본값 (실제로는 API에서 받아야 함)
+          reviews: 100, // 기본값 (실제로는 API에서 받아야 함)
+          available: true, // 기본값 (실제로는 API에서 받아야 함)
+          nextAvailable: "오늘 15:00", // 기본값 (실제로는 API에서 받아야 함)
+          image: require("../assets/doctor1.png"), // 기본 이미지
+        }))
+        
+        setDoctors(transformedDoctors)
+        setFilteredDoctors(transformedDoctors)
+        console.log('✅ 의사 목록 로딩 완료:', transformedDoctors.length, '명')
+      } catch (error) {
+        console.error('❌ 의사 목록 로딩 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-      setDoctors(doctorsData)
-      setFilteredDoctors(doctorsData)
-      setLoading(false)
-    }, 1000)
+    loadDoctors()
   }, [])
 
   // 검색 및 필터링

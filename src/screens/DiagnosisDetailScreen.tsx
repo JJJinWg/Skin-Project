@@ -130,7 +130,7 @@ ${diagnosis.followUpRequired ? `추적 관찰: ${diagnosis.followUpDate ? format
     navigation.navigate("AppointmentScreen", {
       doctorId: diagnosis.doctorId,
       doctorName: diagnosis.doctorName,
-      doctorSpecialty: diagnosis.specialty,
+      specialty: diagnosis.specialty,
     })
   }
 

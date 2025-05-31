@@ -2,25 +2,19 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { dummyReviews, getUserReviewsFromAPI, type Review } from '../data/dummyReviews'
+import { authService } from './authService'
 
 // 사용자 리뷰 목록 조회
 export const getUserReviews = async (): Promise<Review[]> => {
   try {
-    // 실제 API 연동 시: const response = await apiClient.get('/reviews/user');
+    console.log('📝 사용자 리뷰 목록 조회 중...');
     
-    // AsyncStorage에서 사용자 리뷰 조회 (임시)
-    const existingReviews = await AsyncStorage.getItem('userReviews')
-    const userReviews = existingReviews ? JSON.parse(existingReviews) : []
-    
-    // 더미 데이터 API에서 가져오기
-    const apiReviews = await getUserReviewsFromAPI(1) // 현재 사용자 ID = 1
-    
-    return [...apiReviews, ...userReviews].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    )
+    // 실제 API 시도
+    const apiReviews = await getUserReviewsFromAPI(authService.getCurrentUserId());
+    return apiReviews;
   } catch (error) {
-    console.error('사용자 리뷰 목록 조회 실패:', error)
-    return []
+    console.error('❌ 사용자 리뷰 목록 조회 실패:', error);
+    throw new Error('리뷰 목록을 불러오는데 실패했습니다.');
   }
 }
 

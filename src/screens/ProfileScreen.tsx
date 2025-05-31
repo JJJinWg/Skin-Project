@@ -19,6 +19,7 @@ import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { useDispatch } from 'react-redux'
 import { logout } from '../store/authSlice'
+import { medicalApi } from '../services/apiClient'
 
 type Appointment = {
   id: number
@@ -80,106 +81,101 @@ const ProfileScreen = () => {
 
   const dispatch = useDispatch()
 
-  // 예약 내역 가져오기 (API 호출 시뮬레이션)
+  // 예약 내역 가져오기 (실제 API 호출)
   useEffect(() => {
-    setLoading(true)
-    setTimeout(() => {
-      const mockAppointments: Appointment[] = [
-        {
-          id: 1,
-          doctorName: "Dr. Kim",
-          specialty: "피부과",
-          date: "2023-06-15",
-          time: "14:30",
-          status: "upcoming",
-        },
-        {
-          id: 2,
-          doctorName: "Dr. Lee",
-          specialty: "알레르기",
-          date: "2023-06-10",
-          time: "11:00",
-          status: "completed",
-        },
-        {
-          id: 3,
-          doctorName: "Dr. Park",
-          specialty: "피부과",
-          date: "2023-05-28",
-          time: "16:00",
-          status: "canceled",
-        },
-        {
-          id: 4,
-          doctorName: "Dr. Choi",
-          specialty: "성형외과",
-          date: "2023-05-20",
-          time: "09:30",
-          status: "completed",
-        },
-      ]
-      setAppointments(mockAppointments)
-      setLoading(false)
-    }, 1000)
+    const loadAppointments = async () => {
+      try {
+        setLoading(true)
+        const appointmentsData = await medicalApi.getAppointments(1) as any[] // 사용자 ID 1로 가정
+        
+        // API 응답을 Appointment 타입에 맞게 변환
+        const formattedAppointments: Appointment[] = appointmentsData.map((appointment: any) => ({
+          id: appointment.id,
+          doctorName: appointment.doctorName || '의사명',
+          specialty: appointment.specialty || '전문분야',
+          date: appointment.date,
+          time: appointment.time,
+          status: appointment.status === 'confirmed' ? 'upcoming' : 
+                 appointment.status === 'completed' ? 'completed' : 'canceled'
+        }))
+        
+        setAppointments(formattedAppointments)
+      } catch (error) {
+        console.error('예약 내역 로드 실패:', error)
+        // 폴백: 기본 데이터
+        const mockAppointments: Appointment[] = [
+          {
+            id: 1,
+            doctorName: "Dr. Kim",
+            specialty: "피부과",
+            date: "2023-06-15",
+            time: "14:30",
+            status: "upcoming",
+          },
+          {
+            id: 2,
+            doctorName: "Dr. Lee",
+            specialty: "알레르기",
+            date: "2023-06-10",
+            time: "11:00",
+            status: "completed",
+          },
+        ]
+        setAppointments(mockAppointments)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAppointments()
   }, [])
 
-  // 리뷰 내역 가져오기 (API 호출 시뮬레이션)
+  // 리뷰 내역 가져오기 (실제 API 호출)
   useEffect(() => {
-    setReviewsLoading(true)
-    setTimeout(() => {
-      const mockReviews: Review[] = [
-        {
-          id: 1,
-          productId: 101,
-          productName: "Beplain 클렌징 폼",
-          productImage: require("../assets/product1.png"),
-          rating: 4.5,
-          content:
-            "피부가 민감한 편인데 자극없이 순하게 세안할 수 있어요. 거품도 풍성하고 세정력도 좋습니다. 재구매 의사 있어요!",
-          date: "2023-05-15",
-          images: ["https://example.com/review-image1.jpg"],
-          likes: 24,
-          helpful: 18,
-        },
-        {
-          id: 2,
-          productId: 102,
-          productName: "Torriden 토너",
-          productImage: require("../assets/product2.png"),
-          rating: 5.0,
-          content:
-            "건조한 피부에 수분을 확실하게 채워줍니다. 끈적임 없이 흡수가 빠르고 피부결이 정돈되는 느낌이에요. 향도 은은해서 좋아요.",
-          date: "2023-04-20",
-          likes: 36,
-          helpful: 29,
-        },
-        {
-          id: 3,
-          productId: 103,
-          productName: "닥터 김 피부과 진료",
-          productImage: require("../assets/doctor1.png"),
-          rating: 4.0,
-          content: "친절하게 상담해주시고 치료 과정도 자세히 설명해주셔서 좋았습니다. 처방해주신 약도 효과가 좋았어요.",
-          date: "2023-03-10",
-          likes: 12,
-          helpful: 8,
-        },
-        {
-          id: 4,
-          productId: 104,
-          productName: "아이소이 세럼",
-          productImage: require("../assets/product1.png"),
-          rating: 3.5,
-          content:
-            "기대했던 것보다는 효과가 미미했어요. 하지만 자극은 없고 순한 편입니다. 민감성 피부에 괜찮을 것 같아요.",
-          date: "2023-02-05",
-          likes: 7,
-          helpful: 5,
-        },
-      ]
-      setReviews(mockReviews)
-      setReviewsLoading(false)
-    }, 1000)
+    const loadReviews = async () => {
+      try {
+        setReviewsLoading(true)
+        const reviewsData = await medicalApi.getUserReviews(1) // 사용자 ID 1로 가정
+        
+        // API 응답을 Review 타입에 맞게 변환
+        const formattedReviews: Review[] = reviewsData.map((review: any) => ({
+          id: review.id,
+          productId: review.productId || 0,
+          productName: review.productName || '제품명',
+          productImage: require("../assets/product1.png"), // 기본 이미지
+          rating: review.rating || 0,
+          content: review.content || '',
+          date: review.date || new Date().toISOString().split('T')[0],
+          images: review.images || [],
+          likes: review.likes || 0,
+          helpful: review.helpful || 0,
+        }))
+        
+        setReviews(formattedReviews)
+      } catch (error) {
+        console.error('리뷰 내역 로드 실패:', error)
+        // 폴백: 기본 데이터
+        const mockReviews: Review[] = [
+          {
+            id: 1,
+            productId: 101,
+            productName: "Beplain 클렌징 폼",
+            productImage: require("../assets/product1.png"),
+            rating: 4.5,
+            content: "피부가 민감한 편인데 자극없이 순하게 세안할 수 있어요.",
+            date: "2023-05-15",
+            images: [],
+            likes: 24,
+            helpful: 18,
+          },
+        ]
+        setReviews(mockReviews)
+      } finally {
+        setReviewsLoading(false)
+      }
+    }
+
+    loadReviews()
   }, [])
 
   // 진단 내역 가져오기 (API 호출 시뮬레이션)

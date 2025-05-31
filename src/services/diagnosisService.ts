@@ -6,60 +6,45 @@ import {
   submitDiagnosisRequestToAPI,
   type DiagnosisRequest 
 } from '../data/dummyDiagnosis'
+import { authService } from './authService'
 
 // 진료 요청서 제출
-export const submitDiagnosisRequest = async (requestData: Omit<DiagnosisRequest, 'id' | 'status' | 'createdAt' | 'userId'>): Promise<{ success: boolean; requestId?: number; message: string }> => {
+export const submitDiagnosisRequest = async (requestData: {
+  symptoms: string;
+  duration: string;
+  severity: "mild" | "moderate" | "severe";
+  previousTreatment: string;
+  allergies: string;
+  medications: string;
+  additionalNotes: string;
+  images: Array<{
+    uri: string;
+    type: string;
+    name: string;
+  }>;
+}): Promise<{ success: boolean; requestId?: number; message: string }> => {
   try {
-    // 실제 API 연동 시: const response = await apiClient.post('/diagnosis/requests', requestData);
+    console.log('📋 진료 요청서 제출 중...');
     
-    // 더미 API를 통한 제출
-    const result = await submitDiagnosisRequestToAPI(requestData)
-    
-    if (result.success) {
-      // AsyncStorage에도 저장 (로컬 백업)
-      const existingRequests = await AsyncStorage.getItem('diagnosisRequests')
-      const requests = existingRequests ? JSON.parse(existingRequests) : []
-      
-      const newRequest: DiagnosisRequest = {
-        id: result.requestId!,
-        ...requestData,
-        status: '제출됨',
-        createdAt: new Date().toISOString(),
-        userId: 1, // 현재 사용자 ID
-      }
-      
-      requests.push(newRequest)
-      await AsyncStorage.setItem('diagnosisRequests', JSON.stringify(requests))
-    }
-
-    return result
+    // 실제 API 호출
+    return await submitDiagnosisRequestToAPI(requestData);
   } catch (error) {
-    console.error('진료 요청서 제출 실패:', error)
-    return {
-      success: false,
-      message: '진료 요청서 제출에 실패했습니다. 다시 시도해주세요.',
-    }
+    console.error('❌ 진료 요청서 제출 실패:', error);
+    throw new Error('진료 요청서 제출에 실패했습니다.');
   }
 }
 
 // 진료 요청서 목록 조회
 export const getDiagnosisRequests = async (): Promise<DiagnosisRequest[]> => {
   try {
-    // 실제 API 연동 시: const response = await apiClient.get('/diagnosis/requests');
+    console.log('📋 진료 요청서 목록 조회 중...');
     
-    // AsyncStorage에서 진료 요청서 조회 (임시)
-    const existingRequests = await AsyncStorage.getItem('diagnosisRequests')
-    const requests = existingRequests ? JSON.parse(existingRequests) : []
-    
-    // 더미 데이터 API에서 가져오기
-    const apiRequests = await getUserDiagnosisRequestsFromAPI(1) // 현재 사용자 ID = 1
-    
-    return [...apiRequests, ...requests].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
+    // 실제 API 시도
+    const apiRequests = await getUserDiagnosisRequestsFromAPI(authService.getCurrentUserId());
+    return apiRequests;
   } catch (error) {
-    console.error('진료 요청서 목록 조회 실패:', error)
-    return []
+    console.error('❌ 진료 요청서 목록 조회 실패:', error);
+    throw new Error('진료 요청서 목록을 불러오는데 실패했습니다.');
   }
 }
 

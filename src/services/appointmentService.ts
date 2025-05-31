@@ -1,17 +1,33 @@
-import { 
-  dummyDoctors, 
-  dummyTimeSlots, 
-  dummyProducts,
-  dummySpecialties,
-  type Doctor, 
-  type TimeSlot
-} from '../data/dummyData';
-import { 
-  getUserAppointmentsFromAPI, 
-  createAppointmentToAPI,
-  type NewAppointment as Appointment,
-  type NewAppointmentStatus as AppointmentStatus 
-} from '../data/index';
+import { medicalApi } from './apiClient';
+
+// 타입 정의
+export interface Doctor {
+  id: number;
+  name: string;
+  specialty: string;
+  hospital: string;
+  rating: number;
+  experience: string;
+  image: any;
+  workingHours?: any;
+  unavailableDates?: string[];
+}
+
+export interface TimeSlot {
+  time: string;
+  available: boolean;
+}
+
+export interface Appointment {
+  id: number;
+  doctorId: number;
+  userId: number;
+  date: string;
+  time: string;
+  status: string;
+  symptoms?: string;
+  images?: string[];
+}
 
 // 시간 관련 유틸리티 함수들
 const timeUtils = {
@@ -64,203 +80,171 @@ const timeUtils = {
 
 export const appointmentService = {
   // 홈화면용 의사 목록 조회 (처음 4명만)
-  getHomeDoctors: async () => {
+  getHomeDoctors: async (): Promise<Doctor[]> => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/doctors/featured');
-      return dummyDoctors.slice(0, 4);
+      console.log('🏠 홈 의사 목록 조회 중...');
+      
+      // 실제 API 시도
+      const doctors = await medicalApi.getDoctors() as Doctor[];
+      return doctors.slice(0, 4);
     } catch (error) {
-      console.error('홈 의사 목록 조회 실패:', error);
-      throw new Error('의사 목록을 불러오는데 실패했습니다.');
+      console.error('❌ 홈 의사 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 예약화면용 의사 목록 조회 (전체)
-  getReservationDoctors: async () => {
+  getReservationDoctors: async (): Promise<Doctor[]> => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/doctors/all');
-      return dummyDoctors;
+      console.log('📋 예약 의사 목록 조회 중...');
+      
+      // 실제 API 시도
+      const doctors = await medicalApi.getDoctors() as Doctor[];
+      return doctors;
     } catch (error) {
-      console.error('예약 의사 목록 조회 실패:', error);
-      throw new Error('의사 목록을 불러오는데 실패했습니다.');
+      console.error('❌ 예약 의사 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 제품 목록 조회
   getProducts: async () => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/products/featured');
-      return dummyProducts;
+      console.log('📦 제품 목록 조회 중...');
+      const products = await medicalApi.getProducts();
+      return products;
     } catch (error) {
-      console.error('제품 목록 조회 실패:', error);
-      throw new Error('제품 목록을 불러오는데 실패했습니다.');
+      console.error('❌ 제품 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 전문분야 목록 조회
   getSpecialties: async () => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/specialties');
-      return dummySpecialties;
+      console.log('🏥 전문분야 목록 조회 중...');
+      // 기본 전문분야 반환 (API에 없는 경우)
+      return [
+        { id: 1, name: '피부과', icon: '🧴' },
+        { id: 2, name: '성형외과', icon: '✨' },
+        { id: 3, name: '알레르기내과', icon: '🤧' },
+        { id: 4, name: '내과', icon: '🩺' },
+      ];
     } catch (error) {
-      console.error('전문분야 목록 조회 실패:', error);
-      throw new Error('전문분야 목록을 불러오는데 실패했습니다.');
+      console.error('❌ 전문분야 목록 조회 실패:', error);
+      return [];
+    }
+  },
+
+  // 병원 목록 조회
+  getHospitals: async () => {
+    try {
+      console.log('🏥 병원 목록 조회 중...');
+      
+      // 실제 API 시도
+      const hospitals = await medicalApi.getHospitals();
+      return hospitals;
+    } catch (error) {
+      console.error('❌ 병원 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 의사 목록 조회 (전체)
   getDoctors: async (): Promise<Doctor[]> => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/doctors');
-      return dummyDoctors;
+      console.log('👨‍⚕️ 의사 목록 조회 중...');
+      
+      // 실제 API 시도
+      const doctors = await medicalApi.getDoctors() as Doctor[];
+      return doctors;
     } catch (error) {
-      console.error('의사 목록 조회 실패:', error);
-      throw new Error('의사 목록을 불러오는데 실패했습니다.');
+      console.error('❌ 의사 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 의사 상세 정보 조회
   getDoctorById: async (id: number): Promise<Doctor | undefined> => {
     try {
-      // 실제 API 연동 시: return apiClient.get(`/doctors/${id}`);
-      const doctor = dummyDoctors.find(doctor => doctor.id === id);
-      if (!doctor) {
-        throw new Error('해당 의사를 찾을 수 없습니다.');
-      }
+      console.log(`👨‍⚕️ 의사 정보 조회 중... ID: ${id}`);
+      
+      // 실제 API 시도
+      const doctor = await medicalApi.getDoctor(id) as Doctor;
       return doctor;
     } catch (error) {
-      console.error('의사 정보 조회 실패:', error);
-      throw error;
+      console.error('❌ 의사 정보 조회 실패:', error);
+      return undefined;
     }
   },
 
-  // 예약 가능 시간 조회 (닥터나우 스타일)
+  // 예약 가능 시간 조회
   getAvailableTimeSlots: async (doctorId: number, date: string): Promise<string[]> => {
     try {
-      // 실제 API 연동 시: return apiClient.get(`/doctors/${doctorId}/available-times?date=${date}`);
-      const doctor = await appointmentService.getDoctorById(doctorId);
-      if (!doctor) {
-        throw new Error('해당 의사를 찾을 수 없습니다.');
-      }
-
-      // 휴진일 체크
-      if (doctor.unavailableDates.includes(date)) {
-        return [];
-      }
-
-      const dayOfWeek = timeUtils.getDayOfWeek(date);
-      const isHoliday = timeUtils.isHoliday(date);
-      const isToday = timeUtils.isToday(date);
-      const currentTime = timeUtils.getCurrentTime();
-
-      // 요일에 따른 진료 시간 결정
-      let workingHours;
-      if (isHoliday) {
-        workingHours = doctor.workingHours.holiday;
-      } else if (dayOfWeek === 0) { // 일요일
-        workingHours = doctor.workingHours.sunday;
-      } else if (dayOfWeek === 6) { // 토요일
-        workingHours = doctor.workingHours.saturday;
-      } else { // 평일
-        workingHours = doctor.workingHours.weekday;
-      }
-
-      const availableTimes: string[] = [];
-      const startMinutes = timeUtils.timeToMinutes(workingHours.start);
-      const endMinutes = timeUtils.timeToMinutes(workingHours.end);
-      const currentMinutes = isToday ? timeUtils.timeToMinutes(currentTime) : 0;
-
-      // 야간 진료 처리 (시작 시간이 종료 시간보다 큰 경우)
-      if (startMinutes > endMinutes || (endMinutes <= 360 && startMinutes >= 1080)) { // 새벽 6시 이전 종료 & 오후 6시 이후 시작
-        // 당일 시간 (시작 시간부터 자정까지)
-        for (let minutes = startMinutes; minutes <= 1439; minutes += 30) { // 23:59까지
-          const timeSlot = timeUtils.minutesToTime(minutes);
-          
-          if (isToday && minutes <= currentMinutes + 60) {
-            continue;
-          }
-
-          availableTimes.push(timeSlot);
-        }
-
-        // 다음날 새벽 시간 (자정부터 종료 시간까지)
-        if (endMinutes <= 360) { // 새벽 6시 이전까지만
-          for (let minutes = 0; minutes <= endMinutes; minutes += 30) {
-            const timeSlot = timeUtils.minutesToTime(minutes);
-            availableTimes.push(timeSlot);
-          }
-        }
-      } else {
-        // 일반적인 시간 (토요일, 일요일, 공휴일)
-        for (let minutes = startMinutes; minutes <= endMinutes; minutes += 30) {
-          const timeSlot = timeUtils.minutesToTime(minutes);
-          
-          if (isToday && minutes <= currentMinutes + 60) {
-            continue;
-          }
-
-          // 점심시간 제외 (12:00 ~ 13:00) - 24시간 운영이 아닌 경우만
-          if (!(startMinutes === 0 && endMinutes === 1439) && minutes >= 720 && minutes < 780) {
-            continue;
-          }
-
-          availableTimes.push(timeSlot);
-        }
-      }
-
-      // 이미 예약된 시간 제외 (실제로는 DB에서 확인)
-      const bookedTimes = ['20:00', '21:30', '02:00']; // 예시
-      const finalTimes = availableTimes.filter(time => !bookedTimes.includes(time));
-
-      return finalTimes.sort();
+      console.log(`⏰ 예약 가능 시간 조회 중... 의사 ID: ${doctorId}, 날짜: ${date}`);
+      
+      // 실제 API 시도
+      const timeSlots = await medicalApi.getDoctorAvailableTimes(doctorId, date) as string[];
+      return timeSlots;
     } catch (error) {
-      console.error('예약 가능 시간 조회 실패:', error);
-      throw error;
+      console.error('❌ 예약 가능 시간 조회 실패:', error);
+      return [];
     }
   },
 
   // 예약 생성
-  createAppointment: async (appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'userId'>): Promise<{ success: boolean; appointmentId?: number; message: string }> => {
+  createAppointment: async (appointmentData: any): Promise<Appointment> => {
     try {
-      // 실제 API 연동 시: return apiClient.post('/appointments', appointmentData);
-      return await createAppointmentToAPI(appointmentData);
+      console.log('📅 예약 생성 중...', appointmentData);
+      
+      // 실제 API 호출
+      const appointment = await medicalApi.createAppointment(appointmentData) as Appointment;
+      return appointment;
     } catch (error) {
-      console.error('예약 생성 실패:', error);
-      throw new Error('예약을 생성하는데 실패했습니다.');
+      console.error('❌ 예약 생성 실패:', error);
+      throw new Error('예약 생성에 실패했습니다.');
     }
   },
 
-  // 예약 내역 조회
-  getAppointments: async (): Promise<Appointment[]> => {
+  // 사용자 예약 목록 조회
+  getUserAppointments: async (userId: number): Promise<Appointment[]> => {
     try {
-      // 실제 API 연동 시: return apiClient.get('/appointments');
-      return await getUserAppointmentsFromAPI(1); // 현재 사용자 ID = 1
+      console.log(`📋 사용자 예약 목록 조회 중... 사용자 ID: ${userId}`);
+      
+      // 실제 API 호출
+      const appointments = await medicalApi.getAppointments(userId) as Appointment[];
+      return appointments;
     } catch (error) {
-      console.error('예약 내역 조회 실패:', error);
-      throw new Error('예약 내역을 불러오는데 실패했습니다.');
+      console.error('❌ 사용자 예약 목록 조회 실패:', error);
+      return [];
     }
   },
 
   // 예약 상태 업데이트
-  updateAppointmentStatus: async (appointmentId: number, status: AppointmentStatus): Promise<{ success: boolean; message: string }> => {
+  updateAppointmentStatus: async (appointmentId: number, status: string): Promise<boolean> => {
     try {
-      // 실제 API 연동 시: return apiClient.patch(`/appointments/${appointmentId}`, { status });
-      const { updateAppointmentStatusFromAPI } = await import('../data/dummyAppointments');
-      return await updateAppointmentStatusFromAPI(appointmentId, status);
+      console.log(`📝 예약 상태 업데이트 중... ID: ${appointmentId}, 상태: ${status}`);
+      
+      // 실제 API 호출
+      await medicalApi.updateAppointmentStatus(appointmentId, status);
+      return true;
     } catch (error) {
-      console.error('예약 상태 업데이트 실패:', error);
-      throw new Error('예약 상태를 업데이트하는데 실패했습니다.');
+      console.error('❌ 예약 상태 업데이트 실패:', error);
+      return false;
     }
   },
 
   // 예약 취소
-  cancelAppointment: async (appointmentId: number): Promise<{ success: boolean; message: string }> => {
+  cancelAppointment: async (appointmentId: number): Promise<boolean> => {
     try {
-      // 실제 API 연동 시: return apiClient.delete(`/appointments/${appointmentId}`);
-      const { cancelAppointmentToAPI } = await import('../data/dummyAppointments');
-      return await cancelAppointmentToAPI(appointmentId);
+      console.log(`❌ 예약 취소 중... ID: ${appointmentId}`);
+      
+      // 실제 API 호출
+      await medicalApi.cancelAppointment(appointmentId);
+      return true;
     } catch (error) {
-      console.error('예약 취소 실패:', error);
-      throw new Error('예약을 취소하는데 실패했습니다.');
+      console.error('❌ 예약 취소 실패:', error);
+      return false;
     }
   }
 }; 

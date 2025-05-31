@@ -17,21 +17,22 @@ import {
 import { type NavigationProp, useNavigation, type RouteProp, useRoute } from '@react-navigation/native';
 import type { RootStackParamList } from '../types/navigation';
 import LinearGradient from 'react-native-linear-gradient';
+import { productService, Product } from '../services/productService';
 
 const { width } = Dimensions.get('window');
 
-type ShopInfo = {
+interface ShopInfo {
   id: number;
   name: string;
   logo: any;
   price: number;
   shipping: string;
   shippingFee: number;
-  installment: string;
+  installment?: string;
   isFreeShipping: boolean;
   isLowestPrice?: boolean;
   isCardDiscount?: boolean;
-};
+}
 
 const ProductDetailScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -41,21 +42,21 @@ const ProductDetailScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [includeShipping, setIncludeShipping] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<Product | null>(null);
 
-  // 상품 이미지
-  const productImages = [
+  // 상품 이미지 (API에서 가져온 제품 정보 기반)
+  const productImages = product ? [product.image] : [
     require('../assets/product1.png'),
     require('../assets/product2.png'),
-    
   ];
 
-  // 쇼핑몰 정보
+  // 쇼핑몰 정보 (하드코딩 - 추후 API 연동 필요)
   const [shops, setShops] = useState<ShopInfo[]>([
     {
       id: 1,
       name: 'HIMART',
       logo: require('../assets/shop_himart.png'),
-      price: 239000,
+      price: product?.price || 239000,
       shipping: '무료배송',
       shippingFee: 0,
       installment: '최대 6개월',
@@ -66,18 +67,17 @@ const ProductDetailScreen = () => {
       id: 2,
       name: '네이버쇼핑',
       logo: require('../assets/shop_naver.png'),
-      price: 239000,
+      price: product?.price || 239000,
       shipping: '무료배송',
       shippingFee: 0,
       installment: '최대 24개월',
       isFreeShipping: true,
     },
-    
     {
       id: 3,
       name: 'G마켓',
       logo: require('../assets/shop_gmarket.png'),
-      price: 239000,
+      price: product?.price || 239000,
       shipping: '무료배송',
       shippingFee: 0,
       installment: '최대 24개월',
@@ -87,7 +87,7 @@ const ProductDetailScreen = () => {
       id: 4,
       name: '11번가',
       logo: require('../assets/shop_11st.png'),
-      price: 239000,
+      price: product?.price || 239000,
       shipping: '무료배송',
       shippingFee: 0,
       installment: '최대 22개월',
@@ -97,65 +97,39 @@ const ProductDetailScreen = () => {
       id: 5,
       name: '쿠팡',
       logo: require('../assets/shop_coupang.png'),
-      price: 239000,
+      price: product?.price || 239000,
       shipping: '무료배송',
       shippingFee: 0,
       installment: '',
       isFreeShipping: true,
     },
-    {
-      id: 6,
-      name: '오늘의집',
-      logo: require('../assets/shop_ohouse.png'),
-      price: 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 6개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 7,
-      name: '롯데ON',
-      logo: require('../assets/shop_lotte.png'),
-      price: 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '',
-      isFreeShipping: true,
-    },
-    {
-      id: 8,
-      name: 'AUCTION',
-      logo: require('../assets/shop_auction.png'),
-      price: 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 24개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 9,
-      name: '이마트몰',
-      logo: require('../assets/shop_emart.png'),
-      price: 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 3개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 10,
-      name: 'SSG.COM',
-      logo: require('../assets/shop_ssg.png'),
-      price: 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 3개월',
-      isFreeShipping: true,
-    },
-    
-    
   ]);
+
+  // 제품 정보 로드
+  useEffect(() => {
+    const loadProduct = async () => {
+      try {
+        setLoading(true);
+        const productData = await productService.getProductById(id);
+        if (productData) {
+          setProduct(productData);
+          // 쇼핑몰 가격 업데이트
+          setShops(prevShops => 
+            prevShops.map(shop => ({
+              ...shop,
+              price: productData.price
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('제품 정보 로드 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id]);
 
   // 최저가 계산
   const getLowestPrice = () => {
@@ -171,7 +145,7 @@ const ProductDetailScreen = () => {
 
   // 최저가 포맷팅
   const formatPrice = (price: number) => {
-    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return price.toLocaleString();
   };
 
   // 썸네일 렌더링
@@ -218,13 +192,6 @@ const ProductDetailScreen = () => {
     </TouchableOpacity>
   );
 
-  useEffect(() => {
-    // 데이터 로딩 시뮬레이션
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
-
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -270,15 +237,29 @@ const ProductDetailScreen = () => {
 
         {/* 상품 정보 */}
         <View style={styles.productInfoContainer}>
-          <View style={styles.productMetaRow}>
-            <Text style={styles.productMetaText}>등록일: 2024.11.</Text>
-            <Text style={styles.productMetaSeparator}>|</Text>
-            <Text style={styles.productMetaText}>제조사: Creative</Text>
+          <Text style={styles.productTitle}>{product?.name || '상품명'}</Text>
+          <Text style={styles.brandName}>{product?.brand || '브랜드명'}</Text>
+          
+          <View style={styles.ratingContainer}>
+            <Text style={styles.ratingText}>⭐ {product?.rating || 0}</Text>
+            <Text style={styles.reviewCount}>({product?.reviewCount || 0}개 리뷰)</Text>
           </View>
           
-          <TouchableOpacity style={styles.brandButton}>
-            <Text style={styles.brandButtonText}>Creative 브랜드로그</Text>
-          </TouchableOpacity>
+          <Text style={styles.priceText}>최저가 {formatPrice(getLowestPrice())}원</Text>
+          
+          {product?.description && (
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>상품 설명</Text>
+              <Text style={styles.descriptionText}>{product.description}</Text>
+            </View>
+          )}
+          
+          {product?.volume && (
+            <View style={styles.specContainer}>
+              <Text style={styles.specTitle}>용량</Text>
+              <Text style={styles.specText}>{product.volume}</Text>
+            </View>
+          )}
         </View>
 
         {/* 최저가 정보 */}
@@ -412,32 +393,62 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
   },
-  productMetaRow: {
+  productTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 10,
+  },
+  brandName: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginBottom: 10,
+  },
+  ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  productMetaText: {
+  ratingText: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginRight: 5,
+  },
+  reviewCount: {
     fontSize: 12,
     color: '#6C757D',
   },
-  productMetaSeparator: {
-    fontSize: 12,
-    color: '#CED4DA',
-    marginHorizontal: 8,
-  },
-  brandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderRadius: 4,
-  },
-  brandButtonText: {
-    fontSize: 14,
+  priceText: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#4263EB',
+    marginBottom: 10,
+  },
+  descriptionContainer: {
+    marginBottom: 10,
+  },
+  descriptionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 5,
+  },
+  descriptionText: {
+    fontSize: 12,
+    color: '#6C757D',
+  },
+  specContainer: {
+    marginBottom: 10,
+  },
+  specTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 5,
+  },
+  specText: {
+    fontSize: 12,
+    color: '#6C757D',
   },
   lowestPriceContainer: {
     backgroundColor: '#FFFFFF',

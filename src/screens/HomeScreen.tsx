@@ -3,6 +3,9 @@
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { useState, useEffect } from "react"
+import { appointmentService } from "../services/appointmentService"
+import { productService } from "../services/productService"
 
 import {
   View,
@@ -15,24 +18,56 @@ import {
   SafeAreaView,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from "react-native"
 
 const { width } = Dimensions.get("window")
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
+  const [doctors, setDoctors] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [productsLoading, setProductsLoading] = useState(true)
 
-  const doctors = [
-    { id: 1, name: "Dr. Kim", specialty: "피부과", image: require("../assets/doctor1.png") },
-    { id: 2, name: "Dr. Lee", specialty: "알레르기", image: require("../assets/doctor2.png") },
-    { id: 3, name: "Dr. Park", specialty: "피부과", image: require("../assets/doctor3.png") },
-    { id: 4, name: "Dr. Choi", specialty: "피부과", image: require("../assets/doctor4.png") },
-  ]
+  // 의사 목록 로드
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        setLoading(true)
+        const doctorsData = await appointmentService.getHomeDoctors()
+        setDoctors(doctorsData)
+      } catch (error) {
+        console.error('의사 목록 로드 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const products = [
-    { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
-    { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
-  ]
+    loadDoctors()
+  }, [])
+
+  // 제품 목록 로드
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setProductsLoading(true)
+        const productsData = await productService.getPopularProducts()
+        setProducts(productsData.slice(0, 2)) // 홈화면에는 2개만 표시
+      } catch (error) {
+        console.error('제품 목록 로드 실패:', error)
+        // 폴백: 기본 제품 데이터
+        setProducts([
+          { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
+          { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
+        ])
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+
+    loadProducts()
+  }, [])
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -82,34 +117,44 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={doctors}
-            horizontal
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.doctorCard}>
-                <Image source={item.image} style={styles.doctorImage} />
-                <View style={styles.doctorInfo}>
-                  <Text style={styles.doctorName}>{item.name}</Text>
-                  <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.bookButton}
-                  onPress={() =>
-                    navigation.navigate("AppointmentScreen", {
-                      doctorId: item.id,
-                      doctorName: item.name,
-                      specialty: item.specialty,
-                    })
-                  }
-                >
-                  <Text style={styles.bookButtonText}>예약</Text>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#FF9A9E" />
+              <Text style={styles.loadingText}>의사 목록 로딩 중...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={doctors}
+              horizontal
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.doctorCard}>
+                  <Image 
+                    source={item.image || require("../assets/doctor1.png")} 
+                    style={styles.doctorImage} 
+                  />
+                  <View style={styles.doctorInfo}>
+                    <Text style={styles.doctorName}>{item.name}</Text>
+                    <Text style={styles.doctorSpecialty}>{item.specialization || item.specialty}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.bookButton}
+                    onPress={() =>
+                      navigation.navigate("AppointmentScreen", {
+                        doctorId: item.id,
+                        doctorName: item.name,
+                        specialty: item.specialization || item.specialty,
+                      })
+                    }
+                  >
+                    <Text style={styles.bookButtonText}>예약</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            )}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.doctorList}
-          />
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.doctorList}
+            />
+          )}
         </View>
 
         {/* AI 서비스 섹션 */}
@@ -173,28 +218,35 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={products}
-            horizontal
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.productCard}
-                onPress={() => navigation.navigate("ProductDetailScreen", { id: item.id })}
-              >
-                <Image source={item.image} style={styles.productImage} />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{item.name}</Text>
-                  <View style={styles.ratingContainer}>
-                    <Text style={styles.productRating}>⭐ {item.rating}</Text>
-                    <Text style={styles.reviewCount}>({item.reviews})</Text>
+          {productsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#FF9A9E" />
+              <Text style={styles.loadingText}>제품 목록 로딩 중...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={products}
+              horizontal
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.productCard}
+                  onPress={() => navigation.navigate("ProductDetailScreen", { id: item.id })}
+                >
+                  <Image source={item.image} style={styles.productImage} />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    <View style={styles.ratingContainer}>
+                      <Text style={styles.productRating}>⭐ {item.rating}</Text>
+                      <Text style={styles.reviewCount}>({item.reviews})</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            )}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.productList}
-          />
+                </TouchableOpacity>
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.productList}
+            />
+          )}
         </View>
       </ScrollView>
 
@@ -497,6 +549,17 @@ profileText: {
   color: 'white',
   fontSize: 16,
   fontWeight: 'bold',
+},
+loadingContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 10,
+},
+loadingText: {
+  fontSize: 12,
+  color: '#6C757D',
+  marginLeft: 10,
 }
 })
 

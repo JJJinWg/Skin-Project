@@ -1,5 +1,5 @@
 // 리뷰 전체 확인 및 검색,작성
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import {
@@ -16,6 +16,7 @@ import {
   Animated,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { getProducts, Product } from '../services/productService';
 
 const { width } = Dimensions.get('window');
 
@@ -23,101 +24,103 @@ const { width } = Dimensions.get('window');
 const categories = [
   { id: 'all', name: '전체' },
   { id: 'skincare', name: '스킨케어' },
-  { id: 'makeup', name: '메이크업' },
-  { id: 'suncare', name: '선케어' },
-  { id: 'cleansing', name: '클렌징' },
+  { id: 'serum', name: '세럼' },
+  { id: 'moisturizer', name: '모이스처라이저' },
+  { id: 'cleanser', name: '클렌저' },
+  { id: 'sunscreen', name: '선크림' },
 ];
 
-// 리뷰 데이터 (실제로는 API에서 가져올 것)
-const reviews = [
-  {
-    id: 1,
-    productName: 'Beplain 녹두 진정 토너',
-    brand: 'Beplain',
-    rating: 4.5,
-    reviewCount: 128,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '피부좋아짐',
-      content: '민감성 피부에 딱 좋아요! 자극 없이 진정되는 느낌이에요.',
-      date: '2일 전',
-      rating: 5,
-      likes: 24,
-    },
-  },
-  {
-    id: 2,
-    productName: 'Torriden 다이브인 세럼',
-    brand: 'Torriden',
-    rating: 4.2,
-    reviewCount: 86,
-    image: require('../assets/product2.png'),
-    latestReview: {
-      user: '화장품매니아',
-      content: '수분감이 오래 지속되고 흡수도 잘 돼요. 가성비 좋은 제품입니다.',
-      date: '1주일 전',
-      rating: 4,
-      likes: 18,
-    },
-  },
-  {
-    id: 3,
-    productName: '아이소이 불가리안 로즈 세럼',
-    brand: 'isoi',
-    rating: 4.7,
-    reviewCount: 215,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '로즈덕후',
-      content: '향이 너무 좋고 피부결이 정돈되는 느낌이에요. 꾸준히 쓰고 있어요.',
-      date: '3일 전',
-      rating: 5,
-      likes: 42,
-    },
-  },
-  {
-    id: 4,
-    productName: '라운드랩 자작나무 수분 크림',
-    brand: 'Round Lab',
-    rating: 4.3,
-    reviewCount: 167,
-    image: require('../assets/product2.png'),
-    latestReview: {
-      user: '수분부족',
-      content: '건조한 피부에 수분을 채워주는 느낌이에요. 가볍게 발리고 좋아요.',
-      date: '5일 전',
-      rating: 4,
-      likes: 31,
-    },
-  },
-  {
-    id: 5,
-    productName: '코스알엑스 스네일 무친 에센스',
-    brand: 'COSRX',
-    rating: 4.6,
-    reviewCount: 324,
-    image: require('../assets/product1.png'),
-    latestReview: {
-      user: '달팽이덕후',
-      content: '트러블 진정에 효과가 좋아요. 꾸준히 사용하면 피부결이 확실히 좋아져요.',
-      date: '1일 전',
-      rating: 5,
-      likes: 56,
-    },
-  },
-];
+// 리뷰 데이터 인터페이스
+interface ReviewData {
+  id: number;
+  productName: string;
+  brand: string;
+  rating: number;
+  reviewCount: number;
+  image: any;
+  latestReview: {
+    user: string;
+    content: string;
+    date: string;
+    rating: number;
+    likes: number;
+  };
+}
 
 const ProductReviewScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [scrollY] = useState(new Animated.Value(0));
+  const [reviews, setReviews] = useState<ReviewData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 제품 데이터 로드
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        console.log('📦 제품 리뷰 데이터 로드 중...');
+        
+        // 실제 API에서 제품 목록 가져오기
+        const products = await getProducts();
+        
+        // 제품 데이터를 리뷰 형식으로 변환
+        const reviewData: ReviewData[] = products.map((product: Product) => ({
+          id: product.id,
+          productName: product.name,
+          brand: product.brand,
+          rating: product.rating,
+          reviewCount: product.reviewCount,
+          image: product.image,
+          latestReview: {
+            user: '사용자' + (product.id % 10 + 1),
+            content: generateSampleReview(product.name),
+            date: generateRandomDate(),
+            rating: Math.round(product.rating),
+            likes: Math.floor(Math.random() * 50) + 10,
+          },
+        }));
+        
+        setReviews(reviewData);
+        console.log(`✅ 제품 리뷰 데이터 로드 성공: ${reviewData.length}개`);
+      } catch (error) {
+        console.error('❌ 제품 리뷰 데이터 로드 실패:', error);
+        // 에러 시 빈 배열로 설정
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  // 샘플 리뷰 생성 함수
+  const generateSampleReview = (productName: string): string => {
+    const reviews = [
+      `${productName} 정말 좋아요! 피부가 촉촉해졌어요.`,
+      `민감한 피부에도 자극 없이 사용할 수 있어서 만족해요.`,
+      `가성비 좋은 제품이에요. 꾸준히 사용하고 있습니다.`,
+      `향이 좋고 발림성도 부드러워요. 추천합니다!`,
+      `효과가 빨리 나타나서 놀랐어요. 계속 쓸 예정입니다.`,
+    ];
+    return reviews[Math.floor(Math.random() * reviews.length)];
+  };
+
+  // 랜덤 날짜 생성 함수
+  const generateRandomDate = (): string => {
+    const dates = ['1일 전', '2일 전', '3일 전', '1주일 전', '2주일 전'];
+    return dates[Math.floor(Math.random() * dates.length)];
+  };
 
   // 검색 기능
   const filteredReviews = reviews.filter(review => {
     const matchesSearch = review.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          review.brand.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || review.brand.toLowerCase().includes(selectedCategory);
+    const matchesCategory = selectedCategory === 'all' || 
+                           (selectedCategory === 'skincare' && review.brand.toLowerCase().includes('beplain')) ||
+                           (selectedCategory === 'serum' && review.productName.toLowerCase().includes('세럼'));
     return matchesSearch && matchesCategory;
   });
 
@@ -224,59 +227,70 @@ const ProductReviewScreen = () => {
       </View>
       
       {/* 리뷰 목록 */}
-      <Animated.FlatList
-        data={filteredReviews}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.reviewList}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.reviewCard}
-            onPress={() => navigation.navigate('ProductDetailScreen', { id: item.id })}
-          >
-            <View style={styles.reviewCardHeader}>
-              <Image source={item.image} style={styles.productImage} />
-              <View style={styles.productInfo}>
-                <Text style={styles.brandName}>{item.brand}</Text>
-                <Text style={styles.productName}>{item.productName}</Text>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>⭐ {item.rating}</Text>
-                  <Text style={styles.reviewCount}>리뷰 {item.reviewCount}개</Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>제품 리뷰를 불러오는 중...</Text>
+        </View>
+      ) : filteredReviews.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+          <Text style={styles.emptySubText}>다른 검색어를 시도해보세요</Text>
+        </View>
+      ) : (
+        <Animated.FlatList
+          data={filteredReviews}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.reviewList}
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.reviewCard}
+              onPress={() => navigation.navigate('ProductDetailScreen', { id: item.id })}
+            >
+              <View style={styles.reviewCardHeader}>
+                <Image source={item.image} style={styles.productImage} />
+                <View style={styles.productInfo}>
+                  <Text style={styles.brandName}>{item.brand}</Text>
+                  <Text style={styles.productName}>{item.productName}</Text>
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingText}>⭐ {item.rating}</Text>
+                    <Text style={styles.reviewCount}>리뷰 {item.reviewCount}개</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.latestReviewContainer}>
-              <View style={styles.reviewerInfo}>
-                <Text style={styles.reviewerName}>{item.latestReview.user}</Text>
-                <View style={styles.reviewRating}>
-                  {Array(5).fill(0).map((_, index) => (
-                    <Text key={index} style={styles.starIcon}>
-                      {index < Math.floor(item.latestReview.rating) ? '★' : '☆'}
-                    </Text>
-                  ))}
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.latestReviewContainer}>
+                <View style={styles.reviewerInfo}>
+                  <Text style={styles.reviewerName}>{item.latestReview.user}</Text>
+                  <View style={styles.reviewRating}>
+                    {Array(5).fill(0).map((_, index) => (
+                      <Text key={index} style={styles.starIcon}>
+                        {index < Math.floor(item.latestReview.rating) ? '★' : '☆'}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewContent}>{item.latestReview.content}</Text>
+                <View style={styles.reviewFooter}>
+                  <Text style={styles.reviewDate}>{item.latestReview.date}</Text>
+                  <View style={styles.reviewActions}>
+                    <TouchableOpacity style={styles.likeButton}>
+                      <Text style={styles.likeIcon}>♥</Text>
+                      <Text style={styles.likeCount}>{item.latestReview.likes}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-              <Text style={styles.reviewContent}>{item.latestReview.content}</Text>
-              <View style={styles.reviewFooter}>
-                <Text style={styles.reviewDate}>{item.latestReview.date}</Text>
-                <View style={styles.reviewActions}>
-                  <TouchableOpacity style={styles.likeButton}>
-                    <Text style={styles.likeIcon}>♥</Text>
-                    <Text style={styles.likeCount}>{item.latestReview.likes}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+            </TouchableOpacity>
+          )}
+        />
+      )}
       
       {/* 리뷰 작성 버튼 */}
       <TouchableOpacity 
@@ -546,6 +560,31 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 10,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#6C757D',
   },
 });
 
