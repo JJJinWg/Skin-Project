@@ -3,9 +3,6 @@
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
-import { useState, useEffect } from "react"
-import { appointmentService } from "../services/appointmentService"
-import { userService, type UserInfo } from "../services/userService"
 
 import {
   View,
@@ -24,29 +21,18 @@ const { width } = Dimensions.get("window")
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
-  const [doctors, setDoctors] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
-  // 데이터 로드
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [doctorsData, productsData, userData] = await Promise.all([
-          appointmentService.getHomeDoctors(),
-          appointmentService.getProducts(),
-          userService.getCurrentUser()
-        ]);
-        setDoctors(doctorsData);
-        setProducts(productsData);
-        setUserInfo(userData);
-      } catch (error) {
-        console.error('데이터 로드 실패:', error);
-      }
-    };
+  const doctors = [
+    { id: 1, name: "Dr. Kim", specialty: "피부과", image: require("../assets/doctor1.png") },
+    { id: 2, name: "Dr. Lee", specialty: "알레르기", image: require("../assets/doctor2.png") },
+    { id: 3, name: "Dr. Park", specialty: "피부과", image: require("../assets/doctor3.png") },
+    { id: 4, name: "Dr. Choi", specialty: "피부과", image: require("../assets/doctor4.png") },
+  ]
 
-    loadData();
-  }, [])
+  const products = [
+    { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
+    { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
+  ]
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -56,7 +42,7 @@ const HomeScreen = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>안녕하세요 👋</Text>
-            <Text style={styles.headerText}>{userInfo?.name || '사용자'}님</Text>
+            <Text style={styles.headerText}>홍길동님</Text>
           </View>
           <TouchableOpacity
             style={styles.profileButton}
@@ -114,7 +100,6 @@ const HomeScreen = () => {
                       doctorId: item.id,
                       doctorName: item.name,
                       specialty: item.specialty,
-                      doctorImage: item.image,
                     })
                   }
                 >
@@ -174,21 +159,6 @@ const HomeScreen = () => {
                 </View>
                 <Text style={styles.aiTitle}>피부 관리 기록</Text>
                 <Text style={styles.aiDescription}>피부 분석 및 추천 내역을 확인하세요</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.aiCard} onPress={() => navigation.navigate("DiagnosisHistoryScreen")}>
-              <LinearGradient
-                colors={["#667eea", "#764ba2"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.aiCardGradient}
-              >
-                <View style={styles.aiIconContainer}>
-                  <Text style={styles.aiIcon}>📋</Text>
-                </View>
-                <Text style={styles.aiTitle}>진료 요청서</Text>
-                <Text style={styles.aiDescription}>온라인으로 진료를 요청하세요</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
