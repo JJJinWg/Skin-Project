@@ -149,8 +149,8 @@ const FindIdScreen = () => {
                 fill={colors.primary}
               />
             </Svg>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={styles.backButtonText}>←</Text>
+            <TouchableOpacity style={styles.backButton} >
+              
             </TouchableOpacity>
           </View>
 
