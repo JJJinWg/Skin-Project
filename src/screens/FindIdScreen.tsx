@@ -22,6 +22,7 @@ import {
   ScrollView,
 } from "react-native"
 import { Svg, Path } from "react-native-svg"
+import React from "react"
 
 const { width } = Dimensions.get("window")
 
@@ -148,8 +149,8 @@ const FindIdScreen = () => {
                 fill={colors.primary}
               />
             </Svg>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={styles.backButtonText}>←</Text>
+            <TouchableOpacity style={styles.backButton} >
+              
             </TouchableOpacity>
           </View>
 

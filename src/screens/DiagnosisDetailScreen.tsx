@@ -16,6 +16,7 @@ import {
 import { type NavigationProp, useNavigation, type RouteProp, useRoute } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { diagnosisService } from "../services/diagnosisService"
 
 // 진단 내역 타입 정의
 type Diagnosis = {
@@ -45,39 +46,52 @@ const DiagnosisDetailScreen = () => {
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // 진단 상세 정보 가져오기 (API 호출 시뮬레이션)
+  // 진단 상세 정보 가져오기
   useEffect(() => {
-    setLoading(true)
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      // 실제로는 diagnosisId를 사용하여 API에서 특정 진단 정보를 가져옵니다
-      const mockDiagnosis: Diagnosis = {
-        id: diagnosisId,
-        doctorId: 1,
-        doctorName: "Dr. Kim",
-        doctorImage: require("../assets/doctor1.png"),
-        specialty: "피부과",
-        date: "2023-05-15",
-        symptoms:
-          "얼굴에 붉은 발진과 가려움증, 건조함이 있습니다. 특히 볼과 이마 부위에 증상이 심하며, 세안 후 더 심해지는 경향이 있습니다. 2주 전부터 새로운 화장품을 사용하기 시작했습니다.",
-        diagnosisContent:
-          "접촉성 피부염으로 진단됩니다. 특정 화장품이나 세안제에 포함된 성분에 대한 알레르기 반응으로 보입니다. 피부 장벽이 약해져 있어 자극에 더 민감하게 반응하고 있습니다.",
-        treatment:
-          "스테로이드 연고를 처방해 드립니다. 하루에 두 번, 아침과 저녁에 발진 부위에 얇게 바르세요. 또한 자극이 적은 세안제와 보습제를 사용하시기 바랍니다. 최근에 사용하기 시작한 화장품은 일단 중단하시고, 피부가 회복된 후 하나씩 테스트해보는 것이 좋겠습니다.",
-        prescriptions: [
-          "베타메타손 연고 0.05% - 하루 2회, 아침/저녁 발진 부위에 얇게 바름",
-          "세티리진 정 10mg - 가려움이 심할 때 하루 1회 복용",
-          "세라마이드 함유 보습제 - 하루 3회 이상 충분히 바름",
-        ],
-        followUpRequired: true,
-        followUpDate: "2023-05-29",
-        images: ["https://example.com/diagnosis-image1.jpg"],
-        additionalNotes:
-          "알레르기 반응이 심해지거나 호전되지 않으면 바로 내원하세요. 처방된 약물에 대한 부작용(피부 자극, 발적 증가 등)이 있으면 즉시 사용을 중단하고 연락주세요.",
+    const loadDiagnosisDetail = async () => {
+      setLoading(true)
+      try {
+        // 실제 진료 요청서 데이터 조회
+        const diagnosisRequest = await diagnosisService.getDiagnosisRequestById(diagnosisId)
+        
+        if (diagnosisRequest) {
+          // 진료 요청서를 진단 상세 형태로 변환
+          const diagnosisDetail: Diagnosis = {
+            id: diagnosisRequest.id,
+            doctorId: diagnosisRequest.assignedDoctorId || 1,
+            doctorName: diagnosisRequest.assignedDoctorName || "담당의사",
+            doctorImage: require("../assets/doctor1.png"),
+            specialty: "피부과",
+            date: diagnosisRequest.createdAt.split('T')[0],
+            symptoms: diagnosisRequest.symptoms,
+            diagnosisContent: diagnosisRequest.status === "완료" ? 
+              "진료 요청서가 검토되어 진단이 완료되었습니다. 상세한 진단 내용은 담당 의사와 상담을 통해 확인하실 수 있습니다." : 
+              `현재 진료 요청서가 ${diagnosisRequest.status} 상태입니다. 의료진이 검토 중이며, 완료되면 상세한 진단 결과를 안내해드립니다.`,
+            treatment: diagnosisRequest.status === "완료" ? 
+              "처방전 및 치료 방법이 별도로 안내됩니다. 담당 의사와 상담을 통해 구체적인 치료 계획을 수립하겠습니다." : 
+              "검토 완료 후 적절한 치료 방법을 안내해드립니다.",
+            prescriptions: diagnosisRequest.status === "완료" ? 
+              ["처방전은 담당 의사와 상담 후 발급됩니다."] : 
+              ["진료 요청서 검토 완료 후 처방전이 발급됩니다."],
+            followUpRequired: diagnosisRequest.status === "완료",
+            followUpDate: diagnosisRequest.status === "완료" ? "2024-04-15" : undefined,
+            images: [],
+            additionalNotes: diagnosisRequest.additionalNotes || 
+              "추가 문의사항이 있으시면 담당 의사에게 연락해주세요.",
+          }
+          setDiagnosis(diagnosisDetail)
+        } else {
+          setDiagnosis(null)
+        }
+      } catch (error) {
+        console.error('진단 상세 정보 조회 실패:', error)
+        setDiagnosis(null)
+      } finally {
+        setLoading(false)
       }
-      setDiagnosis(mockDiagnosis)
-      setLoading(false)
-    }, 1000)
+    }
+    
+    loadDiagnosisDetail()
   }, [diagnosisId])
 
   // 날짜 포맷 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
@@ -166,8 +180,7 @@ ${diagnosis.followUpRequired ? `추적 관찰: ${diagnosis.followUpDate ? format
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton}>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>진단 상세</Text>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
@@ -285,7 +298,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },

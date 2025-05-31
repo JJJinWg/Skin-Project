@@ -272,8 +272,8 @@ const SkinHistoryScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton}>
+       
         </TouchableOpacity>
         <Text style={styles.headerTitle}>내 피부 관리 기록</Text>
         <View style={styles.placeholder} />
@@ -512,7 +512,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
   },
