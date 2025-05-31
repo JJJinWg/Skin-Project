@@ -211,8 +211,8 @@ const ReservationHistoryScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton} >
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>예약 내역</Text>
         <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>

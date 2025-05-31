@@ -124,12 +124,7 @@ const ProductReviewScreen = () => {
           style={styles.headerGradient}
         >
           <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
+            
             <Animated.View style={[styles.headerTitleContainer, { opacity: headerOpacity }]}>
               <Text style={styles.headerTitle}>제품 리뷰</Text>
               <Text style={styles.headerSubtitle}>다양한 화장품 리뷰를 확인해보세요</Text>
