@@ -18,12 +18,15 @@ from crud import (
     create_review,
 )
 from product_description.crawler import crawl_olive_young_reviews
+from recommendation import recommend_endpoint, RecommendQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from core.security import verify_password, create_access_token
 from jose import JWTError, jwt
 from schemas import Token
 from core.models.db_models import User
-from fastapi import FastAPI
+
+
+
 
 app = FastAPI()  
 from recommendation import router as recommend_router
@@ -97,6 +100,11 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="이미 사용 중인 전화번호입니다")
 
     return create_user(db, user)
+
+# 추천 API 경로 추가
+@app.post("/recommend")
+def get_recommendation(query: RecommendQuery = Body(...)):
+    return recommend_endpoint(query)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

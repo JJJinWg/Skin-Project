@@ -2,8 +2,6 @@ from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 from pydantic import BaseModel
 from datetime import datetime
-from pydantic import BaseModel
-from typing import List
 
 class GenderEnum(str, Enum):
     male = "male"
@@ -65,8 +63,3 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-
-class RecommendAIRequest(BaseModel):
-    diagnosis: List[str]
-    skin_type: str
-    sensitivity: str
