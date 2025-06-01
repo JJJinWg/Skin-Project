@@ -217,7 +217,7 @@ const ProfileScreen = () => {
   }
 
   // 예약 취소 처리
-  const handleCancelAppointment = (id: number) => {
+  const handleCancelAppointment = async (id: number) => {
     Alert.alert(
       "예약 취소",
       "이 예약을 취소하시겠습니까?",
@@ -228,13 +228,25 @@ const ProfileScreen = () => {
         },
         {
           text: "예",
-          onPress: () => {
-            // 실제로는 예약 취소 API 호출
-            const updatedAppointments = appointments.map((appointment) =>
-              appointment.id === id ? { ...appointment, status: "cancelled" as const } : appointment,
-            )
-            setAppointments(updatedAppointments)
-            Alert.alert("예약이 취소되었습니다.")
+          onPress: async () => {
+            try {
+              // 실제 예약 취소 API 호출
+              const result = await appointmentService.cancelAppointment(id);
+              
+              if (result) {
+                // API 호출 성공 시 로컬 상태 업데이트
+                const updatedAppointments = appointments.map((appointment) =>
+                  appointment.id === id ? { ...appointment, status: "cancelled" as const } : appointment,
+                )
+                setAppointments(updatedAppointments)
+                Alert.alert("성공", "예약이 취소되었습니다.")
+              } else {
+                Alert.alert("오류", "예약 취소에 실패했습니다. 다시 시도해주세요.")
+              }
+            } catch (error) {
+              console.error('예약 취소 실패:', error);
+              Alert.alert("오류", "예약 취소 중 오류가 발생했습니다.")
+            }
           },
         },
       ],
@@ -524,6 +536,8 @@ const ProfileScreen = () => {
               <FlatList
                 data={reviews}
                 keyExtractor={(item) => item.id.toString()}
+                scrollEnabled={false}
+                nestedScrollEnabled={true}
                 renderItem={({ item }) => (
                   <View style={styles.reviewCard}>
                     <View style={styles.reviewHeader}>
@@ -597,6 +611,8 @@ const ProfileScreen = () => {
               <FlatList
                 data={diagnoses}
                 keyExtractor={(item) => item.id.toString()}
+                scrollEnabled={false}
+                nestedScrollEnabled={true}
                 renderItem={({ item }) => (
                   <View style={styles.diagnosisCard}>
                     <View style={styles.diagnosisHeader}>

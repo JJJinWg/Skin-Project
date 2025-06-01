@@ -78,49 +78,76 @@ const getProductImage = (imageUrl: string | null, productId: number) => {
   return { uri: `https://via.placeholder.com/150?text=Product+${productId}` }
 }
 
-// 제품 목록 조회 (검색, 필터링, 정렬 포함)
+// 제품 목록 조회 (실제 백엔드 API 사용)
 export const getProducts = async (
   category?: string,
   searchQuery?: string,
-  sortBy?: 'popular' | 'rating' | 'price' | 'newest'
+  sortBy?: 'popular' | 'rating' | 'price' | 'newest',
+  limit?: number
 ): Promise<Product[]> => {
   try {
-    console.log('📦 제품 목록 조회 중...', { category, searchQuery, sortBy });
+    console.log('📦 제품 목록 조회 중...', { category, searchQuery, sortBy, limit });
     
-    // 실제 API 호출
-    const response = await medicalApi.getProducts({ category, search: searchQuery, sort: sortBy }) as any;
+    // 백엔드 API 호출
+    let apiResponse: any;
     
-    // API 응답 형식 확인 및 데이터 추출
-    const apiProducts = response?.data || response || [];
+    const params: any = {};
+    if (limit) params.limit = limit;
+    if (searchQuery) params.search = searchQuery;
     
-    // API 응답을 Product 인터페이스에 맞게 변환
-    const products = apiProducts.map((product: any) => ({
+    if (category) {
+      apiResponse = await medicalApi.getProductsByCategory(category);
+    } else if (searchQuery) {
+      apiResponse = await medicalApi.getProducts(params);
+    } else {
+      apiResponse = await medicalApi.getProducts(params);
+    }
+    
+    console.log('🔍 API 응답 구조:', apiResponse);
+    
+    // 백엔드 응답 구조에 따라 데이터 추출
+    let products: any[] = [];
+    if (Array.isArray(apiResponse)) {
+      // 직접 배열인 경우
+      products = apiResponse;
+    } else if (apiResponse && apiResponse.success && Array.isArray(apiResponse.data)) {
+      // {success: true, data: [...]} 구조인 경우
+      products = apiResponse.data;
+    } else if (apiResponse && Array.isArray(apiResponse.data)) {
+      // {data: [...]} 구조인 경우
+      products = apiResponse.data;
+    } else {
+      console.warn('⚠️ 예상하지 못한 API 응답 구조:', apiResponse);
+      return [];
+    }
+    
+    console.log('✅ 추출된 제품 배열:', products.length, '개');
+    
+    // 백엔드 응답을 Product 인터페이스에 맞게 변환
+    return products.map((product: any) => ({
       id: product.id,
       name: product.name,
-      brand: product.brand || '',
-      category: product.category || 'skincare',
-      price: product.price || 0,
-      originalPrice: product.originalPrice,
+      brand: product.brand,
+      category: product.category,
+      price: product.price,
+      originalPrice: product.original_price,
       rating: product.rating || 0,
-      reviewCount: product.reviews || product.review_count || 0,
+      reviewCount: product.review_count || 0,
       image: getProductImage(product.image || product.image_url, product.id),
       description: product.description || '',
       ingredients: product.ingredients || [],
-      skinType: product.skinTypes || product.skin_types || [],
+      skinType: product.skin_types || [],
       benefits: product.benefits || [],
       volume: product.volume || '',
-      isPopular: product.isPopular || product.is_popular || false,
-      isNew: product.isNew || product.is_new || false,
-      suitableFor: product.suitableFor || [],
-      notSuitableFor: product.notSuitableFor || [],
-      reviews: product.reviews || []
+      isPopular: product.is_popular || false,
+      isNew: product.is_new || false,
+      suitableFor: product.skin_types || [],
+      notSuitableFor: [],
+      reviews: product.reviews || [] // 백엔드에서 실제 리뷰 데이터를 제공할 것으로 예상
     }));
-    
-    console.log(`✅ 제품 목록 조회 성공: ${products.length}개`);
-    return products;
   } catch (error) {
-    console.error('❌ 제품 목록 조회 실패:', error)
-    return []
+    console.error('❌ 제품 목록 조회 실패:', error);
+    return [];
   }
 }
 
@@ -134,6 +161,16 @@ export const getProductById = async (id: number): Promise<Product | null> => {
     
     if (!product) return null;
     
+    // 제품별 리뷰 조회
+    let reviews: any[] = [];
+    try {
+      reviews = await medicalApi.getProductReviews(id) as any[];
+      console.log(`✅ 제품 ${id} 리뷰 ${reviews.length}개 조회 성공`);
+    } catch (reviewError) {
+      console.warn(`⚠️ 제품 ${id} 리뷰 조회 실패:`, reviewError);
+      reviews = [];
+    }
+    
     // API 응답을 Product 인터페이스에 맞게 변환
     return {
       id: product.id,
@@ -143,7 +180,7 @@ export const getProductById = async (id: number): Promise<Product | null> => {
       price: product.price || 0,
       originalPrice: product.originalPrice,
       rating: product.rating || 0,
-      reviewCount: product.reviews || product.review_count || 0,
+      reviewCount: reviews.length, // 실제 리뷰 개수로 업데이트
       image: getProductImage(product.image || product.image_url, product.id),
       description: product.description || '',
       ingredients: product.ingredients || [],
@@ -154,7 +191,13 @@ export const getProductById = async (id: number): Promise<Product | null> => {
       isNew: product.isNew || product.is_new || false,
       suitableFor: product.suitableFor || [],
       notSuitableFor: product.notSuitableFor || [],
-      reviews: product.reviews || []
+      reviews: reviews.map((review: any) => ({
+        id: review.id,
+        userName: review.userName || '익명',
+        rating: review.rating || 0,
+        comment: review.comment || '',
+        date: review.date || ''
+      }))
     };
   } catch (error) {
     console.error('❌ 제품 상세 조회 실패:', error)
@@ -244,12 +287,62 @@ export const getCategories = async (): Promise<Category[]> => {
   try {
     console.log('📂 카테고리 목록 조회 중...');
     
-    // API 호출
-    const response = await medicalApi.getCategories() as ApiResponse<Category[]>;
-    return response.data || [];
+    // 먼저 백엔드 API 시도
+    try {
+      const response = await medicalApi.getCategories() as ApiResponse<Category[]>;
+      if (response && response.data) {
+        return response.data;
+      }
+    } catch (apiError) {
+      console.log('💡 백엔드 카테고리 API가 없어 제품에서 카테고리를 추출합니다.');
+    }
+    
+    // API가 없으면 제품 목록에서 카테고리 추출
+    const products = await getProducts();
+    const categorySet = new Set<string>();
+    
+    products.forEach(product => {
+      if (product.category) {
+        categorySet.add(product.category);
+      }
+    });
+    
+    // 카테고리 배열 생성 (아이콘 포함)
+    const categoryIcons: {[key: string]: string} = {
+      'skincare': '🧴',
+      'serum': '💧',
+      'moisturizer': '🧴',
+      'cleanser': '🧼',
+      'sunscreen': '☀️',
+      'toner': '💦',
+      'ampoule': '✨',
+      'cream': '🫧',
+      'essence': '💎',
+      'mask': '😷'
+    };
+    
+    const categories: Category[] = Array.from(categorySet).map(categoryName => ({
+      id: categoryName,
+      name: categoryName === 'skincare' ? '스킨케어' :
+            categoryName === 'serum' ? '세럼' :
+            categoryName === 'moisturizer' ? '모이스처라이저' :
+            categoryName === 'cleanser' ? '클렌저' :
+            categoryName === 'sunscreen' ? '선크림' :
+            categoryName === 'toner' ? '토너' :
+            categoryName === 'ampoule' ? '앰플' :
+            categoryName === 'cream' ? '크림' :
+            categoryName === 'essence' ? '에센스' :
+            categoryName === 'mask' ? '마스크' :
+            categoryName, // 기본값
+      icon: categoryIcons[categoryName] || '🏷️'
+    }));
+    
+    console.log(`✅ 제품에서 추출된 카테고리: ${categories.length}개`);
+    return categories;
   } catch (error) {
     console.error('❌ 카테고리 조회 실패:', error);
-    return [];
+    // 최종 폴백: 기본 카테고리 반환
+    return defaultCategories;
   }
 }
 
@@ -361,15 +454,17 @@ export const getProductShops = async (productId: number): Promise<ShopInfo[]> =>
     }));
   } catch (error) {
     console.error('❌ 제품 쇼핑몰 정보 조회 실패:', error);
+    console.error('💡 백엔드에 /api/products/{id}/shops 엔드포인트가 구현되지 않았습니다.');
     return [];
   }
 }
 
-// 화장품 추천 요청 타입 정의
+// 화장품 추천 요청 타입 정의 (백엔드 스키마에 맞게 수정)
 export interface CosmeticRecommendationRequest {
-  skinType: string;
-  concerns: string[];
-  additionalInfo?: string;
+  diagnosis: string[];     // 피부 고민 (기존 concerns)
+  skin_type: string;      // 피부 타입 (기존 skinType)
+  sensitivity: string;    // 피부 민감도 (새로 추가)
+  additionalInfo?: string; // 추가 정보 (선택사항)
 }
 
 // 화장품 추천 결과 타입 정의
@@ -381,41 +476,72 @@ export interface CosmeticRecommendation {
 // 화장품 추천
 export const getCosmeticRecommendations = async (request: CosmeticRecommendationRequest): Promise<CosmeticRecommendation> => {
   try {
-    console.log('🔍 화장품 추천 요청 중...', request);
+    console.log('🔍 AI 화장품 추천 요청 중...', request);
     
-    // 실제 API 호출
-    const response: any = await medicalApi.getRecommendation(request);
+    // 백엔드 AI 추천 시스템 호출 (/recommend/ai)
+    const response: any = await medicalApi.getRecommendation({
+      diagnosis: request.diagnosis,
+      skin_type: request.skin_type,
+      sensitivity: request.sensitivity
+    });
     
-    // API 응답을 CosmeticRecommendation 타입에 맞게 변환
+    console.log('✅ AI 추천 응답 수신:', response);
+    console.log('🔍 응답 타입 및 길이:', typeof response, Array.isArray(response) ? response.length : 'not array');
+    
+    // 백엔드 응답이 바로 배열 형태인 경우 처리
+    let recommendationList = [];
+    let analysisText = '분석 결과를 불러올 수 없습니다.';
+    
+    if (Array.isArray(response)) {
+      // 응답이 바로 배열인 경우
+      recommendationList = response;
+      analysisText = '맞춤형 화장품을 추천해드렸습니다.';
+    } else if (response && typeof response === 'object') {
+      // 응답이 객체인 경우
+      recommendationList = response.추천리스트 || response['추천 리스트'] || response.products || [];
+      analysisText = response.분석요약 || response['분석 요약'] || response.explanation || '분석 결과를 불러올 수 없습니다.';
+    }
+    
+    console.log('🔍 처리된 추천리스트:', recommendationList);
+    
+    // 백엔드 응답을 프론트엔드 형식에 맞게 변환
     return {
-      products: response.products.map((product: any) => ({
-        id: product.id,
-        name: product.name,
-        brand: product.brand || '',
-        category: product.category || 'skincare',
-        price: product.price || 0,
-        originalPrice: product.originalPrice,
-        rating: product.rating || 0,
-        reviewCount: product.reviews || product.review_count || 0,
-        image: getProductImage(product.image || product.image_url, product.id),
-        description: product.description || '',
-        ingredients: product.ingredients || [],
-        skinType: product.skinTypes || product.skin_types || [],
-        benefits: product.benefits || [],
-        volume: product.volume || '',
-        isPopular: product.isPopular || product.is_popular || false,
-        isNew: product.isNew || product.is_new || false,
-        suitableFor: product.suitableFor || [],
-        notSuitableFor: product.notSuitableFor || [],
-        reviews: product.reviews || []
+      products: recommendationList.map((item: any, index: number) => ({
+        id: index + 1,
+        name: item.제품명 || '',
+        brand: item.제품명?.split(' ')[0] || '',
+        category: item.카테고리 || 'skincare',
+        price: Math.floor(Math.random() * 50000) + 10000, // 임시 가격
+        rating: 4.0 + Math.random() * 1.0,
+        reviewCount: Math.floor(Math.random() * 500) + 50,
+        image: getProductImage(item.이미지 || null, index + 1),
+        description: item.추천이유 || '',
+        ingredients: [],
+        skinType: [request.skin_type],
+        benefits: [item.카테고리],
+        volume: '50ml',
+        isPopular: false,
+        isNew: false,
+        suitableFor: request.diagnosis,
+        notSuitableFor: [],
+        reviews: []
       })),
-      explanation: response.explanation || ''
+      explanation: analysisText
     };
   } catch (error) {
-    console.error('❌ 화장품 추천 실패:', error);
+    console.error('❌ AI 화장품 추천 실패:', error);
+    
+    // 타임아웃 에러인지 확인
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        products: [],
+        explanation: 'AI 분석 시간이 초과되었습니다. 네트워크 상태를 확인하고 다시 시도해주세요.'
+      };
+    }
+    
     return {
       products: [],
-      explanation: '추천 결과를 불러오는데 실패했습니다.'
+      explanation: '추천 결과를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.'
     };
   }
 }
@@ -432,8 +558,18 @@ export const getSkinOptions = async (): Promise<SkinOptions> => {
     console.log('🧴 피부 옵션 조회 중...');
     
     // API 호출
-    const response = await medicalApi.getSkinOptions() as ApiResponse<SkinOptions>;
-    return response.data || { skinTypes: [], concerns: [] };
+    const response = await medicalApi.getSkinOptions() as any;
+    
+    // 백엔드 응답 구조에 맞게 데이터 추출
+    if (response.success && response.data) {
+      return {
+        skinTypes: response.data.skinTypes || [],
+        concerns: response.data.concerns || []
+      };
+    }
+    
+    // 기본값 반환
+    return { skinTypes: [], concerns: [] };
   } catch (error) {
     console.error('❌ 피부 옵션 조회 실패:', error);
     return { skinTypes: [], concerns: [] };
@@ -445,6 +581,92 @@ export async function getSkinAnalysisHistory(userId: number): Promise<any[]> {
   // 예시: return await medicalApi.getSkinAnalysisHistory(userId);
   return [];
 }
+
+// 추천 내역 저장
+export const saveRecommendationHistory = async (data: {
+  userId: number;
+  skinType: string;
+  sensitivity: string;
+  concerns: string[];
+  aiExplanation: string;
+  recommendedProducts: any[];
+}): Promise<boolean> => {
+  try {
+    console.log('💾 추천 내역 저장 중...', data);
+    
+    const response = await medicalApi.saveRecommendationHistory({
+      user_id: data.userId,
+      skin_type: data.skinType,
+      sensitivity: data.sensitivity,
+      concerns: data.concerns,
+      ai_explanation: data.aiExplanation,
+      recommended_products: data.recommendedProducts
+    }) as any;
+    
+    return response.success || false;
+  } catch (error) {
+    console.error('❌ 추천 내역 저장 실패:', error);
+    return false;
+  }
+};
+
+// 화장품 추천 내역 타입 정의 (SkinHistoryScreen에서 사용)
+export interface CosmeticRecommendationHistory {
+  id: number;
+  date: string;
+  skinType: string;
+  concerns: string[];
+  recommendedProducts: {
+    id: number;
+    name: string;
+    brand: string;
+    category: string;
+    image: any;
+  }[];
+}
+
+// 추천 내역 조회
+export const getRecommendationHistory = async (userId: number): Promise<CosmeticRecommendationHistory[]> => {
+  try {
+    console.log('📋 추천 내역 조회 중...', userId);
+    
+    const response = await medicalApi.getRecommendationHistory(userId) as any;
+    
+    if (response.success && response.data) {
+      return response.data.map((item: any) => ({
+        id: item.id,
+        date: item.date,
+        skinType: item.skinType,
+        concerns: item.concerns,
+        recommendedProducts: item.recommendedProducts.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          image: getProductImage(null, product.id) // 기본 이미지 사용
+        }))
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('❌ 추천 내역 조회 실패:', error);
+    return [];
+  }
+};
+
+// 추천 내역 삭제
+export const deleteRecommendationHistory = async (historyId: number): Promise<boolean> => {
+  try {
+    console.log('🗑️ 추천 내역 삭제 중...', historyId);
+    
+    const response = await medicalApi.deleteRecommendationHistory(historyId) as any;
+    return response.success || false;
+  } catch (error) {
+    console.error('❌ 추천 내역 삭제 실패:', error);
+    return false;
+  }
+};
 
 export const productService = {
   getProducts,
@@ -460,4 +682,7 @@ export const productService = {
   getCosmeticRecommendations,
   getSkinOptions,
   getSkinAnalysisHistory,
+  saveRecommendationHistory,
+  getRecommendationHistory,
+  deleteRecommendationHistory,
 }

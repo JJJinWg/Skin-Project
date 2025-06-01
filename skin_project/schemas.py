@@ -42,24 +42,6 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-class ReviewBase(BaseModel):
-    username: str
-    review_text: str
-    skin_type: str
-    skin_concern: str
-    sensitivity: str
-    rating: float
-
-class ReviewCreate(ReviewBase):
-    created_at: datetime | None = None
-
-class Review(ReviewBase):
-    id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 class ProductIngredientBase(BaseModel):
     ingredient: str
 
@@ -155,3 +137,25 @@ class RecommendAIRequest(BaseModel):
     diagnosis: List[str]
     skin_type: str
     sensitivity: str
+
+# 추천 내역 저장용 스키마
+class RecommendationHistoryCreate(BaseModel):
+    user_id: int
+    skin_type: str
+    sensitivity: str
+    concerns: List[str]
+    ai_explanation: str
+    recommended_products: List[dict]  # AI 응답의 제품 리스트
+
+class RecommendationHistoryResponse(BaseModel):
+    id: int
+    user_id: int
+    skin_type: str
+    sensitivity: str
+    concerns: List[str]
+    ai_explanation: str
+    created_at: datetime
+    recommended_products: List[dict]
+    
+    class Config:
+        from_attributes = True

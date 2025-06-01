@@ -18,6 +18,7 @@ import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
 import { diagnosisService } from "../services/diagnosisService"
+import React from "react"
 
 const SkinDiagnosisScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
@@ -163,17 +164,6 @@ const SkinDiagnosisScreen = () => {
 
         {/* 사진 선택 버튼 */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
-            <LinearGradient
-              colors={["#A18CD1", "#FBC2EB"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.photoButtonGradient}
-            >
-              <Text style={styles.photoButtonText}>카메라로 촬영</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.photoButton} onPress={handleSelectPhoto}>
             <LinearGradient
               colors={["#84FAB0", "#8FD3F4"]}

@@ -21,6 +21,8 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { reviewService } from '../services/reviewService';
+import { productService } from '../services/productService';
+import { imageUploadService } from '../services/imageUploadService';
 
 type WriteReviewRouteProps = RouteProp<
   { params: { productId?: number; productName?: string; productImage?: any } },
@@ -105,9 +107,10 @@ const WriteReviewScreen = () => {
       setLoadingProducts(true);
       setProductError(null);
       
-      // reviewService를 사용하여 제품 목록 가져오기
-      const productsData = await reviewService.getProducts();
+      // productService를 사용하여 제품 목록 가져오기 (30개 제품)
+      const productsData = await productService.getProducts(undefined, undefined, undefined, 30);
       setProducts(productsData);
+      console.log('✅ WriteReviewScreen 제품 목록 로딩 성공:', productsData.length, '개');
     } catch (error) {
       console.error('제품 목록 로딩 실패:', error);
       setProductError('제품 목록을 불러올 수 없습니다. 서버 연결을 확인해주세요.');
@@ -124,10 +127,30 @@ const WriteReviewScreen = () => {
     }
   }, [isProductModalVisible]);
   
-  // 이미지 추가 함수 (실제로는 이미지 피커 구현 필요)
-  const handleAddImage = () => {
-    // 실제 구현에서는 react-native-image-picker 등을 사용
-    Alert.alert('알림', '이미지 선택 기능은 개발 중입니다.');
+  // 이미지 추가 함수 (바로 갤러리에서 선택)
+  const handleAddImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('알림', '최대 5장까지 추가할 수 있습니다.');
+      return;
+    }
+
+    try {
+      // Alert 없이 바로 갤러리에서 이미지 선택 (카메라 옵션도 포함됨)
+      const result = await imageUploadService.pickImageFromGallery({
+        quality: 0.8,
+        maxWidth: 800,
+        maxHeight: 600,
+      });
+
+      if (result.success && result.uri) {
+        setImages(prev => [...prev, result.uri!]);
+      } else if (result.error && !result.error.includes('취소')) {
+        Alert.alert('오류', result.error);
+      }
+    } catch (error) {
+      console.error('이미지 선택 실패:', error);
+      Alert.alert('오류', '이미지 선택 중 오류가 발생했습니다.');
+    }
   };
   
   // 이미지 삭제 함수
@@ -204,7 +227,7 @@ const WriteReviewScreen = () => {
   const handleSelectProduct = (product: any) => {
     setProductId(product.id);
     setProductName(product.name);
-    setProductImage(product.image || require('../assets/product1.png'));
+    setProductImage(product.image || { uri: 'https://via.placeholder.com/150?text=Product+Image' });
     setProductModalVisible(false);
   };
   
@@ -321,7 +344,7 @@ const WriteReviewScreen = () => {
             
             {images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>
-                <Image source={require('../assets/product1.png')} style={styles.uploadedImage} />
+                <Image source={{ uri: image }} style={styles.uploadedImage} />
                 <TouchableOpacity 
                   style={styles.removeImageButton}
                   onPress={() => handleRemoveImage(index)}
@@ -422,7 +445,7 @@ const WriteReviewScreen = () => {
                   style={styles.productItem}
                   onPress={() => handleSelectProduct(product)}
                 >
-                    <Image source={product.image || require('../assets/product1.png')} style={styles.productItemImage} />
+                    <Image source={product.image || { uri: 'https://via.placeholder.com/150?text=Product+Image' }} style={styles.productItemImage} />
                   <Text style={styles.productItemName}>{product.name}</Text>
                 </TouchableOpacity>
                 ))

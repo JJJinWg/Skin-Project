@@ -37,6 +37,7 @@ interface SkinOptions {
 const FindCosmeticsScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
   const [selectedSkinType, setSelectedSkinType] = useState<string>("")
+  const [selectedSensitivity, setSelectedSensitivity] = useState<string>("")
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([])
   const [additionalInfo, setAdditionalInfo] = useState<string>("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -46,6 +47,9 @@ const FindCosmeticsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("전체")
   const [skinOptions, setSkinOptions] = useState<SkinOptions>({ skinTypes: [], concerns: [] })
   const [isLoadingOptions, setIsLoadingOptions] = useState(true)
+
+  // 피부 민감도 옵션
+  const sensitivityOptions = ["낮음", "보통", "높음"];
 
   // 피부 타입과 고민 옵션 로드
   useEffect(() => {
@@ -100,6 +104,11 @@ const FindCosmeticsScreen = () => {
       return
     }
 
+    if (!selectedSensitivity) {
+      Alert.alert("피부 민감도를 선택해주세요.")
+      return
+    }
+
     if (selectedConcerns.length === 0) {
       Alert.alert("최소 한 개 이상의 피부 고민을 선택해주세요.")
       return
@@ -108,10 +117,12 @@ const FindCosmeticsScreen = () => {
     setIsAnalyzing(true)
 
     try {
+      // 백엔드 AI 추천 시스템 스키마에 맞게 요청 데이터 구성
       const result = await productService.getCosmeticRecommendations({
-        skinType: selectedSkinType,
-        concerns: selectedConcerns,
-        additionalInfo: additionalInfo
+        diagnosis: selectedConcerns,        // concerns -> diagnosis로 변경
+        skin_type: selectedSkinType,       // skinType -> skin_type로 변경  
+        sensitivity: selectedSensitivity,   // 민감도 추가
+        additionalInfo: additionalInfo      // 추가 정보는 유지
       });
 
       setRecommendedCosmetics(result.products);
@@ -307,6 +318,25 @@ const FindCosmeticsScreen = () => {
                   </TouchableOpacity>
                 ))
               )}
+            </View>
+          </View>
+
+          {/* 피부 민감도 선택 */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>피부 민감도</Text>
+            <Text style={styles.sectionSubtitle}>자신의 피부 민감도를 선택해주세요.</Text>
+            <View style={styles.optionsContainer}>
+              {sensitivityOptions.map((sensitivity) => (
+                <TouchableOpacity
+                  key={sensitivity}
+                  style={[styles.optionButton, selectedSensitivity === sensitivity && styles.selectedOptionButton]}
+                  onPress={() => setSelectedSensitivity(sensitivity)}
+                >
+                  <Text style={[styles.optionButtonText, selectedSensitivity === sensitivity && styles.selectedOptionButtonText]}>
+                    {sensitivity}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 

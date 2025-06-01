@@ -123,28 +123,12 @@ const SkinHistoryScreen = () => {
     const loadRecommendations = async () => {
       try {
         setRecommendationsLoading(true)
-        // 예시 요청 객체 (실제 사용자의 피부 타입/고민 등으로 대체)
-        const request = {
-          skinType: '복합성',
-          concerns: ['건조함', '모공 확장'],
-          additionalInfo: '',
-        }
-        const recommendation = await productService.getCosmeticRecommendations(request)
-        // CosmeticRecommendation을 CosmeticRecommendationHistory로 변환
-        const historyItem = {
-          id: Date.now(),
-          date: new Date().toISOString().slice(0, 10),
-          skinType: request.skinType,
-          concerns: request.concerns,
-          recommendedProducts: recommendation.products.map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            category: product.category,
-            image: product.image,
-          })),
-        }
-        setRecommendationHistory([historyItem])
+        
+        // 실제 저장된 추천 내역 조회
+        const savedRecommendations = await productService.getRecommendationHistory(1); // 임시 사용자 ID
+        setRecommendationHistory(savedRecommendations)
+        
+        console.log(`📋 화장품 추천 내역: ${savedRecommendations.length}개 로드됨`);
       } catch (error) {
         console.error('화장품 추천 내역 로드 실패:', error)
         Alert.alert('오류', '화장품 추천 내역을 불러오는데 실패했습니다.')

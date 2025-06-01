@@ -1,4 +1,5 @@
-from fastapi import Body, APIRouter
+from fastapi import Body, APIRouter, Depends
+from sqlalchemy.orm import Session
 from schemas import RecommendAIRequest
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
@@ -9,7 +10,7 @@ from dotenv import load_dotenv
 router = APIRouter()
 
 # 환경변수 로딩
-load_dotenv()
+load_dotenv('config.env')
 
 # 모델 초기화
 model = SentenceTransformer("jhgan/ko-sbert-nli")
@@ -29,8 +30,17 @@ INDEXES = {
     "크림": "cream"
 }
 
+# 데이터베이스 세션 의존성
+def get_db():
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 @router.post("/recommend/ai")
-def recommend_ai(data: RecommendAIRequest = Body(...)):
+def recommend_ai(data: RecommendAIRequest = Body(...), db: Session = Depends(get_db)):
     # Pinecone API 키 확인
     if not pc:
         return {
@@ -126,6 +136,34 @@ def recommend_ai(data: RecommendAIRequest = Body(...)):
                 "제품명": line.split(":")[0].strip(),
                 "추천이유": line.split(":")[-1].strip()
             })
+
+    # 4. 추천 결과를 DB에 자동 저장
+    try:
+        from crud import create_recommendation_history
+        
+        # 추천 내역 저장용 데이터 구성
+        recommendation_data = {
+            "user_id": getattr(data, 'user_id', 1),  # 임시 사용자 ID
+            "skin_type": data.skin_type,
+            "sensitivity": data.sensitivity,
+            "concerns": data.diagnosis,
+            "ai_explanation": analysis_response.choices[0].message.content.strip(),
+            "recommended_products": [
+                {
+                    "product_name": item.get("제품명", ""),
+                    "product_brand": "AI 추천",  # 브랜드 정보가 없으므로 기본값
+                    "product_category": item.get("카테고리", ""),
+                    "reason": item.get("추천이유", "")
+                } for item in enriched_list
+            ]
+        }
+        
+        saved_history = create_recommendation_history(db, recommendation_data)
+        print(f"✅ AI 추천 결과 자동 저장 완료: ID {saved_history.id}")
+        
+    except Exception as save_error:
+        print(f"⚠️ 추천 내역 저장 실패: {save_error}")
+        # 저장 실패해도 추천 결과는 반환
 
     return {
         "분석 요약": analysis_response.choices[0].message.content.strip(),

@@ -15,9 +15,10 @@ import {
   Dimensions,
   Animated,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { getProducts, Product, getCategories, Category } from '../services/productService';
+import { getProducts, Product, getCategories, Category, productService } from '../services/productService';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,30 @@ interface ReviewData {
     rating: number;
     likes: number;
   };
+  expanded?: boolean;
+  allReviews?: Review[];
+  loadingReviews?: boolean;
+}
+
+// 개별 리뷰 인터페이스
+interface Review {
+  id: number;
+  userName: string;
+  comment: string;
+  rating: number;
+  date: string;
+  helpful: number;
+  images?: string[];
+}
+
+// 이미지 매핑 함수 (productService와 동일)
+const getProductImage = (imageUrl: string | null, productId: number) => {
+  if (imageUrl) {
+    return { uri: imageUrl }
+  }
+  
+  // 기본 이미지 URL 반환
+  return { uri: `https://via.placeholder.com/150?text=Product+${productId}` }
 }
 
 const ProductReviewScreen = () => {
@@ -70,32 +95,91 @@ const ProductReviewScreen = () => {
         setLoading(true);
         console.log('📦 제품 리뷰 데이터 로드 중...');
         
-        // 실제 API에서 제품 목록 가져오기
-        const products = await getProducts();
+        // productService의 getProducts 사용 (limit=30으로 설정)
+        const products = await getProducts(undefined, undefined, undefined, 30);
         
-        // 제품 데이터를 리뷰 형식으로 변환
-        const reviewData: ReviewData[] = products.map((product: Product) => ({
+        // 각 제품별로 리뷰 데이터 불러오기
+        const reviewData: ReviewData[] = [];
+        
+        for (const product of products) {
+          try {
+            // 간단한 이미지 디버깅
+            const productAny = product as any;
+            console.log(`🖼️ 제품 ${product.id} 이미지:`, product.image);
+            
+            // getProductImage 함수 사용
+            const productImage = getProductImage(product.image?.uri || productAny.image_url || productAny.imageUrl, product.id);
+            console.log(`✅ 제품 ${product.id} 최종 이미지:`, productImage);
+            
+            // 각 제품의 리뷰 조회
+            const reviewResponse = await fetch(`http://10.0.2.2:8000/api/reviews/product/${product.id}`);
+            const reviews = await reviewResponse.json();
+            
+            // 리뷰가 있는 경우
+            if (Array.isArray(reviews) && reviews.length > 0) {
+              const latestReview = reviews[0]; // 첫 번째 리뷰를 최신으로 간주
+              
+              reviewData.push({
+                id: product.id,
+                productName: product.name,
+                brand: product.brand,
+                category: product.category,
+                rating: product.rating,
+                reviewCount: reviews.length,
+                image: productImage,
+                latestReview: {
+                  user: latestReview.userName || '익명 사용자',
+                  content: latestReview.comment || latestReview.content || '좋은 제품입니다.',
+                  date: latestReview.date || new Date().toISOString().split('T')[0],
+                  rating: latestReview.rating || 4.0,
+                  likes: latestReview.helpful || 0,
+                },
+              });
+            } else {
+              // 리뷰가 없는 경우에도 표시
+              reviewData.push({
+                id: product.id,
+                productName: product.name,
+                brand: product.brand,
+                category: product.category,
+                rating: product.rating,
+                reviewCount: 0,
+                image: productImage,
+                latestReview: {
+                  user: '첫 리뷰 작성자',
+                  content: '이 제품에 대한 첫 번째 리뷰를 작성해보세요! 실제 사용 후기를 공유해주시면 다른 분들에게 큰 도움이 됩니다.',
+                  date: new Date().toISOString().split('T')[0],
+                  rating: 0,
+                  likes: 0,
+                },
+              });
+            }
+          } catch (reviewError) {
+            console.warn(`⚠️ 제품 ${product.id} 리뷰 조회 실패:`, reviewError);
+            
+            // 실제 이미지 URL 사용 (HomeScreen과 동일한 로직)
+            const productAny = product as any;
+            const productImage = getProductImage(product.image?.uri || productAny.image_url || productAny.imageUrl, product.id);
+            
+            // 리뷰 조회 실패 시에도 제품은 표시
+            reviewData.push({
           id: product.id,
           productName: product.name,
           brand: product.brand,
-          category: product.category,
+              category: product.category,
           rating: product.rating,
-          reviewCount: product.reviewCount,
-          image: product.image,
-          latestReview: product.reviews[0] ? {
-            user: product.reviews[0].userName,
-            content: product.reviews[0].comment,
-            date: product.reviews[0].date,
-            rating: product.reviews[0].rating,
-            likes: 0, // API에서 likes 정보가 없는 경우 기본값
-          } : {
-            user: '사용자',
-            content: '리뷰가 없습니다.',
-            date: new Date().toISOString(),
-            rating: 0,
-            likes: 0,
+              reviewCount: 0,
+              image: productImage,
+          latestReview: {
+                user: '첫 리뷰 작성자',
+                content: '이 제품에 대한 첫 번째 리뷰를 작성해보세요! 실제 사용 후기를 공유해주시면 다른 분들에게 큰 도움이 됩니다.',
+                date: new Date().toISOString().split('T')[0],
+                rating: 0,
+                likes: 0,
           },
-        }));
+            });
+          }
+        }
         
         setReviews(reviewData);
         console.log(`✅ 제품 리뷰 데이터 로드 성공: ${reviewData.length}개`);
@@ -138,6 +222,111 @@ const ProductReviewScreen = () => {
     outputRange: [0, -50],
     extrapolate: 'clamp',
   });
+
+  // 제품별 리뷰 목록 로드 함수
+  const loadProductReviews = async (productId: number) => {
+    try {
+      console.log(`📡 제품 ${productId} 리뷰 요청 시작...`);
+      
+      // 10초 타임아웃 설정
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`http://10.0.2.2:8000/api/reviews/product/${productId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      console.log(`📡 제품 ${productId} 응답 상태:`, response.status);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`📋 제품 ${productId}에 대한 리뷰가 없습니다.`);
+          return [];
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+
+      const allReviews = await response.json();
+      console.log(`✅ 제품 ${productId} 리뷰 로드 성공:`, allReviews.length, '개');
+      
+      if (Array.isArray(allReviews)) {
+        return allReviews.map((review: any) => ({
+          id: review.id,
+          userName: review.userName || '익명 사용자',
+          comment: review.comment || review.content || '',
+          rating: review.rating || 0,
+          date: review.date || new Date().toISOString().split('T')[0],
+          helpful: review.helpful || 0,
+          images: review.images || [],
+        }));
+      }
+      return [];
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Network request failed')) {
+        console.error(`🌐 제품 ${productId} 네트워크 연결 실패 - 서버가 응답하지 않습니다.`);
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`⏰ 제품 ${productId} 요청 타임아웃 (10초 초과)`);
+      } else if (error instanceof Error) {
+        console.error(`❌ 제품 ${productId} 리뷰 로드 실패:`, error.message);
+      } else {
+        console.error(`❌ 제품 ${productId} 알 수 없는 오류:`, error);
+      }
+      return [];
+    }
+  };
+
+  // 아코디언 토글 함수
+  const toggleProductReviews = async (productId: number) => {
+    const targetReview = reviews.find(r => r.id === productId);
+    
+    if (targetReview?.expanded) {
+      // 이미 펼쳐져 있으면 접기
+      setReviews(prevReviews => 
+        prevReviews.map(review => 
+          review.id === productId 
+            ? { ...review, expanded: false, allReviews: undefined, loadingReviews: false }
+            : review
+        )
+      );
+    } else {
+      // 접혀있으면 펼치기 - 로딩 시작
+      setReviews(prevReviews => 
+        prevReviews.map(review => 
+          review.id === productId 
+            ? { ...review, expanded: true, loadingReviews: true }
+            : review
+        )
+      );
+
+      // 리뷰 데이터 로드
+      try {
+        const allReviews = await loadProductReviews(productId);
+        
+        setReviews(prevReviews => 
+          prevReviews.map(review => 
+            review.id === productId 
+              ? { ...review, allReviews, loadingReviews: false }
+              : review
+          )
+        );
+      } catch (error) {
+        console.error('리뷰 로드 중 오류:', error);
+        setReviews(prevReviews => 
+          prevReviews.map(review => 
+            review.id === productId 
+              ? { ...review, loadingReviews: false, expanded: false }
+              : review
+          )
+        );
+      }
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -224,8 +413,10 @@ const ProductReviewScreen = () => {
         </View>
       ) : filteredReviews.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
-          <Text style={styles.emptySubText}>다른 검색어를 시도해보세요</Text>
+          <Text style={styles.emptyText}>등록된 리뷰가 없습니다</Text>
+          <Text style={styles.emptySubText}>
+            {searchQuery ? '다른 검색어를 시도해보세요' : '아직 작성된 리뷰가 없습니다.\n첫 번째 리뷰를 작성해보세요!'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -236,11 +427,12 @@ const ProductReviewScreen = () => {
           scrollEnabled={true}
           nestedScrollEnabled={true}
           renderItem={({ item }) => (
+            <View style={styles.reviewCard}>
+              {/* 제품 정보 헤더 - 클릭 시 아코디언 토글 */}
             <TouchableOpacity 
-              style={styles.reviewCard}
-              onPress={() => navigation.navigate('ProductDetailScreen', { id: item.id })}
+                style={styles.reviewCardHeader}
+                onPress={() => toggleProductReviews(item.id)}
             >
-              <View style={styles.reviewCardHeader}>
                 <Image source={item.image} style={styles.productImage} />
                 <View style={styles.productInfo}>
                   <Text style={styles.brandName}>{item.brand}</Text>
@@ -250,11 +442,18 @@ const ProductReviewScreen = () => {
                     <Text style={styles.reviewCount}>리뷰 {item.reviewCount}개</Text>
                   </View>
                 </View>
+                {/* 펼침/접힘 아이콘 */}
+                <View style={styles.expandIcon}>
+                  <Text style={styles.expandIconText}>
+                    {item.expanded ? '🔼' : '🔽'}
+                  </Text>
               </View>
+              </TouchableOpacity>
               
+              {/* 최신 리뷰 미리보기 (항상 표시) */}
               <View style={styles.divider} />
-              
               <View style={styles.latestReviewContainer}>
+                <Text style={styles.previewLabel}>최신 리뷰</Text>
                 <View style={styles.reviewerInfo}>
                   <Text style={styles.reviewerName}>{item.latestReview.user}</Text>
                   <View style={styles.reviewRating}>
@@ -265,7 +464,9 @@ const ProductReviewScreen = () => {
                     ))}
                   </View>
                 </View>
-                <Text style={styles.reviewContent}>{item.latestReview.content}</Text>
+                <Text style={styles.reviewContent} numberOfLines={2}>
+                  {item.latestReview.content}
+                </Text>
                 <View style={styles.reviewFooter}>
                   <Text style={styles.reviewDate}>{item.latestReview.date}</Text>
                   <View style={styles.reviewActions}>
@@ -276,7 +477,80 @@ const ProductReviewScreen = () => {
                   </View>
                 </View>
               </View>
+
+              {/* 아코디언 펼쳐진 내용 - 모든 리뷰 목록 */}
+              {item.expanded && (
+                <View style={styles.expandedContent}>
+                  <View style={styles.divider} />
+                  <Text style={styles.allReviewsTitle}>모든 리뷰 ({item.reviewCount}개)</Text>
+                  
+                  {item.loadingReviews ? (
+                    <View style={styles.loadingReviewsContainer}>
+                      <ActivityIndicator size="small" color="#FF9A9E" />
+                      <Text style={styles.loadingReviewsText}>리뷰를 불러오는 중...</Text>
+                    </View>
+                  ) : item.allReviews && item.allReviews.length > 0 ? (
+                    <View style={styles.allReviewsList}>
+                      {item.allReviews.map((review, index) => (
+                        <View key={review.id} style={styles.individualReview}>
+                          <View style={styles.reviewerInfo}>
+                            <Text style={styles.reviewerName}>{review.userName}</Text>
+                            <View style={styles.reviewRating}>
+                              {Array(5).fill(0).map((_, starIndex) => (
+                                <Text key={starIndex} style={styles.starIcon}>
+                                  {starIndex < Math.floor(review.rating) ? '★' : '☆'}
+                                </Text>
+                              ))}
+                            </View>
+                          </View>
+                          <Text style={styles.reviewContent}>{review.comment}</Text>
+                          {review.images && review.images.length > 0 && (
+                            <View style={styles.reviewImages}>
+                              {review.images.slice(0, 3).map((imageUri, imgIndex) => (
+                                <Image 
+                                  key={imgIndex} 
+                                  source={{ uri: imageUri }} 
+                                  style={styles.reviewImage} 
+                                />
+                              ))}
+                              {review.images.length > 3 && (
+                                <View style={styles.moreImagesIndicator}>
+                                  <Text style={styles.moreImagesText}>+{review.images.length - 3}</Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
+                          <View style={styles.reviewFooter}>
+                            <Text style={styles.reviewDate}>{review.date}</Text>
+                            <View style={styles.reviewActions}>
+                              <TouchableOpacity style={styles.likeButton}>
+                                <Text style={styles.likeIcon}>♥</Text>
+                                <Text style={styles.likeCount}>{review.helpful}</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          {index < item.allReviews!.length - 1 && (
+                            <View style={styles.reviewDivider} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={styles.noMoreReviewsContainer}>
+                      <Text style={styles.noMoreReviewsText}>다른 리뷰가 없습니다</Text>
+                    </View>
+                  )}
+                  
+                  {/* 제품 상세 보기 버튼 */}
+                  <TouchableOpacity 
+                    style={styles.productDetailButton}
+                    onPress={() => navigation.navigate('ProductDetailScreen', { id: item.id })}
+                  >
+                    <Text style={styles.productDetailButtonText}>제품 상세 보기</Text>
             </TouchableOpacity>
+                </View>
+              )}
+            </View>
           )}
         />
       )}
@@ -473,6 +747,12 @@ const styles = StyleSheet.create({
   latestReviewContainer: {
     paddingHorizontal: 5,
   },
+  previewLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 10,
+  },
   reviewerInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -574,6 +854,85 @@ const styles = StyleSheet.create({
   emptySubText: {
     fontSize: 14,
     color: '#6C757D',
+  },
+  expandIcon: {
+    marginLeft: 'auto',
+  },
+  expandIconText: {
+    fontSize: 14,
+    color: '#6C757D',
+  },
+  expandedContent: {
+    padding: 15,
+  },
+  allReviewsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 10,
+  },
+  loadingReviewsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingReviewsText: {
+    fontSize: 14,
+    color: '#6C757D',
+    marginLeft: 10,
+  },
+  allReviewsList: {
+    marginVertical: 10,
+  },
+  individualReview: {
+    marginBottom: 15,
+    paddingBottom: 15,
+  },
+  reviewDivider: {
+    height: 1,
+    backgroundColor: '#E9ECEF',
+    marginTop: 15,
+  },
+  noMoreReviewsContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  noMoreReviewsText: {
+    fontSize: 14,
+    color: '#6C757D',
+    fontStyle: 'italic',
+  },
+  productDetailButton: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#FF9A9E',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  productDetailButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  reviewImages: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 5,
+  },
+  moreImagesIndicator: {
+    padding: 5,
+    backgroundColor: '#FF9A9E',
+    borderRadius: 8,
+  },
+  moreImagesText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });
 
