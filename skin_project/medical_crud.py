@@ -241,7 +241,25 @@ def get_available_times(db: Session, doctor_id: int, date: date):
         start_time = doctor.available_times.get('start', '09:00')
         end_time = doctor.available_times.get('end', '18:00')
         
-        # 시간 슬롯 생성 로직 (간단 버전)
-        # 실제로는 더 복잡한 로직이 필요할 수 있음
+        # 시작 시간과 종료 시간을 datetime.time 객체로 변환
+        start_hour, start_minute = map(int, start_time.split(':'))
+        end_hour, end_minute = map(int, end_time.split(':'))
+        
+        current_hour = start_hour
+        current_minute = start_minute
+        
+        while (current_hour < end_hour) or (current_hour == end_hour and current_minute < end_minute):
+            # 현재 시간을 문자열로 변환 (HH:MM 형식)
+            current_time = f"{current_hour:02d}:{current_minute:02d}"
+            
+            # 이미 예약된 시간이 아닌 경우에만 추가
+            if current_time not in booked_times:
+                available_times.append(current_time)
+            
+            # 30분 추가
+            current_minute += 30
+            if current_minute >= 60:
+                current_hour += 1
+                current_minute = 0
         
     return available_times 

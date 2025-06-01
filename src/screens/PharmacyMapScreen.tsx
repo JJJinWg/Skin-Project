@@ -1,7 +1,7 @@
 // 약국 지도 화면
 
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, StatusBar, Linking, ActivityIndicator } from "react-native"
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, StatusBar, Linking, ActivityIndicator, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import Ionicons from "react-native-vector-icons/Ionicons"
 import MaterialIcons from "react-native-vector-icons/MaterialIcons"
@@ -9,6 +9,7 @@ import FontAwesome from "react-native-vector-icons/FontAwesome"
 import { useNavigation } from "@react-navigation/native"
 import type { StackNavigationProp } from "@react-navigation/stack"
 import type { RootStackParamList } from "../types/navigation"
+import { medicalApi } from "../services/apiClient"
 
 type PharmacyNavigationProp = StackNavigationProp<RootStackParamList, "PharmacyMapScreen">
 
@@ -26,6 +27,13 @@ interface Pharmacy {
 
 // 필터 옵션
 type FilterOption = "전체" | "영업중" | "거리순" | "평점순"
+
+// API 응답 타입 정의
+interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success?: boolean;
+}
 
 const PharmacyMapScreen = () => {
   const navigation = useNavigation<PharmacyNavigationProp>()
@@ -45,68 +53,29 @@ const PharmacyMapScreen = () => {
     try {
       setLoading(true)
       
-      // 실제 API 호출 (현재는 더미 데이터로 시뮬레이션)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // API 호출 시뮬레이션
+      // API 호출
+      const response = await medicalApi.getPharmacies() as ApiResponse<any[]>;
+      const pharmaciesData = response.data;
       
-      const dummyPharmacies: Pharmacy[] = [
-        {
-          id: "1",
-          name: "건강약국",
-          address: "서울특별시 강남구 테헤란로 123",
-          distance: "0.3km",
-          isOpen: true,
-          openTime: "09:00 - 21:00",
-          phone: "02-1234-5678",
-          rating: 4.5,
-        },
-        {
-          id: "2",
-          name: "행복약국",
-          address: "서울특별시 강남구 역삼로 45",
-          distance: "0.5km",
-          isOpen: true,
-          openTime: "08:30 - 20:00",
-          phone: "02-2345-6789",
-          rating: 4.2,
-        },
-        {
-          id: "3",
-          name: "미소약국",
-          address: "서울특별시 강남구 선릉로 67",
-          distance: "0.8km",
-          isOpen: false,
-          openTime: "09:00 - 19:00",
-          phone: "02-3456-7890",
-          rating: 4.7,
-        },
-        {
-          id: "4",
-          name: "온누리약국",
-          address: "서울특별시 강남구 삼성로 89",
-          distance: "1.2km",
-          isOpen: true,
-          openTime: "08:00 - 22:00",
-          phone: "02-4567-8901",
-          rating: 4.0,
-        },
-        {
-          id: "5",
-          name: "새봄약국",
-          address: "서울특별시 강남구 봉은사로 101",
-          distance: "1.5km",
-          isOpen: true,
-          openTime: "09:00 - 20:00",
-          phone: "02-5678-9012",
-          rating: 4.3,
-        },
-      ]
+      // API 응답을 Pharmacy 타입에 맞게 변환
+      const transformedPharmacies = pharmaciesData.map((pharmacy: any) => ({
+        id: pharmacy.id,
+        name: pharmacy.name,
+        address: pharmacy.address,
+        distance: pharmacy.distance,
+        isOpen: pharmacy.isOpen,
+        openTime: pharmacy.openTime,
+        phone: pharmacy.phone,
+        rating: pharmacy.rating,
+      }));
       
-      setAllPharmacies(dummyPharmacies)
-      setPharmacies(dummyPharmacies)
+      setAllPharmacies(transformedPharmacies);
+      setPharmacies(transformedPharmacies);
     } catch (error) {
-      console.error('약국 데이터 로드 실패:', error)
+      console.error('약국 데이터 로드 실패:', error);
+      Alert.alert('오류', '약국 정보를 불러오는데 실패했습니다.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 

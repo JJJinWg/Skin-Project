@@ -1,4 +1,4 @@
- // 의사 전체보기 및 예약가능 화면
+// 의사 전체보기 및 예약가능 화면
 
 import { useState, useEffect } from "react"
 import {
@@ -12,6 +12,7 @@ import {
   StatusBar,
   ActivityIndicator,
   TextInput,
+  Alert,
 } from "react-native"
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
@@ -35,6 +36,7 @@ const ReservationScreen = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSpecialty, setSelectedSpecialty] = useState("all")
 
@@ -46,25 +48,39 @@ const ReservationScreen = () => {
     { id: "internal", name: "내과" },
   ]
 
-  // 의사 데이터 가져오기 (실제 API에서 가져옴)
+  // 의사 데이터 가져오기 (실제 API에서만 가져옴)
   useEffect(() => {
     const loadDoctors = async () => {
       try {
         setLoading(true)
+        setError(null)
         console.log('📋 예약 화면 의사 목록 로딩 중...')
         const doctorsData = await appointmentService.getReservationDoctors()
         
+        // 각 의사별로 가장 가까운 예약 가능 시간 조회
+        const today = new Date()
+        const todayString = today.toISOString().split('T')[0]
+        const nextAvailablePromises = doctorsData.map(async (doctor: any) => {
+          try {
+            const times = await appointmentService.getAvailableTimeSlots(doctor.id, todayString)
+            return times && times.length > 0 ? times[0] : '예약 문의'
+          } catch {
+            return '예약 문의'
+          }
+        })
+        const nextAvailables = await Promise.all(nextAvailablePromises)
+        
         // API 데이터를 화면에 맞게 변환
-        const transformedDoctors = doctorsData.map((doctor: any) => ({
+        const transformedDoctors = doctorsData.map((doctor: any, idx: number) => ({
           id: doctor.id,
           name: doctor.name,
           specialty: doctor.specialization || doctor.specialty,
           specialization: doctor.specialization,
-          rating: 4.5, // 기본값 (실제로는 API에서 받아야 함)
-          reviews: 100, // 기본값 (실제로는 API에서 받아야 함)
-          available: true, // 기본값 (실제로는 API에서 받아야 함)
-          nextAvailable: "오늘 15:00", // 기본값 (실제로는 API에서 받아야 함)
-          image: require("../assets/doctor1.png"), // 기본 이미지
+          rating: doctor.rating || 0,
+          reviews: doctor.review_count || 0,
+          available: doctor.available !== false,
+          nextAvailable: nextAvailables[idx],
+          image: require("../assets/doctor1.png"), // 모든 의사에게 같은 기본 이미지
         }))
         
         setDoctors(transformedDoctors)
@@ -72,6 +88,9 @@ const ReservationScreen = () => {
         console.log('✅ 의사 목록 로딩 완료:', transformedDoctors.length, '명')
       } catch (error) {
         console.error('❌ 의사 목록 로딩 실패:', error)
+        setError('의사 목록을 불러올 수 없습니다. 서버 연결을 확인해주세요.')
+        setDoctors([])
+        setFilteredDoctors([])
       } finally {
         setLoading(false)
       }
@@ -123,6 +142,52 @@ const ReservationScreen = () => {
           </Text>
         ))}
       </View>
+    )
+  }
+
+  // 재시도 함수
+  const handleRetry = () => {
+    const loadDoctors = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const doctorsData = await appointmentService.getReservationDoctors()
+        
+        const transformedDoctors = doctorsData.map((doctor: any) => ({
+          id: doctor.id,
+          name: doctor.name,
+          specialty: doctor.specialization || doctor.specialty,
+          specialization: doctor.specialization,
+          rating: doctor.rating || 0,
+          reviews: doctor.review_count || 0,
+          available: doctor.available !== false,
+          nextAvailable: doctor.next_available || "예약 문의",
+          image: require("../assets/doctor1.png"), // 모든 의사에게 같은 기본 이미지
+        }))
+        
+        setDoctors(transformedDoctors)
+        setFilteredDoctors(transformedDoctors)
+      } catch (error) {
+        setError('의사 목록을 불러올 수 없습니다. 서버 연결을 확인해주세요.')
+        setDoctors([])
+        setFilteredDoctors([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadDoctors()
+  }
+
+  // 의사 이미지 렌더링 (에러 처리 포함)
+  const renderDoctorImage = (item: Doctor) => {
+    return (
+      <Image 
+        source={item.image} 
+        style={styles.doctorImage}
+        onError={() => {
+          console.log('의사 이미지 로드 실패:', item.name)
+        }}
+      />
     )
   }
 
@@ -185,6 +250,15 @@ const ReservationScreen = () => {
           <ActivityIndicator size="large" color="#FF9A9E" />
           <Text style={styles.loadingText}>의사 목록을 불러오는 중...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>연결 오류</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryButtonText}>다시 시도</Text>
+          </TouchableOpacity>
+        </View>
       ) : filteredDoctors.length > 0 ? (
         <FlatList
           data={filteredDoctors}
@@ -200,7 +274,7 @@ const ReservationScreen = () => {
                 })
               }
             >
-              <Image source={item.image} style={styles.doctorImage} />
+              {renderDoctorImage(item)}
               <View style={styles.doctorInfo}>
                 <View style={styles.doctorNameRow}>
                   <Text style={styles.doctorName}>{item.name}</Text>
@@ -481,6 +555,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6C757D",
     textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorIcon: {
+    fontSize: 24,
+    color: "#FF9A9E",
+    marginBottom: 10,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#212529",
+    marginBottom: 10,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: "#6C757D",
+    marginBottom: 20,
+  },
+  retryButton: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#FF9A9E",
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
   },
 })
 

@@ -93,3 +93,32 @@ class ProductBenefit(Base):
 
     # 관계 설정
     product = relationship("Product", back_populates="benefits")
+
+class Shop(Base):
+    __tablename__ = "shops"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True, index=True)
+    url = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
+
+    # 관계 설정
+    product_shops = relationship("ProductShop", back_populates="shop")
+
+class ProductShop(Base):
+    __tablename__ = "product_shops"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
+    price = Column(Integer, nullable=False)
+    shipping = Column(String, nullable=True)
+    shipping_fee = Column(Integer, nullable=True)
+    installment = Column(String, nullable=True)
+    is_free_shipping = Column(Boolean, default=False)
+    is_lowest_price = Column(Boolean, default=False)
+    is_card_discount = Column(Boolean, default=False)
+
+    # 관계 설정
+    shop = relationship("Shop", back_populates="product_shops")
+    product = relationship("Product")

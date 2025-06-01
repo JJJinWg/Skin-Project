@@ -29,6 +29,16 @@ export interface Appointment {
   images?: string[];
 }
 
+// ProfileScreen용 예약 타입 (화면에서 사용하는 형태)
+export interface ProfileAppointment {
+  id: number;
+  doctorName: string;
+  specialty: string;
+  date: string;
+  time: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+}
+
 // 시간 관련 유틸리티 함수들
 const timeUtils = {
   // 시간 문자열을 분으로 변환
@@ -182,10 +192,21 @@ export const appointmentService = {
   getAvailableTimeSlots: async (doctorId: number, date: string): Promise<string[]> => {
     try {
       console.log(`⏰ 예약 가능 시간 조회 중... 의사 ID: ${doctorId}, 날짜: ${date}`);
-      
       // 실제 API 시도
-      const timeSlots = await medicalApi.getDoctorAvailableTimes(doctorId, date) as string[];
-      return timeSlots;
+      const result = await medicalApi.getDoctorAvailableTimes(doctorId, date) as any;
+      // 백엔드가 { availableTimes: [{time, available}]} 또는 { availableTimes: string[] } 형태로 반환한다고 가정
+      if (Array.isArray(result)) {
+        // 구버전: 바로 배열 반환
+        return result;
+      } else if (result && Array.isArray(result.availableTimes)) {
+        // 신버전: availableTimes 필드만 추출
+        // [{time, available}] 형태면 time만 추출
+        if (typeof result.availableTimes[0] === 'object') {
+          return result.availableTimes.filter((t: any) => t.available !== false).map((t: any) => t.time);
+        }
+        return result.availableTimes;
+      }
+      return [];
     } catch (error) {
       console.error('❌ 예약 가능 시간 조회 실패:', error);
       return [];
@@ -245,6 +266,39 @@ export const appointmentService = {
     } catch (error) {
       console.error('❌ 예약 취소 실패:', error);
       return false;
+    }
+  },
+
+  // ProfileScreen용 예약 목록 조회 (화면에 맞는 형태로 변환)
+  getUserAppointmentsForProfile: async (userId: number): Promise<ProfileAppointment[]> => {
+    try {
+      console.log(`📋 ProfileScreen용 예약 목록 조회 중... 사용자 ID: ${userId}`);
+      
+      // 실제 API 호출
+      const appointments = await medicalApi.getAppointments(userId) as any[];
+      
+      // ProfileAppointment 형태로 변환 (DB 상태 그대로 사용)
+      const profileAppointments: ProfileAppointment[] = appointments.map((appointment: any) => {
+        // DB 상태를 그대로 사용하되, 철자 통일
+        let dbStatus = appointment.status;
+        if (dbStatus === 'canceled') dbStatus = 'cancelled'; // 철자 통일
+
+        console.log(`📋 예약 상태: ${appointment.status} -> ${dbStatus}`);
+
+        return {
+          id: appointment.id,
+          doctorName: appointment.doctor_name || appointment.doctorName || '의사명',
+          specialty: appointment.specialty || '전문분야',
+          date: appointment.date,
+          time: appointment.time,
+          status: dbStatus as "pending" | "confirmed" | "completed" | "cancelled"
+        };
+      });
+      
+      return profileAppointments;
+    } catch (error) {
+      console.error('❌ ProfileScreen용 예약 목록 조회 실패:', error);
+      return [];
     }
   }
 }; 

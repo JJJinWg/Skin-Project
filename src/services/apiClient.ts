@@ -143,11 +143,22 @@ export const medicalApi = {
 
   // 진료 요청서 관련 API
   createDiagnosisRequest: (data: any) => apiClient.post('/api/medical/diagnosis-requests', data),
+  submitDiagnosisRequest: (data: any) => apiClient.post('/api/medical/diagnosis-requests', data),
   getDiagnosisRequests: (userId?: number) => 
     apiClient.get(`/api/medical/diagnosis-requests${userId ? `?user_id=${userId}` : ''}`),
+  getUserDiagnosisRequests: (userId: number) => 
+    apiClient.get(`/api/medical/diagnosis-requests?user_id=${userId}`),
   getDiagnosisRequest: (id: number) => apiClient.get(`/api/medical/diagnosis-requests/${id}`),
+  getDiagnosisRequestDetail: (id: number) => apiClient.get(`/api/medical/diagnosis-requests/${id}`),
   updateDiagnosisRequestStatus: (id: number, status: string) => 
     apiClient.patch(`/api/medical/diagnosis-requests/${id}`, { status }),
+  cancelDiagnosisRequest: (id: number) => 
+    apiClient.patch(`/api/medical/diagnosis-requests/${id}`, { status: 'cancelled' }),
+
+  // 진단 내역 관련 API
+  getUserDiagnoses: (userId: number) => apiClient.get(`/api/medical/diagnoses/user/${userId}`),
+  getDiagnosisDetail: (diagnosisId: number) => apiClient.get(`/api/medical/diagnoses/${diagnosisId}`),
+  analyzeSkin: (formData: FormData) => apiClient.post('/api/medical/skin-analysis', formData),
 
   // 리뷰 관련 API
   createReview: (data: any) => apiClient.post('/api/reviews', data),
@@ -163,6 +174,7 @@ export const medicalApi = {
   getPopularProducts: () => apiClient.get('/api/products/popular'),
   getNewProducts: () => apiClient.get('/api/products/new'),
   getProductsByCategory: (category: string) => apiClient.get(`/api/products/category/${category}`),
+  getProductShops: (productId: number) => apiClient.get(`/api/products/${productId}/shops`),
 
   // 약국 관련 API
   getPharmacies: (params?: any) => apiClient.get('/api/pharmacies', params),
@@ -171,6 +183,15 @@ export const medicalApi = {
 
   // 헬스체크
   healthCheck: () => apiClient.get('/health'),
+
+  // 화장품 추천 API
+  getRecommendation: (data: any) => apiClient.post('/api/products/recommend', data),
+
+  // 카테고리 관련 API
+  getCategories: () => apiClient.get('/api/categories'),
+
+  // 피부 옵션 관련 API
+  getSkinOptions: () => apiClient.get('/api/skin-options'),
 };
 
 // 기타 API

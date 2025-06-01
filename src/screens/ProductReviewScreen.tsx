@@ -14,27 +14,19 @@ import {
   TextInput,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { getProducts, Product } from '../services/productService';
+import { getProducts, Product, getCategories, Category } from '../services/productService';
 
 const { width } = Dimensions.get('window');
-
-// 카테고리 데이터
-const categories = [
-  { id: 'all', name: '전체' },
-  { id: 'skincare', name: '스킨케어' },
-  { id: 'serum', name: '세럼' },
-  { id: 'moisturizer', name: '모이스처라이저' },
-  { id: 'cleanser', name: '클렌저' },
-  { id: 'sunscreen', name: '선크림' },
-];
 
 // 리뷰 데이터 인터페이스
 interface ReviewData {
   id: number;
   productName: string;
   brand: string;
+  category: string;
   rating: number;
   reviewCount: number;
   image: any;
@@ -54,6 +46,22 @@ const ProductReviewScreen = () => {
   const [scrollY] = useState(new Animated.Value(0));
   const [reviews, setReviews] = useState<ReviewData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // 카테고리 데이터 로드
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await getCategories();
+        setCategories([{ id: 'all', name: '전체', icon: '🏷️' }, ...categoriesData]);
+      } catch (error) {
+        console.error('카테고리 로드 실패:', error);
+        Alert.alert('오류', '카테고리 정보를 불러오는데 실패했습니다.');
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   // 제품 데이터 로드
   useEffect(() => {
@@ -70,15 +78,22 @@ const ProductReviewScreen = () => {
           id: product.id,
           productName: product.name,
           brand: product.brand,
+          category: product.category,
           rating: product.rating,
           reviewCount: product.reviewCount,
           image: product.image,
-          latestReview: {
-            user: '사용자' + (product.id % 10 + 1),
-            content: generateSampleReview(product.name),
-            date: generateRandomDate(),
-            rating: Math.round(product.rating),
-            likes: Math.floor(Math.random() * 50) + 10,
+          latestReview: product.reviews[0] ? {
+            user: product.reviews[0].userName,
+            content: product.reviews[0].comment,
+            date: product.reviews[0].date,
+            rating: product.reviews[0].rating,
+            likes: 0, // API에서 likes 정보가 없는 경우 기본값
+          } : {
+            user: '사용자',
+            content: '리뷰가 없습니다.',
+            date: new Date().toISOString(),
+            rating: 0,
+            likes: 0,
           },
         }));
         
@@ -86,7 +101,7 @@ const ProductReviewScreen = () => {
         console.log(`✅ 제품 리뷰 데이터 로드 성공: ${reviewData.length}개`);
       } catch (error) {
         console.error('❌ 제품 리뷰 데이터 로드 실패:', error);
-        // 에러 시 빈 배열로 설정
+        Alert.alert('오류', '제품 리뷰를 불러오는데 실패했습니다.');
         setReviews([]);
       } finally {
         setLoading(false);
@@ -96,31 +111,12 @@ const ProductReviewScreen = () => {
     loadProducts();
   }, []);
 
-  // 샘플 리뷰 생성 함수
-  const generateSampleReview = (productName: string): string => {
-    const reviews = [
-      `${productName} 정말 좋아요! 피부가 촉촉해졌어요.`,
-      `민감한 피부에도 자극 없이 사용할 수 있어서 만족해요.`,
-      `가성비 좋은 제품이에요. 꾸준히 사용하고 있습니다.`,
-      `향이 좋고 발림성도 부드러워요. 추천합니다!`,
-      `효과가 빨리 나타나서 놀랐어요. 계속 쓸 예정입니다.`,
-    ];
-    return reviews[Math.floor(Math.random() * reviews.length)];
-  };
-
-  // 랜덤 날짜 생성 함수
-  const generateRandomDate = (): string => {
-    const dates = ['1일 전', '2일 전', '3일 전', '1주일 전', '2주일 전'];
-    return dates[Math.floor(Math.random() * dates.length)];
-  };
-
   // 검색 기능
   const filteredReviews = reviews.filter(review => {
     const matchesSearch = review.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          review.brand.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
-                           (selectedCategory === 'skincare' && review.brand.toLowerCase().includes('beplain')) ||
-                           (selectedCategory === 'serum' && review.productName.toLowerCase().includes('세럼'));
+                           review.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -237,15 +233,13 @@ const ProductReviewScreen = () => {
           <Text style={styles.emptySubText}>다른 검색어를 시도해보세요</Text>
         </View>
       ) : (
-        <Animated.FlatList
+        <FlatList
           data={filteredReviews}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.reviewList}
           showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.reviewCard}

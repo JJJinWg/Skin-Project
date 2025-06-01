@@ -43,67 +43,13 @@ const ProductDetailScreen = () => {
   const [includeShipping, setIncludeShipping] = useState(false);
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
+  const [shops, setShops] = useState<ShopInfo[]>([]);
 
   // 상품 이미지 (API에서 가져온 제품 정보 기반)
   const productImages = product ? [product.image] : [
     require('../assets/product1.png'),
     require('../assets/product2.png'),
   ];
-
-  // 쇼핑몰 정보 (하드코딩 - 추후 API 연동 필요)
-  const [shops, setShops] = useState<ShopInfo[]>([
-    {
-      id: 1,
-      name: 'HIMART',
-      logo: require('../assets/shop_himart.png'),
-      price: product?.price || 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 6개월',
-      isFreeShipping: true,
-      isLowestPrice: true,
-    },
-    {
-      id: 2,
-      name: '네이버쇼핑',
-      logo: require('../assets/shop_naver.png'),
-      price: product?.price || 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 24개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 3,
-      name: 'G마켓',
-      logo: require('../assets/shop_gmarket.png'),
-      price: product?.price || 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 24개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 4,
-      name: '11번가',
-      logo: require('../assets/shop_11st.png'),
-      price: product?.price || 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '최대 22개월',
-      isFreeShipping: true,
-    },
-    {
-      id: 5,
-      name: '쿠팡',
-      logo: require('../assets/shop_coupang.png'),
-      price: product?.price || 239000,
-      shipping: '무료배송',
-      shippingFee: 0,
-      installment: '',
-      isFreeShipping: true,
-    },
-  ]);
 
   // 제품 정보 로드
   useEffect(() => {
@@ -113,13 +59,9 @@ const ProductDetailScreen = () => {
         const productData = await productService.getProductById(id);
         if (productData) {
           setProduct(productData);
-          // 쇼핑몰 가격 업데이트
-          setShops(prevShops => 
-            prevShops.map(shop => ({
-              ...shop,
-              price: productData.price
-            }))
-          );
+          // 쇼핑몰 정보 로드
+          const shopData = await productService.getProductShops(id);
+          setShops(shopData);
         }
       } catch (error) {
         console.error('제품 정보 로드 실패:', error);

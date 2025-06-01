@@ -1,4 +1,3 @@
-
 // 의사 상세 정보 화면
 import React, { useState, useEffect } from 'react'
 import {
@@ -164,12 +163,8 @@ const DoctorDetailScreen: React.FC = () => {
             <View style={styles.infoCard}>
               <Text style={styles.cardTitle}>진료 정보</Text>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>진료 시간 (평일)</Text>
-                <Text style={styles.infoValue}>{doctor.workingHours.weekday}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>진료 시간 (주말)</Text>
-                <Text style={styles.infoValue}>{doctor.workingHours.weekend}</Text>
+                <Text style={styles.infoLabel}>진료 시간</Text>
+                <Text style={styles.infoValue}>평일: 18:00~02:00, 주말/공휴일: 08:00~03:00</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>진료비</Text>

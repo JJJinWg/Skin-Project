@@ -20,6 +20,15 @@ export interface Product {
   volume: string
   isPopular: boolean
   isNew: boolean
+  suitableFor: string[]
+  notSuitableFor: string[]
+  reviews: {
+    id: number
+    userName: string
+    rating: number
+    comment: string
+    date: string
+  }[]
 }
 
 // Category 타입 정의
@@ -27,6 +36,27 @@ export interface Category {
   id: string
   name: string
   icon: string
+}
+
+// ShopInfo 타입 정의
+export interface ShopInfo {
+  id: number;
+  name: string;
+  logo: any;
+  price: number;
+  shipping: string;
+  shippingFee: number;
+  installment?: string;
+  isFreeShipping: boolean;
+  isLowestPrice?: boolean;
+  isCardDiscount?: boolean;
+}
+
+// API 응답 타입 정의
+interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  success?: boolean;
 }
 
 // 기본 카테고리 데이터
@@ -40,20 +70,12 @@ const defaultCategories: Category[] = [
 
 // 이미지 매핑 함수
 const getProductImage = (imageUrl: string | null, productId: number) => {
-  // 로컬 이미지 매핑
-  const imageMap: { [key: string]: any } = {
-    'product1.png': require('../assets/product1.png'),
-    'product2.png': require('../assets/product2.png'),
+  if (imageUrl) {
+    return { uri: imageUrl }
   }
   
-  if (imageUrl && imageMap[imageUrl]) {
-    return imageMap[imageUrl]
-  }
-  
-  // 기본 이미지 (ID에 따라)
-  return productId % 2 === 1 
-    ? require('../assets/product1.png') 
-    : require('../assets/product2.png')
+  // 기본 이미지 URL 반환
+  return { uri: `https://via.placeholder.com/150?text=Product+${productId}` }
 }
 
 // 제품 목록 조회 (검색, 필터링, 정렬 포함)
@@ -88,7 +110,10 @@ export const getProducts = async (
       benefits: product.benefits || [],
       volume: product.volume || '',
       isPopular: product.isPopular || product.is_popular || false,
-      isNew: product.isNew || product.is_new || false
+      isNew: product.isNew || product.is_new || false,
+      suitableFor: product.suitableFor || [],
+      notSuitableFor: product.notSuitableFor || [],
+      reviews: product.reviews || []
     }));
     
     console.log(`✅ 제품 목록 조회 성공: ${products.length}개`);
@@ -126,7 +151,10 @@ export const getProductById = async (id: number): Promise<Product | null> => {
       benefits: product.benefits || [],
       volume: product.volume || '',
       isPopular: product.isPopular || product.is_popular || false,
-      isNew: product.isNew || product.is_new || false
+      isNew: product.isNew || product.is_new || false,
+      suitableFor: product.suitableFor || [],
+      notSuitableFor: product.notSuitableFor || [],
+      reviews: product.reviews || []
     };
   } catch (error) {
     console.error('❌ 제품 상세 조회 실패:', error)
@@ -159,7 +187,10 @@ export const getPopularProducts = async (): Promise<Product[]> => {
       benefits: [],
       volume: product.volume || '',
       isPopular: true,
-      isNew: false
+      isNew: false,
+      suitableFor: [],
+      notSuitableFor: [],
+      reviews: []
     }));
     
     console.log(`✅ 인기 제품 목록 조회 성공: ${products.length}개`);
@@ -194,7 +225,10 @@ export const getNewProducts = async (): Promise<Product[]> => {
       benefits: [],
       volume: product.volume || '',
       isPopular: false,
-      isNew: true
+      isNew: true,
+      suitableFor: [],
+      notSuitableFor: [],
+      reviews: []
     }));
     
     console.log(`✅ 신제품 목록 조회 성공: ${products.length}개`);
@@ -205,16 +239,17 @@ export const getNewProducts = async (): Promise<Product[]> => {
   }
 }
 
-// 카테고리 목록 조회 (기본 카테고리만 사용)
+// 카테고리 목록 조회
 export const getCategories = async (): Promise<Category[]> => {
   try {
     console.log('📂 카테고리 목록 조회 중...');
     
-    // API에 카테고리 엔드포인트가 없으므로 기본 카테고리 반환
-    return defaultCategories;
+    // API 호출
+    const response = await medicalApi.getCategories() as ApiResponse<Category[]>;
+    return response.data || [];
   } catch (error) {
-    console.error('❌ 카테고리 조회 실패:', error)
-    return defaultCategories
+    console.error('❌ 카테고리 조회 실패:', error);
+    return [];
   }
 }
 
@@ -288,6 +323,129 @@ export const getProductsBySkinType = async (skinType: string): Promise<Product[]
   }
 }
 
+// 쇼핑몰 이미지 맵 (임시 하드코딩)
+const shopLogoMap: { [key: string]: any } = {
+  'ssg': require('../assets/shop_ssg.png'),
+  'naver': require('../assets/shop_naver.png'),
+  'ohouse': require('../assets/shop_ohouse.png'),
+  'himart': require('../assets/shop_himart.png'),
+  'lotte': require('../assets/shop_lotte.png'),
+  'emart': require('../assets/shop_emart.png'),
+  'gmarket': require('../assets/shop_gmarket.png'),
+  'auction': require('../assets/shop_auction.png'),
+  'coupang': require('../assets/shop_coupang.png'),
+  '11st': require('../assets/shop_11st.png'),
+};
+const defaultShopLogo = require('../assets/shop_naver.png'); // 임시 기본값
+
+// 제품의 쇼핑몰 정보 조회
+export const getProductShops = async (productId: number): Promise<ShopInfo[]> => {
+  try {
+    console.log('🛍️ 제품 쇼핑몰 정보 조회 중...', productId);
+    
+    // 실제 API 호출
+    const shops = await medicalApi.getProductShops(productId) as any[];
+    
+    // API 응답을 ShopInfo 인터페이스에 맞게 변환
+    return shops.map((shop: any) => ({
+      id: shop.id,
+      name: shop.name,
+      logo: shopLogoMap[shop.name?.toLowerCase()] || defaultShopLogo,
+      price: shop.price || 0,
+      shipping: shop.shipping || '무료배송',
+      shippingFee: shop.shippingFee || 0,
+      installment: shop.installment,
+      isFreeShipping: shop.isFreeShipping || true,
+      isLowestPrice: shop.isLowestPrice || false,
+      isCardDiscount: shop.isCardDiscount || false
+    }));
+  } catch (error) {
+    console.error('❌ 제품 쇼핑몰 정보 조회 실패:', error);
+    return [];
+  }
+}
+
+// 화장품 추천 요청 타입 정의
+export interface CosmeticRecommendationRequest {
+  skinType: string;
+  concerns: string[];
+  additionalInfo?: string;
+}
+
+// 화장품 추천 결과 타입 정의
+export interface CosmeticRecommendation {
+  products: Product[];
+  explanation: string;
+}
+
+// 화장품 추천
+export const getCosmeticRecommendations = async (request: CosmeticRecommendationRequest): Promise<CosmeticRecommendation> => {
+  try {
+    console.log('🔍 화장품 추천 요청 중...', request);
+    
+    // 실제 API 호출
+    const response: any = await medicalApi.getRecommendation(request);
+    
+    // API 응답을 CosmeticRecommendation 타입에 맞게 변환
+    return {
+      products: response.products.map((product: any) => ({
+        id: product.id,
+        name: product.name,
+        brand: product.brand || '',
+        category: product.category || 'skincare',
+        price: product.price || 0,
+        originalPrice: product.originalPrice,
+        rating: product.rating || 0,
+        reviewCount: product.reviews || product.review_count || 0,
+        image: getProductImage(product.image || product.image_url, product.id),
+        description: product.description || '',
+        ingredients: product.ingredients || [],
+        skinType: product.skinTypes || product.skin_types || [],
+        benefits: product.benefits || [],
+        volume: product.volume || '',
+        isPopular: product.isPopular || product.is_popular || false,
+        isNew: product.isNew || product.is_new || false,
+        suitableFor: product.suitableFor || [],
+        notSuitableFor: product.notSuitableFor || [],
+        reviews: product.reviews || []
+      })),
+      explanation: response.explanation || ''
+    };
+  } catch (error) {
+    console.error('❌ 화장품 추천 실패:', error);
+    return {
+      products: [],
+      explanation: '추천 결과를 불러오는데 실패했습니다.'
+    };
+  }
+}
+
+// 피부 타입과 고민 옵션 타입 정의
+export interface SkinOptions {
+  skinTypes: string[];
+  concerns: string[];
+}
+
+// 피부 타입과 고민 옵션 조회
+export const getSkinOptions = async (): Promise<SkinOptions> => {
+  try {
+    console.log('🧴 피부 옵션 조회 중...');
+    
+    // API 호출
+    const response = await medicalApi.getSkinOptions() as ApiResponse<SkinOptions>;
+    return response.data || { skinTypes: [], concerns: [] };
+  } catch (error) {
+    console.error('❌ 피부 옵션 조회 실패:', error);
+    return { skinTypes: [], concerns: [] };
+  }
+}
+
+export async function getSkinAnalysisHistory(userId: number): Promise<any[]> {
+  // 실제 API 호출로 대체 필요
+  // 예시: return await medicalApi.getSkinAnalysisHistory(userId);
+  return [];
+}
+
 export const productService = {
   getProducts,
   getProductById,
@@ -298,4 +456,8 @@ export const productService = {
   getProductsByBrand,
   getProductsByPriceRange,
   getProductsBySkinType,
+  getProductShops,
+  getCosmeticRecommendations,
+  getSkinOptions,
+  getSkinAnalysisHistory,
 }

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
@@ -20,36 +19,18 @@ import LinearGradient from "react-native-linear-gradient"
 import { useDispatch } from 'react-redux'
 import { logout } from '../store/authSlice'
 import { medicalApi } from '../services/apiClient'
+import { reviewService } from '../services/reviewService'
+import { userService } from '../services/userService'
+import { appointmentService } from '../services/appointmentService'
+import type { UserInfo } from '../services/userService'
+import type { ProfileAppointment } from '../services/appointmentService'
+import type { Review } from '../services/reviewService'
+import { profileStyles as styles } from '../styles/ProfileScreenStyles'
 
-type Appointment = {
-  id: number
-  doctorName: string
-  specialty: string
-  date: string
-  time: string
-  status: "upcoming" | "completed" | "canceled"
-}
-
-type UserInfo = {
-  name: string
-  email: string
-  phone: string
-  birthdate: string
-  profileImage: any
-}
-
-// 리뷰 타입 정의
-type Review = {
-  id: number
-  productId: number
-  productName: string
-  productImage: any
-  rating: number
-  content: string
-  date: string
-  images?: string[]
-  likes: number
-  helpful: number
+interface ApiResponse<T> {
+  data: T;
+  message: string;
+  success: boolean;
 }
 
 const ProfileScreen = () => {
@@ -66,6 +47,7 @@ const ProfileScreen = () => {
 
   // 사용자 정보 (실제로는 API에서 가져옴)
   const [userInfo, setUserInfo] = useState<UserInfo>({
+    id: 1,
     name: "홍길동",
     email: "hong@example.com",
     phone: "010-1234-5678",
@@ -74,147 +56,100 @@ const ProfileScreen = () => {
   })
 
   // 예약 내역 (실제로는 API에서 가져옴)
-  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [appointments, setAppointments] = useState<ProfileAppointment[]>([])
 
   // 리뷰 내역 (실제로는 API에서 가져옴)
   const [reviews, setReviews] = useState<Review[]>([])
 
   const dispatch = useDispatch()
 
-  // 예약 내역 가져오기 (실제 API 호출)
+  // 사용자 정보 초기화
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const userData = await userService.getCurrentUser();
+        setUserInfo(userData);
+      } catch (error) {
+        console.error('사용자 정보 로드 실패:', error);
+        Alert.alert('오류', '사용자 정보를 불러오는데 실패했습니다.');
+      }
+    };
+
+    loadUserInfo();
+  }, []);
+
+  // 예약 내역 가져오기
   useEffect(() => {
     const loadAppointments = async () => {
       try {
-        setLoading(true)
-        const appointmentsData = await medicalApi.getAppointments(1) as any[] // 사용자 ID 1로 가정
-        
-        // API 응답을 Appointment 타입에 맞게 변환
-        const formattedAppointments: Appointment[] = appointmentsData.map((appointment: any) => ({
-          id: appointment.id,
-          doctorName: appointment.doctorName || '의사명',
-          specialty: appointment.specialty || '전문분야',
-          date: appointment.date,
-          time: appointment.time,
-          status: appointment.status === 'confirmed' ? 'upcoming' : 
-                 appointment.status === 'completed' ? 'completed' : 'canceled'
-        }))
-        
-        setAppointments(formattedAppointments)
+        setLoading(true);
+        const appointmentsData = await appointmentService.getUserAppointmentsForProfile(1);
+        setAppointments(appointmentsData);
       } catch (error) {
-        console.error('예약 내역 로드 실패:', error)
-        // 폴백: 기본 데이터
-        const mockAppointments: Appointment[] = [
-          {
-            id: 1,
-            doctorName: "Dr. Kim",
-            specialty: "피부과",
-            date: "2023-06-15",
-            time: "14:30",
-            status: "upcoming",
-          },
-          {
-            id: 2,
-            doctorName: "Dr. Lee",
-            specialty: "알레르기",
-            date: "2023-06-10",
-            time: "11:00",
-            status: "completed",
-          },
-        ]
-        setAppointments(mockAppointments)
+        console.error('예약 내역 로드 실패:', error);
+        Alert.alert('오류', '예약 내역을 불러오는데 실패했습니다.');
+        setAppointments([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadAppointments()
-  }, [])
+    loadAppointments();
+  }, []);
 
-  // 리뷰 내역 가져오기 (실제 API 호출)
+  // 리뷰 내역 가져오기
   useEffect(() => {
     const loadReviews = async () => {
       try {
-        setReviewsLoading(true)
-        const reviewsData = await medicalApi.getUserReviews(1) // 사용자 ID 1로 가정
+        setReviewsLoading(true);
+        const response = await medicalApi.getUserReviews(1) as ApiResponse<any[]>;
+        const reviewsData = response.data;
         
         // API 응답을 Review 타입에 맞게 변환
         const formattedReviews: Review[] = reviewsData.map((review: any) => ({
           id: review.id,
-          productId: review.productId || 0,
-          productName: review.productName || '제품명',
-          productImage: require("../assets/product1.png"), // 기본 이미지
-          rating: review.rating || 0,
-          content: review.content || '',
-          date: review.date || new Date().toISOString().split('T')[0],
+          productId: review.productId,
+          productName: review.productName,
+          productImage: review.productImage,
+          rating: review.rating,
+          content: review.content,
+          date: review.date,
           images: review.images || [],
           likes: review.likes || 0,
           helpful: review.helpful || 0,
-        }))
+        }));
         
-        setReviews(formattedReviews)
+        setReviews(formattedReviews);
       } catch (error) {
-        console.error('리뷰 내역 로드 실패:', error)
-        // 폴백: 기본 데이터
-        const mockReviews: Review[] = [
-          {
-            id: 1,
-            productId: 101,
-            productName: "Beplain 클렌징 폼",
-            productImage: require("../assets/product1.png"),
-            rating: 4.5,
-            content: "피부가 민감한 편인데 자극없이 순하게 세안할 수 있어요.",
-            date: "2023-05-15",
-            images: [],
-            likes: 24,
-            helpful: 18,
-          },
-        ]
-        setReviews(mockReviews)
+        console.error('리뷰 내역 로드 실패:', error);
+        Alert.alert('오류', '리뷰 내역을 불러오는데 실패했습니다.');
+        setReviews([]);
       } finally {
-        setReviewsLoading(false)
+        setReviewsLoading(false);
       }
-    }
+    };
 
-    loadReviews()
-  }, [])
+    loadReviews();
+  }, []);
 
-  // 진단 내역 가져오기 (API 호출 시뮬레이션)
+  // 진단 내역 가져오기
   useEffect(() => {
-    setDiagnosesLoading(true)
-    setTimeout(() => {
-      const mockDiagnoses = [
-        {
-          id: 1,
-          doctorId: 1,
-          doctorName: "Dr. Kim",
-          doctorImage: require("../assets/doctor1.png"),
-          specialty: "피부과",
-          date: "2023-05-15",
-          symptoms: "얼굴에 붉은 발진과 가려움증, 건조함",
-          diagnosisContent: "접촉성 피부염으로 진단됩니다. 특정 화장품이나 세안제에 대한 알레르기 반응으로 보입니다.",
-          treatment: "스테로이드 연고를 처방해 드립니다. 하루에 두 번, 아침과 저녁에 발진 부위에 얇게 바르세요.",
-          prescriptions: ["베타메타손 연고 0.05%", "세티리진 정 10mg"],
-          followUpRequired: true,
-          followUpDate: "2023-05-29",
-        },
-        {
-          id: 2,
-          doctorId: 2,
-          doctorName: "Dr. Lee",
-          doctorImage: require("../assets/doctor2.png"),
-          specialty: "알레르기내과",
-          date: "2023-04-10",
-          symptoms: "재채기, 콧물, 눈 가려움증",
-          diagnosisContent: "계절성 알레르기성 비염입니다. 봄철 꽃가루에 대한 알레르기 반응으로 보입니다.",
-          treatment: "항히스타민제를 처방해 드립니다. 증상이 심할 때 하루 한 번 복용하세요.",
-          prescriptions: ["로라타딘 정 10mg", "플루티카손 비강 스프레이"],
-          followUpRequired: false,
-        },
-      ]
-      setDiagnoses(mockDiagnoses)
-      setDiagnosesLoading(false)
-    }, 1000)
-  }, [])
+    const loadDiagnoses = async () => {
+      try {
+        setDiagnosesLoading(true);
+        const response = await medicalApi.getUserDiagnoses(1) as ApiResponse<any[]>;
+        setDiagnoses(response.data);
+      } catch (error) {
+        console.error('진단 내역 로드 실패:', error);
+        Alert.alert('오류', '진단 내역을 불러오는데 실패했습니다.');
+        setDiagnoses([]);
+      } finally {
+        setDiagnosesLoading(false);
+      }
+    };
+
+    loadDiagnoses();
+  }, []);
 
   // 화면이 포커스될 때마다 실행되는 효과
   useFocusEffect(
@@ -296,7 +231,7 @@ const ProfileScreen = () => {
           onPress: () => {
             // 실제로는 예약 취소 API 호출
             const updatedAppointments = appointments.map((appointment) =>
-              appointment.id === id ? { ...appointment, status: "canceled" as const } : appointment,
+              appointment.id === id ? { ...appointment, status: "cancelled" as const } : appointment,
             )
             setAppointments(updatedAppointments)
             Alert.alert("예약이 취소되었습니다.")
@@ -308,7 +243,7 @@ const ProfileScreen = () => {
   }
 
   // 리뷰 삭제 처리
-  const handleDeleteReview = (id: number) => {
+  const handleDeleteReview = async (id: number) => {
     Alert.alert(
       "리뷰 삭제",
       "이 리뷰를 삭제하시겠습니까?",
@@ -319,11 +254,19 @@ const ProfileScreen = () => {
         },
         {
           text: "삭제",
-          onPress: () => {
-            // 실제로는 리뷰 삭제 API 호출
-            const updatedReviews = reviews.filter((review) => review.id !== id)
-            setReviews(updatedReviews)
-            Alert.alert("리뷰가 삭제되었습니다.")
+          onPress: async () => {
+            try {
+              const result = await reviewService.deleteReview(id)
+              if (result.success) {
+                const updatedReviews = reviews.filter((review) => review.id !== id)
+                setReviews(updatedReviews)
+                Alert.alert("성공", result.message)
+              } else {
+                Alert.alert("오류", result.message)
+              }
+            } catch (error) {
+              Alert.alert("오류", "리뷰 삭제에 실패했습니다.")
+            }
           },
         },
       ],
@@ -339,12 +282,15 @@ const ProfileScreen = () => {
   // 예약 상태에 따른 색상 반환
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "upcoming":
-        return "#4CAF50" // 초록색
+      case "pending":
+        return "#FF9800" // 주황색 (대기중)
+      case "confirmed":
+        return "#4CAF50" // 초록색 (확정됨)
       case "completed":
-        return "#2196F3" // 파란색
+        return "#2196F3" // 파란색 (완료됨)
+      case "cancelled":
       case "canceled":
-        return "#F44336" // 빨간색
+        return "#F44336" // 빨간색 (취소됨)
       default:
         return "#757575" // 회색
     }
@@ -353,14 +299,17 @@ const ProfileScreen = () => {
   // 예약 상태 한글 변환
   const getStatusText = (status: string) => {
     switch (status) {
-      case "upcoming":
-        return "예정됨"
+      case "pending":
+        return "대기중"
+      case "confirmed":
+        return "확정됨"
       case "completed":
         return "완료됨"
+      case "cancelled":
       case "canceled":
         return "취소됨"
       default:
-        return ""
+        return "알 수 없음"
     }
   }
 
@@ -509,6 +458,8 @@ const ProfileScreen = () => {
               <FlatList
                 data={appointments}
                 keyExtractor={(item) => item.id.toString()}
+                scrollEnabled={false}
+                nestedScrollEnabled={true}
                 renderItem={({ item }) => (
                   <View style={styles.appointmentCard}>
                     <View style={styles.appointmentHeader}>
@@ -523,7 +474,7 @@ const ProfileScreen = () => {
                         {formatDate(item.date)} {item.time}
                       </Text>
                     </View>
-                    {item.status === "upcoming" && (
+                    {(item.status === "pending" || item.status === "confirmed") && (
                       <View style={styles.appointmentActions}>
                         <TouchableOpacity
                           style={styles.rescheduleButton}
@@ -589,7 +540,7 @@ const ProfileScreen = () => {
                     <Text style={styles.reviewContent}>{item.content}</Text>
                     {item.images && item.images.length > 0 && (
                       <View style={styles.reviewImagesContainer}>
-                        {item.images.map((image, index) => (
+                        {item.images.map((image: string, index: number) => (
                           <Image key={index} source={{ uri: image }} style={styles.reviewImage} />
                         ))}
                       </View>
@@ -763,542 +714,5 @@ const ProfileScreen = () => {
   )
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButtonText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  placeholder: {
-    width: 40,
-  },
-  profileHeader: {
-    alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#FFFFFF",
-  },
-  profileImageContainer: {
-    position: "relative",
-    marginBottom: 15,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  editIconContainer: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#FF9A9E",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  editIcon: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 5,
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  activeTabButton: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#FF9A9E",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  activeTabButtonText: {
-    color: "#FF9A9E",
-    fontWeight: "bold",
-  },
-  contentContainer: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  // 기본 정보 탭 스타일
-  infoContainer: {
-    padding: 20,
-  },
-  infoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  infoRow: {
-    flexDirection: "row",
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  infoLabel: {
-    width: 80,
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    //color: "#212529",
-    fontWeight: "500",
-    color: "#6C757D",
-  },
-  editButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  editButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  editButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  // 예약 내역 탭 스타일
-  appointmentsContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  appointmentsList: {
-    paddingBottom: 20,
-  },
-  appointmentCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  appointmentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  doctorName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  statusBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  specialty: {
-    fontSize: 14,
-    color: "#6C757D",
-    marginBottom: 10,
-  },
-  appointmentDetails: {
-    marginBottom: 10,
-  },
-  appointmentDate: {
-    fontSize: 14,
-    color: "#212529",
-  },
-  appointmentActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-  },
-  rescheduleButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    marginRight: 10,
-  },
-  rescheduleButtonText: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  cancelButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#FEE2E2",
-    borderRadius: 8,
-  },
-  cancelButtonText: {
-    fontSize: 12,
-    color: "#EF4444",
-  },
-  noAppointmentsContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 50,
-  },
-  noAppointmentsText: {
-    fontSize: 16,
-    color: "#6C757D",
-    marginBottom: 20,
-  },
-  makeAppointmentButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-    width: "100%",
-  },
-  makeAppointmentButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  makeAppointmentButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  // 리뷰 내역 탭 스타일
-  reviewsContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  reviewsList: {
-    paddingBottom: 20,
-  },
-  reviewCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  reviewHeader: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  reviewHeaderInfo: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 4,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    marginRight: 5,
-  },
-  starIcon: {
-    fontSize: 14,
-    color: "#FFC107",
-    marginRight: 1,
-  },
-  emptyStar: {
-    color: "#E9ECEF",
-  },
-  ratingText: {
-    fontSize: 14,
-    color: "#212529",
-    marginLeft: 4,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  reviewContent: {
-    fontSize: 14,
-    color: "#212529",
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  reviewImagesContainer: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  reviewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  reviewStats: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F3F5",
-  },
-  reviewStatsText: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  reviewActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  reviewActionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    marginLeft: 10,
-  },
-  reviewActionButtonText: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  deleteButton: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FEE2E2",
-  },
-  deleteButtonText: {
-    fontSize: 12,
-    color: "#EF4444",
-  },
-  noReviewsContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 50,
-  },
-  noReviewsText: {
-    fontSize: 16,
-    color: "#6C757D",
-    marginBottom: 20,
-  },
-  writeReviewButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-    width: "100%",
-  },
-  writeReviewButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  writeReviewButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  // 설정 탭 스타일
-  settingsContainer: {
-    padding: 20,
-  },
-  settingsSection: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  settingsSectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 15,
-  },
-  settingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  settingLabel: {
-    fontSize: 14,
-    color: "#212529",
-  },
-  settingValue: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  settingButton: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  settingButtonText: {
-    fontSize: 14,
-    color: "#212529",
-  },
-  deleteAccountText: {
-    color: "#EF4444",
-  },
-  // 진단 내역 탭 스타일
-  diagnosesContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  diagnosisList: {
-    paddingBottom: 20,
-  },
-  diagnosisCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  diagnosisHeader: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  doctorImageSmall: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  diagnosisHeaderInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  diagnosisDate: {
-    fontSize: 12,
-    color: "#ADB5BD",
-  },
-  diagnosisSummary: {
-    marginBottom: 8,
-  },
-  diagnosisLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 4,
-  },
-  diagnosisText: {
-    fontSize: 14,
-    color: "#495057",
-    lineHeight: 20,
-  },
-  viewDetailButton: {
-    alignSelf: "flex-end",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    marginTop: 8,
-  },
-  viewDetailButtonText: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  noDiagnosisContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 50,
-  },
-  noDiagnosisText: {
-    fontSize: 16,
-    color: "#6C757D",
-    marginBottom: 8,
-  },
-  noDiagnosisSubtext: {
-    fontSize: 14,
-    color: "#ADB5BD",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-})
 
 export default ProfileScreen

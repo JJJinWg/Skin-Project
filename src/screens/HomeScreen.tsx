@@ -36,9 +36,17 @@ const HomeScreen = () => {
       try {
         setLoading(true)
         const doctorsData = await appointmentService.getHomeDoctors()
-        setDoctors(doctorsData)
+        
+        // 의사 데이터에 기본 이미지 추가
+        const doctorsWithImages = doctorsData.map((doctor: any) => ({
+          ...doctor,
+          image: require("../assets/doctor1.png") // 모든 의사에게 같은 기본 이미지
+        }))
+        
+        setDoctors(doctorsWithImages)
       } catch (error) {
         console.error('의사 목록 로드 실패:', error)
+        setDoctors([])
       } finally {
         setLoading(false)
       }
@@ -53,14 +61,10 @@ const HomeScreen = () => {
       try {
         setProductsLoading(true)
         const productsData = await productService.getPopularProducts()
-        setProducts(productsData.slice(0, 2)) // 홈화면에는 2개만 표시
+        setProducts(productsData.slice(0, 4)) // 홈화면에는 4개만 표시
       } catch (error) {
         console.error('제품 목록 로드 실패:', error)
-        // 폴백: 기본 제품 데이터
-        setProducts([
-          { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
-          { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
-        ])
+        setProducts([])
       } finally {
         setProductsLoading(false)
       }
@@ -127,6 +131,8 @@ const HomeScreen = () => {
               data={doctors}
               horizontal
               keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
+              nestedScrollEnabled={true}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.doctorCard}>
                   <Image 
@@ -228,6 +234,8 @@ const HomeScreen = () => {
               data={products}
               horizontal
               keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
+              nestedScrollEnabled={true}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.productCard}

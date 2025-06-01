@@ -8,13 +8,16 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time, date as date_cls
 from sqlalchemy.sql import text
 
 # 데이터베이스 및 모델 import
 from database import SessionLocal, Base, engine
 from core.models import db_models
 from core.models.medical_models import Hospital, Doctor, Appointment
+from core.models.db_models import User, Review, Product, Shop, ProductShop
+from schemas import ProductCreate
+from crud import create_product
 
 # 의료진 CRUD 함수들 import
 from medical_crud import (
@@ -22,7 +25,8 @@ from medical_crud import (
     get_doctors, get_doctor, create_doctor,
     get_appointments, get_appointment, create_appointment, cancel_appointment, update_appointment,
     get_medical_records, create_medical_record,
-    get_doctor_reviews, create_doctor_review
+    get_doctor_reviews, create_doctor_review,
+    get_available_times
 )
 
 # 추천 시스템 import (임시 주석 처리)
@@ -139,7 +143,7 @@ def auth_register(userData: dict):
     return {
         "success": True,
         "data": {
-            "user": {
+        "user": {
                 "id": 2,
                 "email": email,
                 "name": name,
@@ -555,25 +559,115 @@ def get_doctor_api(doctor_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="의사 정보 조회 중 오류가 발생했습니다")
 
 @app.get("/api/medical/doctors/{doctor_id}/available-times")
-def get_doctor_available_times(doctor_id: int, date: str):
-    """의사 가능 시간 조회"""
-    # TODO: 실제 의사 스케줄 데이터베이스 조회 구현 필요
-    return {
-        "doctorId": doctor_id,
-        "date": date,
-        "availableTimes": [
-            {"time": "09:00", "available": True},
-            {"time": "09:30", "available": False},
-            {"time": "10:00", "available": True},
-            {"time": "10:30", "available": True},
-            {"time": "11:00", "available": False},
-            {"time": "14:00", "available": True},
-            {"time": "14:30", "available": True},
-            {"time": "15:00", "available": True},
-            {"time": "15:30", "available": False},
-            {"time": "16:00", "available": True}
+def get_doctor_available_times(doctor_id: int, date: str, db: Session = Depends(get_db)):
+    """의사 가능 시간 조회 (기본 + doctor_schedules 반영)"""
+    try:
+        # date는 'YYYY-MM-DD' 문자열로 들어옴
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        weekday = date_obj.weekday()  # 0:월~6:일
+        
+        # 공휴일 간단 판별
+        holidays = [
+            date_cls(2024,1,1), date_cls(2024,3,1), date_cls(2024,5,5), date_cls(2024,6,6),
+            date_cls(2024,8,15), date_cls(2024,10,3), date_cls(2024,10,9), date_cls(2024,12,25)
         ]
-    }
+        is_holiday = date_obj in holidays
+        is_weekend = weekday >= 5 or is_holiday
+        
+        # 기본 가능 시간대 (원래 로직 복원)
+        if is_weekend:
+            # 주말/공휴일: 오전 8시 ~ 오후 1시
+            start_time_str, end_time_str = "08:00", "13:00"
+        else:
+            # 평일: 오후 6시 ~ 다음날 새벽 2시
+            start_time_str, end_time_str = "18:00", "02:00"
+        
+        start_time = datetime.strptime(start_time_str, "%H:%M").time()
+        end_time = datetime.strptime(end_time_str, "%H:%M").time()
+        
+        # 30분 단위 시간대 생성
+        slots = []
+        current_time = datetime.combine(date_obj, start_time)
+        
+        # 종료 시간이 시작 시간보다 이른 경우 (예: 18:00 ~ 02:00)
+        if end_time <= start_time:
+            # 다음날 새벽까지 진료하는 경우 (평일)
+            end_datetime = datetime.combine(date_obj + timedelta(days=1), end_time)
+        else:
+            # 같은 날 안에서 진료하는 경우 (주말)
+            end_datetime = datetime.combine(date_obj, end_time)
+        
+        while current_time < end_datetime:
+            slots.append(current_time.strftime("%H:%M"))
+            current_time += timedelta(minutes=30)
+        
+        # doctor_schedules에서 해당 날짜의 스케줄 조회
+        from sqlalchemy import and_
+        from core.models.medical_models import DoctorSchedule
+        
+        schedule = db.query(DoctorSchedule).filter(
+            and_(
+                DoctorSchedule.doctor_id == doctor_id,
+                DoctorSchedule.date == date_obj
+            )
+        ).first()
+        
+        # 스케줄이 있으면 해당 스케줄에 따라 시간 조정
+        if schedule:
+            if not schedule.is_available:
+                # 해당 날짜에 휴진이면 빈 배열 반환
+                slots = []
+            elif schedule.start_time and schedule.end_time:
+                # 특별 스케줄이 있으면 해당 시간만 표시
+                schedule_start = datetime.combine(date_obj, schedule.start_time)
+                schedule_end = datetime.combine(date_obj, schedule.end_time)
+                
+                slots = []
+                current_time = schedule_start
+                while current_time < schedule_end:
+                    slots.append(current_time.strftime("%H:%M"))
+                    current_time += timedelta(minutes=30)
+        
+        # 시간 정렬: 새벽 시간(00:00~05:59)을 먼저, 그 다음 오전~밤(06:00~23:59)
+        def time_sort_key(time_str):
+            hour = int(time_str.split(':')[0])
+            minute = int(time_str.split(':')[1])
+            # 새벽 시간(00:00~05:59)은 우선순위를 높게 (0~359)
+            # 오전~밤(06:00~23:59)은 그 다음 (360~1799)
+            if 0 <= hour <= 5:
+                return hour * 60 + minute
+            else:
+                return (hour * 60 + minute) + 360
+        
+        slots.sort(key=time_sort_key)
+        
+        # 이미 예약된 시간 제외
+        from core.models.medical_models import Appointment
+        existing_appointments = db.query(Appointment).filter(
+            and_(
+                Appointment.doctor_id == doctor_id,
+                Appointment.appointment_date == date_obj,
+                Appointment.status.in_(['confirmed', 'pending'])
+            )
+        ).all()
+        
+        booked_times = [apt.appointment_time.strftime("%H:%M") for apt in existing_appointments]
+        available_slots = [slot for slot in slots if slot not in booked_times]
+        
+        return {
+            "success": True,
+            "doctorId": doctor_id,
+            "date": date,
+            "availableTimes": available_slots
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"잘못된 날짜 형식입니다: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 의사 가능 시간 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="가능 시간 조회 중 오류가 발생했습니다")
 
 @app.get("/api/medical/appointments")
 def get_appointments_api(user_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -716,7 +810,103 @@ def update_appointment_status_api(appointment_id: int, data: dict, db: Session =
         print(f"❌ 예약 상태 업데이트 실패: {e}")
         raise HTTPException(status_code=500, detail="예약 상태 업데이트 중 오류가 발생했습니다")
 
-# ========== 기존 엔드포인트들 ==========
+# ========== 데이터베이스 초기화 API ==========
+@app.post("/api/database/reset")
+def reset_database():
+    """데이터베이스 완전 초기화 (모든 데이터 삭제)"""
+    try:
+        db = SessionLocal()
+        
+        # 외래 키 제약조건 때문에 순서대로 삭제
+        tables_to_delete = [
+            "doctor_reviews", "doctor_schedules", "medical_records", "appointments", 
+            "doctors", "hospitals", "product_shops", "product_benefits", 
+            "product_skin_types", "product_ingredients", "products", "shops", 
+            "reviews", "users"
+        ]
+        
+        for table in tables_to_delete:
+            try:
+                db.execute(text(f"DELETE FROM {table}"))
+                # 시퀀스 리셋
+                db.execute(text(f"ALTER SEQUENCE {table}_id_seq RESTART WITH 1"))
+            except Exception as e:
+                print(f"⚠️ 테이블 {table} 처리 중 오류 (무시): {e}")
+        
+        db.commit()
+        db.close()
+        
+        return {
+            "success": True,
+            "message": "✅ 데이터베이스가 완전히 초기화되었습니다!",
+            "deleted_tables": tables_to_delete
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터베이스 초기화 실패: {str(e)}")
+
+@app.post("/api/database/setup")
+def setup_database():
+    """데이터베이스 테이블 생성 및 샘플 데이터 추가"""
+    try:
+        from setup_database import create_tables, add_sample_data
+        
+        # 1. 테이블 생성
+        if not create_tables():
+            raise HTTPException(status_code=500, detail="테이블 생성에 실패했습니다")
+        
+        # 2. 샘플 데이터 추가
+        if not add_sample_data():
+            raise HTTPException(status_code=500, detail="샘플 데이터 추가에 실패했습니다")
+        
+        return {
+            "success": True,
+            "message": "✅ 데이터베이스 설정이 완료되었습니다!",
+            "details": [
+                "✅ 모든 테이블 생성 완료",
+                "✅ 사용자 데이터 추가 완료",
+                "✅ 병원 데이터 추가 완료", 
+                "✅ 의사 데이터 추가 완료",
+                "✅ 쇼핑몰 데이터 추가 완료",
+                "✅ 제품 데이터 추가 완료",
+                "✅ 제품 판매처 데이터 추가 완료",
+                "✅ 제품 성분/피부타입/효능 데이터 추가 완료",
+                "✅ 리뷰 데이터 추가 완료",
+                "✅ 예약 데이터 추가 완료",
+                "✅ 진료 기록 데이터 추가 완료",
+                "✅ 의사 리뷰 데이터 추가 완료",
+                "✅ 의사 스케줄 데이터 추가 완료"
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터베이스 설정 실패: {str(e)}")
+
+@app.post("/api/database/init")
+def init_database():
+    """데이터베이스 완전 초기화 후 샘플 데이터 추가 (원스톱 솔루션)"""
+    try:
+        # 1. 데이터베이스 초기화
+        reset_response = reset_database()
+        if not reset_response.get("success"):
+            raise HTTPException(status_code=500, detail="데이터베이스 초기화 실패")
+        
+        # 2. 테이블 생성 및 샘플 데이터 추가
+        setup_response = setup_database()
+        if not setup_response.get("success"):
+            raise HTTPException(status_code=500, detail="데이터베이스 설정 실패")
+        
+        return {
+            "success": True,
+            "message": "🎉 데이터베이스가 완전히 초기화되고 새로운 샘플 데이터가 추가되었습니다!",
+            "steps": [
+                "1️⃣ 기존 데이터 완전 삭제",
+                "2️⃣ 모든 테이블 생성",
+                "3️⃣ 샘플 데이터 추가"
+            ],
+            "ready": "✅ 이제 모든 API가 실제 데이터와 함께 작동합니다!"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터베이스 초기화 실패: {str(e)}")
+
 @app.post("/create-tables")
 def create_tables():
     """데이터베이스 테이블 생성"""
@@ -815,6 +1005,102 @@ def add_sample_products(db: Session = Depends(get_db)):
         print(f"❌ 샘플 제품 추가 실패: {e}")
         raise HTTPException(status_code=500, detail=f"샘플 제품 추가 실패: {str(e)}")
 
+@app.post("/add-sample-all")
+def add_sample_all(db: Session = Depends(get_db)):
+    # 1. 샘플 제품 추가
+    sample_products = [
+        ProductCreate(
+            name="Beplain 녹두 진정 토너",
+            brand="Beplain",
+            category="skincare",
+            price=18000,
+            original_price=22000,
+            rating=4.5,
+            review_count=128,
+            description="민감한 피부를 위한 녹두 추출물 함유 진정 토너입니다.",
+            volume="200ml",
+            is_popular=True,
+            is_new=False,
+            image_url="product1.png",
+            ingredients=["녹두 추출물", "판테놀", "나이아신아마이드", "히알루론산"],
+            skin_types=["민감성", "건성", "복합성"],
+            benefits=["진정", "보습", "각질케어"]
+        ),
+        ProductCreate(
+            name="Torriden 다이브인 세럼",
+            brand="Torriden",
+            category="serum",
+            price=15000,
+            rating=4.2,
+            review_count=86,
+            description="5가지 히알루론산으로 깊은 수분 공급을 해주는 보습 세럼입니다.",
+            volume="50ml",
+            is_popular=False,
+            is_new=True,
+            image_url="product2.png",
+            ingredients=["히알루론산", "판테놀", "알란토인", "베타글루칸"],
+            skin_types=["건성", "복합성", "지성"],
+            benefits=["보습", "수분공급", "탄력"]
+        )
+    ]
+    created_products = []
+    for product_data in sample_products:
+        product = create_product(db, product_data)
+        created_products.append(product.id)
+
+    # 2. 샘플 Shop 추가
+    shop_naver = Shop(name="naver", url="https://smartstore.naver.com", logo_url="shop_naver.png")
+    shop_coupang = Shop(name="coupang", url="https://www.coupang.com", logo_url="shop_coupang.png")
+    db.add_all([shop_naver, shop_coupang])
+    db.commit()
+    db.refresh(shop_naver)
+    db.refresh(shop_coupang)
+
+    # 3. 샘플 ProductShop(제품-쇼핑몰 연결) 추가
+    product_shop1 = ProductShop(
+        product_id=created_products[0],
+        shop_id=shop_naver.id,
+        price=18000,
+        shipping="무료배송",
+        shipping_fee=0,
+        installment="3개월",
+        is_free_shipping=True,
+        is_lowest_price=True,
+        is_card_discount=False
+    )
+    product_shop2 = ProductShop(
+        product_id=created_products[0],
+        shop_id=shop_coupang.id,
+        price=18500,
+        shipping="유료배송",
+        shipping_fee=2500,
+        installment="2개월",
+        is_free_shipping=False,
+        is_lowest_price=False,
+        is_card_discount=True
+    )
+    db.add_all([product_shop1, product_shop2])
+    db.commit()
+
+    # 4. 샘플 리뷰 추가
+    review1 = Review(
+        username="1",  # user_id 또는 username
+        review_text="정말 순하고 촉촉해요!",
+        skin_type="건성",
+        skin_concern="각질",
+        sensitivity="중간",
+        rating=5.0
+    )
+    db.add(review1)
+    db.commit()
+
+    return {
+        "message": "샘플 데이터가 성공적으로 추가되었습니다.",
+        "product_ids": created_products,
+        "shop_ids": [shop_naver.id, shop_coupang.id],
+        "review_id": review1.id
+    }
+
 # 추천 API 경로 추가 (임시 주석 처리)
 # @app.post("/recommend")
 # def get_recommendation(query: RecommendQuery = Body(...)):
@@ -828,6 +1114,16 @@ def add_sample_products(db: Session = Depends(get_db)):
 #         "review_count": len(df),
 #         "samples": df.head(3).to_dict(orient="records")  # 예시 몇 개 보여줌
 #     }
+
+@app.get("/api/skin-options")
+def get_skin_options():
+    return {
+        "success": True,
+        "data": {
+            "skinTypes": ["건성", "지성", "복합성", "민감성", "트러블성"],
+            "concerns": ["여드름", "홍조", "각질", "주름", "미백", "모공", "탄력"]
+        }
+    }
 
 # 서버 실행 코드 추가
 if __name__ == "__main__":
