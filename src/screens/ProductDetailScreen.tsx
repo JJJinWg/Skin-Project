@@ -47,8 +47,7 @@ const ProductDetailScreen = () => {
 
   // 상품 이미지 (API에서 가져온 제품 정보 기반)
   const productImages = product ? [product.image] : [
-    require('../assets/product1.png'),
-    require('../assets/product2.png'),
+    { uri: 'https://via.placeholder.com/150?text=Product+Image' }
   ];
 
   // 제품 정보 로드
@@ -75,6 +74,11 @@ const ProductDetailScreen = () => {
 
   // 최저가 계산
   const getLowestPrice = () => {
+    if (!shops || shops.length === 0) {
+      console.warn('⚠️ 쇼핑몰 가격 정보가 없어 제품 기본 가격을 사용합니다.');
+      return product?.price || 0; // shops가 없으면 제품 가격 사용
+    }
+    
     if (includeShipping) {
       return shops.reduce((min, shop) => {
         const totalPrice = shop.price + shop.shippingFee;
@@ -218,6 +222,7 @@ const ProductDetailScreen = () => {
         {/* 쇼핑몰 목록 */}
         <View style={styles.shopsContainer}>
           <Text style={styles.shopsTitle}>쇼핑몰별 가격</Text>
+          {shops.length > 0 ? (
           <FlatList
             data={shops}
             renderItem={renderShopItem}
@@ -225,6 +230,16 @@ const ProductDetailScreen = () => {
             scrollEnabled={false}
             ItemSeparatorComponent={() => <View style={styles.shopSeparator} />}
           />
+          ) : (
+            <View style={styles.noShopsContainer}>
+              <Text style={styles.noShopsText}>
+                🔧 쇼핑몰 가격 정보를 불러올 수 없습니다.
+              </Text>
+              <Text style={styles.noShopsSubText}>
+                백엔드 API 개발이 완료되면 실제 가격 비교 서비스를 이용하실 수 있습니다.
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -555,6 +570,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  noShopsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noShopsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#212529',
+    marginBottom: 10,
+  },
+  noShopsSubText: {
+    fontSize: 12,
+    color: '#6C757D',
   },
 });
 

@@ -67,6 +67,7 @@ const HomeScreen = () => {
     const loadProducts = async () => {
       try {
         setProductsLoading(true)
+        console.log('🏠 홈화면 제품 데이터 로드 중...');
         
         // productService가 undefined인 경우 방어
         if (!productService || !productService.getPopularProducts) {
@@ -76,9 +77,17 @@ const HomeScreen = () => {
         }
         
         const productsData = await productService.getPopularProducts()
+        console.log('🏠 인기 제품 데이터 받음:', productsData.length, '개');
+        
+        // 제품 이미지 디버깅
+        productsData.slice(0, 4).forEach((product: any, index: number) => {
+          console.log(`🖼️ 홈화면 제품 ${product.id} 이미지:`, product.image);
+        });
+        
         setProducts(productsData.slice(0, 4)) // 홈화면에는 4개만 표시
+        console.log('✅ 홈화면 제품 데이터 로드 성공:', productsData.slice(0, 4).length, '개');
       } catch (error) {
-        console.error('제품 목록 로드 실패:', error)
+        console.error('❌ 홈화면 제품 목록 로드 실패:', error)
         setProducts([])
       } finally {
         setProductsLoading(false)

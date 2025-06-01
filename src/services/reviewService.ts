@@ -14,7 +14,7 @@ export type Review = {
   helpful: number
 }
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://10.0.2.2:8000';
 
 // 제품 목록 조회
 export const getProducts = async () => {
@@ -84,7 +84,7 @@ export const getUserReviews = async (): Promise<Review[]> => {
       id: review.id,
       productId: review.product_id || review.productId || 0,
       productName: review.product_name || review.productName || '제품명',
-      productImage: require("../assets/product1.png"), // 기본 이미지
+      productImage: { uri: 'https://via.placeholder.com/150?text=Product+Image' }, // 기본 이미지
       rating: review.rating || 0,
       content: review.content || '',
       date: review.created_at ? review.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -102,7 +102,7 @@ export const getUserReviews = async (): Promise<Review[]> => {
         id: 1,
         productId: 101,
         productName: "Beplain 클렌징 폼",
-        productImage: require("../assets/product1.png"),
+        productImage: { uri: 'https://via.placeholder.com/150?text=Product+Image' },
         rating: 4.5,
         content: "피부가 민감한 편인데 자극없이 순하게 세안할 수 있어요.",
         date: "2023-05-15",

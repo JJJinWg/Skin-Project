@@ -53,7 +53,16 @@ class ApiClient {
     try {
       console.log(`🌐 API 요청: ${config.method || 'GET'} ${url}`);
       
-      const response = await fetch(url, config);
+      // 30초 타임아웃 설정 (AI 추천을 위해)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -168,7 +177,7 @@ export const medicalApi = {
   updateReview: (id: number, data: any) => apiClient.put(`/api/reviews/${id}`, data),
   deleteReview: (id: number) => apiClient.delete(`/api/reviews/${id}`),
 
-  // 제품 관련 API
+  // 제품 관련 API (실제 백엔드 데이터 사용)
   getProducts: (params?: any) => apiClient.get('/api/products', params),
   getProduct: (id: number) => apiClient.get(`/api/products/${id}`),
   getPopularProducts: () => apiClient.get('/api/products/popular'),
@@ -185,19 +194,24 @@ export const medicalApi = {
   healthCheck: () => apiClient.get('/health'),
 
   // 화장품 추천 API
-  getRecommendation: (data: any) => apiClient.post('/api/products/recommend', data),
+  getRecommendation: (data: any) => apiClient.post('/recommend/ai', data),
 
   // 카테고리 관련 API
   getCategories: () => apiClient.get('/api/categories'),
 
   // 피부 옵션 관련 API
   getSkinOptions: () => apiClient.get('/api/skin-options'),
+  
+  // 추천 내역 관련 API
+  saveRecommendationHistory: (data: any) => apiClient.post('/api/recommendations/save', data),
+  getRecommendationHistory: (userId: number) => apiClient.get(`/api/recommendations/history/${userId}`),
+  deleteRecommendationHistory: (historyId: number) => apiClient.delete(`/api/recommendations/${historyId}`),
 };
 
 // 기타 API
 export const generalApi = {
-  // 화장품 추천
-  getRecommendation: (query: any) => apiClient.post('/recommend', query),
+  // AI 화장품 추천 (/recommend/ai 엔드포인트 호출)
+  getRecommendation: (query: any) => apiClient.post('/recommend/ai', query),
   
   // 크롤링 실행
   runCrawling: () => apiClient.get('/crawl'),
