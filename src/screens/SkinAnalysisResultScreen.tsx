@@ -45,97 +45,14 @@ type SkinAnalysisResult = {
   }[]
 }
 
-type SkinAnalysisResultScreenRouteProp = RouteProp<{ params: { imageUri: string } }, "params">
+type SkinAnalysisResultScreenRouteProp = RouteProp<RootStackParamList, "SkinAnalysisResultScreen">
 
 const SkinAnalysisResultScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
   const route = useRoute<SkinAnalysisResultScreenRouteProp>()
-  const { imageUri } = route.params
+  const { imageUri, analysisResult: initialAnalysisResult } = route.params
 
-  const [analysisResult, setAnalysisResult] = useState<SkinAnalysisResult | null>(null)
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"overview" | "issues" | "recommendations">("overview")
-
-  // 분석 결과 가져오기 (API 호출 시뮬레이션)
-  useEffect(() => {
-    // 실제로는 이미지를 서버에 업로드하고 AI 분석 결과를 받아옴
-    setTimeout(() => {
-      const mockResult: SkinAnalysisResult = {
-        skinType: "복합성",
-        skinAge: 28,
-        moisture: 65,
-        wrinkles: 25,
-        pigmentation: 40,
-        pores: 55,
-        acne: 30,
-        issues: [
-          {
-            title: "건조함",
-            description:
-              "T존을 제외한 부위에서 건조함이 감지되었습니다. 특히 볼 부위의 수분 부족이 두드러집니다. 이는 계절적 요인이나 부적절한 보습 관리로 인한 것일 수 있습니다.",
-            severity: "medium",
-          },
-          {
-            title: "모공 확장",
-            description:
-              "코와 이마 부위에 확장된 모공이 관찰됩니다. 과도한 피지 분비와 불완전한 클렌징으로 인해 모공이 확장될 수 있습니다.",
-            severity: "high",
-          },
-          {
-            title: "색소침착",
-            description:
-              "양 볼과 이마에 경미한 색소침착이 있습니다. 이는 자외선 노출이나 염증 후 색소침착으로 인한 것일 수 있습니다.",
-            severity: "low",
-          },
-        ],
-        recommendations: [
-          {
-            title: "수분 공급 강화",
-            description:
-              "히알루론산이나 세라마이드가 함유된 보습제를 사용하여 피부 수분 장벽을 강화하세요. 하루에 최소 2리터의 물을 마시는 것도 피부 수분 유지에 도움이 됩니다.",
-            products: [
-              {
-                name: "세라마이드 보습 크림",
-                description: "건조한 피부를 위한 집중 보습 크림",
-                image: require("../assets/product1.png"),
-              },
-              {
-                name: "히알루론산 세럼",
-                description: "깊은 수분 공급을 위한 고농축 세럼",
-                image: require("../assets/product2.png"),
-              },
-            ],
-          },
-          {
-            title: "모공 관리",
-            description:
-              "주 2-3회 BHA(살리실산) 성분이 함유된 각질 제거제를 사용하여 모공 속 노폐물을 제거하세요. 클레이 마스크도 일주일에 1-2회 사용하면 모공 관리에 효과적입니다.",
-            products: [
-              {
-                name: "BHA 토너",
-                description: "모공 속 노폐물 제거에 효과적인 토너",
-                image: require("../assets/product1.png"),
-              },
-            ],
-          },
-          {
-            title: "색소침착 개선",
-            description:
-              "비타민C, 나이아신아마이드, 알부틴 등의 성분이 함유된 제품을 사용하여 색소침착을 개선하세요. 자외선 차단제를 매일 사용하는 것도 중요합니다.",
-            products: [
-              {
-                name: "비타민C 세럼",
-                description: "색소침착 개선 및 피부 톤 정돈",
-                image: require("../assets/product2.png"),
-              },
-            ],
-          },
-        ],
-      }
-      setAnalysisResult(mockResult)
-      setLoading(false)
-    }, 1500)
-  }, [])
 
   // 뒤로가기
   const handleBackPress = () => {
@@ -144,25 +61,19 @@ const SkinAnalysisResultScreen = () => {
 
   // 결과 공유하기
   const handleShare = async () => {
-    if (!analysisResult) return
+    if (!initialAnalysisResult) return
 
     try {
       const shareMessage = `
 AI 피부 분석 결과
 
-피부 타입: ${analysisResult.skinType}
-피부 나이: ${analysisResult.skinAge}세
-수분: ${analysisResult.moisture}%
-주름: ${analysisResult.wrinkles}%
-색소침착: ${analysisResult.pigmentation}%
-모공: ${analysisResult.pores}%
-여드름: ${analysisResult.acne}%
+피부 타입: ${initialAnalysisResult.skinType}
 
 주요 문제점:
-${analysisResult.issues.map((issue) => `- ${issue.title}`).join("\n")}
+${initialAnalysisResult.concerns.map((concern) => `- ${concern}`).join("\n")}
 
 추천 관리법:
-${analysisResult.recommendations.map((rec) => `- ${rec.title}`).join("\n")}
+${initialAnalysisResult.recommendations.map((rec) => `- ${rec}`).join("\n")}
 `
 
       await Share.share({
@@ -211,19 +122,7 @@ ${analysisResult.recommendations.map((rec) => `- ${rec.title}`).join("\n")}
     )
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF9A9E" />
-          <Text style={styles.loadingText}>피부 분석 결과를 불러오는 중...</Text>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
-  if (!analysisResult) {
+  if (!initialAnalysisResult) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -243,205 +142,86 @@ ${analysisResult.recommendations.map((rec) => `- ${rec.title}`).join("\n")}
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          
+        <TouchableOpacity onPress={handleBackPress}>
+          <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>피부 분석 결과</Text>
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-          <Text style={styles.shareButtonText}>공유</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 탭 메뉴 */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "overview" && styles.activeTabButton]}
-          onPress={() => setActiveTab("overview")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "overview" && styles.activeTabButtonText]}>개요</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "issues" && styles.activeTabButton]}
-          onPress={() => setActiveTab("issues")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "issues" && styles.activeTabButtonText]}>문제점</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === "recommendations" && styles.activeTabButton]}
-          onPress={() => setActiveTab("recommendations")}
-        >
-          <Text style={[styles.tabButtonText, activeTab === "recommendations" && styles.activeTabButtonText]}>
-            추천 관리법
-          </Text>
+        <Text style={styles.headerTitle}>AI 피부 분석 결과</Text>
+        <TouchableOpacity onPress={handleShare}>
+          <Text style={styles.shareButton}>공유</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 개요 탭 */}
-        {activeTab === "overview" && (
-          <View style={styles.overviewContainer}>
-            {/* 분석된 이미지 */}
-            <View style={styles.imageCard}>
-              <Image source={{ uri: imageUri }} style={styles.analyzedImage} />
-              <View style={styles.imageOverlay}>
-                <Text style={styles.overlayText}>AI 분석 완료</Text>
-              </View>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        {/* 분석 이미지 */}
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: imageUri }} style={styles.analysisImage} />
+        </View>
+
+        {/* 피부 타입 */}
+        <View style={styles.skinTypeContainer}>
+          <Text style={styles.skinTypeLabel}>피부 타입</Text>
+          <Text style={styles.skinTypeValue}>{initialAnalysisResult.skinType}</Text>
+        </View>
+
+        {/* 탭 메뉴 */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "overview" && styles.activeTab]}
+            onPress={() => setActiveTab("overview")}
+          >
+            <Text style={[styles.tabText, activeTab === "overview" && styles.activeTabText]}>
+              개요
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "issues" && styles.activeTab]}
+            onPress={() => setActiveTab("issues")}
+          >
+            <Text style={[styles.tabText, activeTab === "issues" && styles.activeTabText]}>
+              문제점
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "recommendations" && styles.activeTab]}
+            onPress={() => setActiveTab("recommendations")}
+          >
+            <Text style={[styles.tabText, activeTab === "recommendations" && styles.activeTabText]}>
+              추천
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 탭 컨텐츠 */}
+        <View style={styles.tabContent}>
+          {activeTab === "overview" && (
+            <View style={styles.overviewContainer}>
+              <Text style={styles.overviewText}>
+                AI가 분석한 결과, {initialAnalysisResult.skinType} 피부 타입으로 판단되었습니다.
+                주요 문제점과 개선 방안을 확인해보세요.
+              </Text>
             </View>
+          )}
 
-            {/* 피부 타입 및 나이 */}
-            <View style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Text style={styles.resultTitle}>피부 분석 결과</Text>
-                <Text style={styles.analysisDate}>분석일: {new Date().toLocaleDateString()}</Text>
-              </View>
-
-              <View style={styles.skinTypeContainer}>
-                <View style={styles.skinTypeItem}>
-                  <Text style={styles.skinTypeLabel}>피부 타입</Text>
-                  <Text style={styles.skinTypeValue}>{analysisResult.skinType}</Text>
+          {activeTab === "issues" && (
+            <View style={styles.issuesContainer}>
+              {initialAnalysisResult.concerns.map((concern, index) => (
+                <View key={index} style={styles.issueItem}>
+                  <Text style={styles.issueTitle}>• {concern}</Text>
                 </View>
-                <View style={styles.skinTypeItem}>
-                  <Text style={styles.skinTypeLabel}>피부 나이</Text>
-                  <Text style={styles.skinTypeValue}>{analysisResult.skinAge}세</Text>
-                </View>
-              </View>
-
-              {/* 피부 상태 점수 */}
-              <View style={styles.scoresContainer}>
-                <View style={styles.scoreItem}>
-                  <View style={styles.scoreHeader}>
-                    <Text style={styles.scoreLabel}>수분</Text>
-                    <Text style={styles.scoreValue}>{analysisResult.moisture}%</Text>
-                  </View>
-                  {renderScoreBar(analysisResult.moisture, "#4FC3F7")}
-                </View>
-
-                <View style={styles.scoreItem}>
-                  <View style={styles.scoreHeader}>
-                    <Text style={styles.scoreLabel}>주름</Text>
-                    <Text style={styles.scoreValue}>{analysisResult.wrinkles}%</Text>
-                  </View>
-                  {renderScoreBar(analysisResult.wrinkles, "#FF9800")}
-                </View>
-
-                <View style={styles.scoreItem}>
-                  <View style={styles.scoreHeader}>
-                    <Text style={styles.scoreLabel}>색소침착</Text>
-                    <Text style={styles.scoreValue}>{analysisResult.pigmentation}%</Text>
-                  </View>
-                  {renderScoreBar(analysisResult.pigmentation, "#9C27B0")}
-                </View>
-
-                <View style={styles.scoreItem}>
-                  <View style={styles.scoreHeader}>
-                    <Text style={styles.scoreLabel}>모공</Text>
-                    <Text style={styles.scoreValue}>{analysisResult.pores}%</Text>
-                  </View>
-                  {renderScoreBar(analysisResult.pores, "#F44336")}
-                </View>
-
-                <View style={styles.scoreItem}>
-                  <View style={styles.scoreHeader}>
-                    <Text style={styles.scoreLabel}>여드름</Text>
-                    <Text style={styles.scoreValue}>{analysisResult.acne}%</Text>
-                  </View>
-                  {renderScoreBar(analysisResult.acne, "#8BC34A")}
-                </View>
-              </View>
-
-              {/* 요약 */}
-              <View style={styles.summarySectionContainer}>
-                <Text style={styles.summaryTitle}>요약</Text>
-                <Text style={styles.summaryText}>
-                  피부 타입은 <Text style={styles.highlightText}>{analysisResult.skinType}</Text>이며, 주요 문제점은{" "}
-                  <Text style={styles.highlightText}>
-                    {analysisResult.issues.map((issue) => issue.title).join(", ")}
-                  </Text>{" "}
-                  입니다. 피부 관리를 위해{" "}
-                  <Text style={styles.highlightText}>
-                    {analysisResult.recommendations.map((rec) => rec.title).join(", ")}
-                  </Text>
-                  을 권장합니다.
-                </Text>
-              </View>
+              ))}
             </View>
-          </View>
-        )}
+          )}
 
-        {/* 문제점 탭 */}
-        {activeTab === "issues" && (
-          <View style={styles.issuesContainer}>
-            {analysisResult.issues.map((issue, index) => (
-              <View key={index} style={styles.issueCard}>
-                <View style={styles.issueHeader}>
-                  <Text style={styles.issueTitle}>{issue.title}</Text>
-                  <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(issue.severity) }]}>
-                    <Text style={styles.severityText}>심각도: {getSeverityText(issue.severity)}</Text>
-                  </View>
+          {activeTab === "recommendations" && (
+            <View style={styles.recommendationsContainer}>
+              {initialAnalysisResult.recommendations.map((recommendation, index) => (
+                <View key={index} style={styles.recommendationItem}>
+                  <Text style={styles.recommendationTitle}>• {recommendation}</Text>
                 </View>
-                <Text style={styles.issueDescription}>{issue.description}</Text>
-              </View>
-            ))}
-
-            <TouchableOpacity style={styles.consultButton} onPress={() => navigation.navigate("ReservationScreen")}>
-              <LinearGradient
-                colors={["#FF9A9E", "#FAD0C4"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.consultButtonGradient}
-              >
-                <Text style={styles.consultButtonText}>전문의 상담 예약하기</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 추천 관리법 탭 */}
-        {activeTab === "recommendations" && (
-          <View style={styles.recommendationsContainer}>
-            {analysisResult.recommendations.map((recommendation, index) => (
-              <View key={index} style={styles.recommendationCard}>
-                <Text style={styles.recommendationTitle}>{recommendation.title}</Text>
-                <Text style={styles.recommendationDescription}>{recommendation.description}</Text>
-
-                {recommendation.products && recommendation.products.length > 0 && (
-                  <View style={styles.productsContainer}>
-                    <Text style={styles.productsTitle}>추천 제품</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {recommendation.products.map((product, productIndex) => (
-                        <TouchableOpacity
-                          key={productIndex}
-                          style={styles.productCard}
-                          onPress={() => Alert.alert("제품 정보", `${product.name}\n\n${product.description}`)}
-                        >
-                          <Image source={product.image} style={styles.productImage} />
-                          <Text style={styles.productName}>{product.name}</Text>
-                          <Text style={styles.productDescription} numberOfLines={2}>
-                            {product.description}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-            ))}
-
-            <TouchableOpacity style={styles.shopButton} onPress={() => navigation.navigate("ProductReviewScreen")}>
-              <LinearGradient
-                colors={["#84FAB0", "#8FD3F4"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.shopButtonGradient}
-              >
-                <Text style={styles.shopButtonText}>추천 제품 더 보기</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 하단 여백 */}
-        <View style={styles.bottomSpacer} />
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
@@ -466,14 +246,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-  },
-  backButtonText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
   },
   headerTitle: {
     fontSize: 18,
@@ -485,10 +260,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: "#F8F9FA",
     borderRadius: 8,
-  },
-  shareButtonText: {
-    fontSize: 14,
-    color: "#6C757D",
   },
   loadingContainer: {
     flex: 1,
@@ -527,34 +298,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F9FA",
   },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  activeTabButton: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#FF9A9E",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  activeTabButtonText: {
-    color: "#FF9A9E",
-    fontWeight: "bold",
-  },
-  // 개요 탭 스타일
-  overviewContainer: {
+  contentContainer: {
     padding: 20,
   },
-  imageCard: {
+  imageContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 10,
@@ -566,51 +313,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: "relative",
   },
-  analyzedImage: {
+  analysisImage: {
     width: "100%",
     height: 300,
     borderRadius: 12,
     resizeMode: "cover",
-  },
-  imageOverlay: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-  },
-  overlayText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  resultCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  resultHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  analysisDate: {
-    fontSize: 12,
-    color: "#6C757D",
   },
   skinTypeContainer: {
     flexDirection: "row",
@@ -619,10 +326,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
     borderRadius: 12,
     padding: 15,
-  },
-  skinTypeItem: {
-    alignItems: "center",
-    flex: 1,
   },
   skinTypeLabel: {
     fontSize: 14,
@@ -634,61 +337,41 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
   },
-  scoresContainer: {
-    marginBottom: 20,
-  },
-  scoreItem: {
-    marginBottom: 12,
-  },
-  scoreHeader: {
+  tabContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F3F5",
   },
-  scoreLabel: {
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#FF9A9E",
+  },
+  tabText: {
     fontSize: 14,
-    color: "#212529",
+    color: "#6C757D",
   },
-  scoreValue: {
-    fontSize: 14,
+  activeTabText: {
+    color: "#FF9A9E",
     fontWeight: "bold",
-    color: "#212529",
   },
-  scoreBarContainer: {
-    height: 8,
-    backgroundColor: "#E9ECEF",
-    borderRadius: 4,
-    overflow: "hidden",
+  overviewContainer: {
+    padding: 20,
   },
-  scoreBar: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  summarySectionContainer: {
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 15,
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 10,
-  },
-  summaryText: {
+  overviewText: {
     fontSize: 14,
     color: "#495057",
     lineHeight: 20,
   },
-  highlightText: {
-    fontWeight: "bold",
-    color: "#FF9A9E",
-  },
-  // 문제점 탭 스타일
   issuesContainer: {
     padding: 20,
   },
-  issueCard: {
+  issueItem: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
@@ -699,51 +382,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  issueHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
   issueTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#212529",
   },
-  severityBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-  },
-  severityText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  issueDescription: {
-    fontSize: 14,
-    color: "#495057",
-    lineHeight: 20,
-  },
-  consultButton: {
-    borderRadius: 12,
-    overflow: "hidden",
-    marginTop: 10,
-  },
-  consultButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  consultButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  // 추천 관리법 탭 스타일
   recommendationsContainer: {
     padding: 20,
   },
-  recommendationCard: {
+  recommendationItem: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
@@ -760,60 +407,18 @@ const styles = StyleSheet.create({
     color: "#212529",
     marginBottom: 10,
   },
-  recommendationDescription: {
-    fontSize: 14,
-    color: "#495057",
-    lineHeight: 20,
-    marginBottom: 15,
+  tabContent: {
+    flex: 1,
   },
-  productsContainer: {
-    marginTop: 5,
-  },
-  productsTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 10,
-  },
-  productCard: {
-    width: 150,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    padding: 10,
-    marginRight: 10,
-  },
-  productImage: {
-    width: "100%",
-    height: 100,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 4,
-  },
-  productDescription: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  shopButton: {
-    borderRadius: 12,
+  scoreBarContainer: {
+    height: 8,
+    backgroundColor: "#E9ECEF",
+    borderRadius: 4,
     overflow: "hidden",
-    marginTop: 10,
   },
-  shopButtonGradient: {
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  shopButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  bottomSpacer: {
-    height: 40,
+  scoreBar: {
+    height: "100%",
+    borderRadius: 4,
   },
 })
 

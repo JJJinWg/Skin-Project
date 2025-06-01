@@ -20,6 +20,7 @@ import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchImageLibrary } from "react-native-image-picker"
 import type { StackNavigationProp } from "@react-navigation/stack"
+import { reviewService } from "../services/reviewService"
 
 type Review = {
   id: number
@@ -95,16 +96,27 @@ const EditReviewScreen = () => {
 
     setIsLoading(true)
 
-    // 실제로는 API 호출하여 리뷰 수정
-    setTimeout(() => {
+    try {
+      const result = await reviewService.updateReview(review.id, {
+        rating,
+        content,
+        images,
+      })
       setIsLoading(false)
+      if (result.success) {
       Alert.alert("알림", "리뷰가 수정되었습니다.", [
         {
           text: "확인",
           onPress: () => navigation.goBack(),
         },
       ])
-    }, 1000)
+      } else {
+        Alert.alert("오류", result.message || "리뷰 수정에 실패했습니다.")
+      }
+    } catch (error) {
+      setIsLoading(false)
+      Alert.alert("오류", "리뷰 수정 중 오류가 발생했습니다.")
+    }
   }
 
   // 취소 버튼 핸들러

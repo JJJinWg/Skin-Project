@@ -17,6 +17,7 @@ import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import { diagnosisService } from "../services/diagnosisService"
 
 const SkinDiagnosisScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
@@ -78,7 +79,7 @@ const SkinDiagnosisScreen = () => {
   }
 
   // 사진 분석 시작
-  const handleAnalyzePhoto = () => {
+  const handleAnalyzePhoto = async () => {
     if (!selectedImage) {
       Alert.alert("알림", "분석할 사진을 먼저 선택해주세요.")
       return
@@ -86,12 +87,23 @@ const SkinDiagnosisScreen = () => {
 
     setIsAnalyzing(true)
 
-    // AI 분석 API 호출 시뮬레이션
-    setTimeout(() => {
+    try {
+      const result = await diagnosisService.analyzeSkin(selectedImage.uri)
+      if (result) {
+        // 분석 결과 화면으로 이동
+        navigation.navigate("SkinAnalysisResultScreen", { 
+          imageUri: selectedImage.uri,
+          analysisResult: result
+        })
+      } else {
+        Alert.alert("오류", "피부 분석에 실패했습니다. 다시 시도해주세요.")
+      }
+    } catch (error) {
+      console.error("피부 분석 실패:", error)
+      Alert.alert("오류", "피부 분석 중 문제가 발생했습니다. 다시 시도해주세요.")
+    } finally {
       setIsAnalyzing(false)
-      // 분석 결과 화면으로 이동
-      navigation.navigate("SkinAnalysisResultScreen", { imageUri: selectedImage.uri })
-    }, 3000) // 3초 후 결과 화면으로 이동
+    }
   }
 
   // 뒤로가기

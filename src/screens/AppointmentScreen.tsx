@@ -18,6 +18,7 @@ import { Calendar, type DateData } from "react-native-calendars"
 import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import { appointmentService } from '../services/appointmentService'
 
 type AppointmentScreenRouteProp = RouteProp<
   { params: { doctorId: number; doctorName: string; specialty: string } },
@@ -55,55 +56,22 @@ const AppointmentScreen = () => {
   const maxDateString = maxDate.toISOString().split("T")[0]
 
   // 선택 가능한 시간대 생성 (실제로는 API에서 가져올 수 있음)
-  const generateAvailableTimes = (date: string) => {
-    // 실제 앱에서는 API를 통해 해당 날짜의 가능한 시간을 가져옵니다
+  const generateAvailableTimes = async (date: string) => {
     setLoading(true)
-
-    setTimeout(() => {
-      const times = []
-      const startHour = 9 // 오전 9시부터
-      const endHour = 18 // 오후 6시까지
-
-      // 주말인지 확인
-      const selectedDate = new Date(date)
-      const dayOfWeek = selectedDate.getDay()
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-      if (isWeekend) {
-        // 주말에는 시간이 더 적게 제공됨
-        for (let hour = 10; hour <= 15; hour++) {
-          if (Math.random() > 0.3) {
-            // 70% 확률로 시간 슬롯 생성
-            times.push(`${hour}:00`)
-          }
-          if (Math.random() > 0.5) {
-            // 50% 확률로 30분 슬롯 생성
-            times.push(`${hour}:30`)
-          }
-        }
-      } else {
-        // 평일
-        for (let hour = startHour; hour <= endHour; hour++) {
-          if (Math.random() > 0.2) {
-            // 80% 확률로 시간 슬롯 생성
-            times.push(`${hour}:00`)
-          }
-          if (Math.random() > 0.3) {
-            // 70% 확률로 30분 슬롯 생성
-            times.push(`${hour}:30`)
-          }
-        }
-      }
-
-      // 시간 순으로 정렬
-      times.sort()
+    try {
+      const times = await appointmentService.getAvailableTimeSlots(doctorId, date)
       setAvailableTimes(times)
+    } catch (error) {
+      console.error('예약 가능 시간 조회 실패:', error)
+      Alert.alert('오류', '예약 가능 시간을 불러올 수 없습니다.')
+      setAvailableTimes([])
+    } finally {
       setLoading(false)
-    }, 500) // 로딩 효과를 위한 지연
+    }
   }
 
   // 날짜 선택 핸들러
-  const handleDateSelect = (date: DateData) => {
+  const handleDateSelect = async (date: DateData) => {
     const dateString = date.dateString
 
     // 이미 선택된 날짜를 다시 클릭하면 선택 취소
@@ -127,7 +95,7 @@ const AppointmentScreen = () => {
     setMarkedDates(newMarkedDates)
 
     // 선택된 날짜에 대한 가능한 시간 생성
-    generateAvailableTimes(dateString)
+    await generateAvailableTimes(dateString)
   }
 
   // 시간 선택 핸들러
@@ -225,18 +193,30 @@ const AppointmentScreen = () => {
   }
 
   // 예약 완료 핸들러
-  const handleConfirmAppointment = () => {
+  const handleConfirmAppointment = async () => {
     if (!selectedDate || !selectedTime) {
       Alert.alert("알림", "날짜와 시간을 모두 선택해주세요.")
       return
     }
 
-    // 여기서 실제로는 API를 통해 예약 정보를 서버에 전송합니다
-    setLoading(true)
-
-    // 예약 API 호출 시뮬레이션
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      setLoading(true)
+      
+      // 실제 API 호출
+      const appointmentData = {
+        doctorId: doctorId,
+        userId: 1, // 실제로는 로그인한 사용자 ID
+        date: selectedDate,
+        time: selectedTime,
+        symptoms: symptoms || '',
+        images: images.map(img => img.uri) // 이미지 URI 배열
+      }
+      
+      console.log('📅 예약 생성 중...', appointmentData)
+      const result = await appointmentService.createAppointment(appointmentData)
+      
+      console.log('✅ 예약 생성 완료:', result)
+      
       Alert.alert(
         "예약 완료",
         `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 예약이 완료되었습니다.${symptoms ? `\n\n증상: ${symptoms}` : ""}${images.length > 0 ? `\n\n첨부된 사진: ${images.length}장` : ""}`,
@@ -247,7 +227,20 @@ const AppointmentScreen = () => {
           },
         ],
       )
-    }, 1000)
+    } catch (error) {
+      console.error('❌ 예약 생성 실패:', error)
+      Alert.alert(
+        "예약 실패", 
+        "예약 중 오류가 발생했습니다. 다시 시도해주세요.",
+        [
+          {
+            text: "확인"
+          },
+        ],
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   // 시간 포맷 변환 (24시간 -> 12시간)

@@ -14,7 +14,14 @@ load_dotenv()
 # 모델 초기화
 model = SentenceTransformer("jhgan/ko-sbert-nli")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+
+# Pinecone API 키 확인
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+pc = None
+if PINECONE_API_KEY:
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+else:
+    print("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. AI 추천 기능이 제한됩니다.")
 
 INDEXES = {
     "토너": "toner",
@@ -24,6 +31,14 @@ INDEXES = {
 
 @router.post("/recommend/ai")
 def recommend_ai(data: RecommendAIRequest = Body(...)):
+    # Pinecone API 키 확인
+    if not pc:
+        return {
+            "error": "PINECONE_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요.",
+            "분석 요약": "API 키 설정이 필요합니다.",
+            "추천 리스트": []
+        }
+
     # 1. 분석 요약 생성
     analysis_prompt = (
         f"피부 타입: {data.skin_type}, 민감도: {data.sensitivity}, 피부 고민: {', '.join(data.diagnosis)}\n"

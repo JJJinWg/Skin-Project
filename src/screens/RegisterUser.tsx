@@ -16,6 +16,7 @@ import {
 import { useNavigation } from '@react-navigation/native'; // React Navigation 사용
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
+import { useRegisterMutation } from '../store/api'; // RTK Query 훅 임포트
 
 const RegisterUser: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList, 'RegisterUser'>>(); // 네비게이션 객체 가져오기
@@ -39,23 +40,47 @@ const RegisterUser: React.FC = () => {
     });
   };
 
-  const handleSubmit = () => {
-    console.log('Form Data Submitted:', formData);
-    // 여기에 서버로 데이터를 전송하는 로직을 추가하세요.
-
-    // 회원가입 완료 알림 및 홈 화면으로 이동
-    Alert.alert(
-      '회원가입 완료',
-      '회원가입이 완료되었습니다.',
-      [
-        {
-          text: '확인',
-          onPress: () => navigation.navigate('HomeScreen'), // HomeScreen으로 이동
-        },
-      ],
-      { cancelable: false }
-    );
+  const handleSubmit = async () => { // async 추가
+    // 간단한 유효성 검사 (필요에 따라 강화)
+    if (!formData.email || !formData.password || !formData.name) {
+      Alert.alert('알림', '이름, 이메일, 비밀번호는 필수 입력 항목입니다.');
+      return;
+    }
+    try {
+      // register 뮤테이션 호출 (formData 전체를 전달)
+      await register(formData).unwrap(); 
+      // isSuccess, data 등을 사용하여 성공 처리 (아래 useEffect에서 처리)
+    } catch (err) {
+      // isError, error 등을 사용하여 에러 처리 (아래 useEffect에서 처리)
+      // unwrap() 사용 시 에러는 여기서 catch 가능 (또는 useEffect에서 공통 처리)
+    }
   };
+
+  // 회원가입 성공/실패 처리 로직
+  useEffect(() => { 
+    if (isSuccess && data) {  // 현재 항상 성공
+      Alert.alert(
+        '회원가입 완료',
+        data.message || '회원가입이 완료되었습니다.',
+        [
+          {
+            text: '확인',
+            // 회원가입 후 로그인 화면으로 이동하여 방금 만든 계정으로 로그인 유도
+            onPress: () => navigation.replace('Login'),
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+    if (isError && error) {
+      if (typeof error === 'object' && error !== null && 'status' in error) {
+        const errorData = (error as any).data;
+        Alert.alert('회원가입 실패', (typeof errorData === 'string' ? errorData : errorData?.message) || '회원가입 중 오류가 발생했습니다.');
+      } else {
+        Alert.alert('회원가입 실패', '알 수 없는 오류가 발생했습니다.');
+      }
+    }
+  }, [isSuccess, isError, error, data, navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -155,8 +180,8 @@ const RegisterUser: React.FC = () => {
         </View>
 
         {/* 회원가입 버튼 */}
-        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>회원가입</Text>
+        <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={isLoading}>
+          <Text style={styles.buttonText}>{isLoading ? '가입 처리 중...' : '회원가입'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

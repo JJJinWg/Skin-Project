@@ -1,0 +1,26 @@
+{
+    "venvPath": ".",
+    "venv": "venv_new",
+    "pythonVersion": "3.13",
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        ".git"
+    ],
+    "reportMissingImports": "warning",
+    "reportMissingModuleSource": "warning",
+    "pythonPlatform": "Windows",
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "pythonVersion": "3.13",
+            "pythonPlatform": "Windows",
+            "extraPaths": [
+                "./venv_new/Lib/site-packages"
+            ]
+        }
+    ]
+} 
