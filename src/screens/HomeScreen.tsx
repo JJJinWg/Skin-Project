@@ -1,5 +1,3 @@
-// 홈화면
-
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
@@ -87,9 +85,9 @@ const HomeScreen = () => {
                 style={styles.doctorCard}
                 onPress={() =>
                   navigation.navigate("DoctorDetailScreen", {
-                    id: item.id,
-                    name: item.name,
-                    specialty: item.specialty,
+                    doctorId: item.id,
+                    doctorName: item.name,
+                    doctorSpecialty: item.specialty,
                   })
                 }
               >
@@ -120,7 +118,10 @@ const HomeScreen = () => {
 
         {/* 진료 요청서 섹션 */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.requestFormCard} onPress={() => navigation.navigate("DiagnosisHistoryScreen")}>
+          <TouchableOpacity
+            style={styles.requestFormCard}
+            onPress={() => navigation.navigate("DiagnosisHistoryScreen")}
+          >
             <LinearGradient
               colors={["#FFB75E", "#ED8F03"]}
               start={{ x: 0, y: 0 }}
