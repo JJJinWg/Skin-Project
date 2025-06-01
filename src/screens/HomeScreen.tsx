@@ -3,9 +3,6 @@
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
-import { useState, useEffect } from "react"
-import { appointmentService } from "../services/appointmentService"
-import { userService, type UserInfo } from "../services/userService"
 
 import {
   View,
@@ -24,29 +21,18 @@ const { width } = Dimensions.get("window")
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
-  const [doctors, setDoctors] = useState<any[]>([])
-  const [products, setProducts] = useState<any[]>([])
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
-  // 데이터 로드
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [doctorsData, productsData, userData] = await Promise.all([
-          appointmentService.getHomeDoctors(),
-          appointmentService.getProducts(),
-          userService.getCurrentUser()
-        ]);
-        setDoctors(doctorsData);
-        setProducts(productsData);
-        setUserInfo(userData);
-      } catch (error) {
-        console.error('데이터 로드 실패:', error);
-      }
-    };
+  const doctors = [
+    { id: 1, name: "Dr. Kim", specialty: "피부과", image: require("../assets/doctor1.png") },
+    { id: 2, name: "Dr. Lee", specialty: "알레르기", image: require("../assets/doctor2.png") },
+    { id: 3, name: "Dr. Park", specialty: "피부과", image: require("../assets/doctor3.png") },
+    { id: 4, name: "Dr. Choi", specialty: "피부과", image: require("../assets/doctor4.png") },
+  ]
 
-    loadData();
-  }, [])
+  const products = [
+    { id: 1, name: "Beplain", rating: 4.44, reviews: 128, image: require("../assets/product1.png") },
+    { id: 2, name: "Torriden", rating: 3.57, reviews: 86, image: require("../assets/product2.png") },
+  ]
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -56,19 +42,15 @@ const HomeScreen = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>안녕하세요 👋</Text>
-            <Text style={styles.headerText}>{userInfo?.name || '사용자'}님</Text>
+            <Text style={styles.headerText}>홍길동님</Text>
           </View>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigation.navigate("ProfileScreen", {})}
-            >
+          <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate("ProfileScreen", {})}>
             <Text style={styles.profileText}>프로필</Text>
           </TouchableOpacity>
         </View>
 
         {/* 메인 배너 */}
-        <TouchableOpacity style={styles.mainBanner}
-          onPress={() => navigation.navigate("PharmacyMapScreen")}>
+        <TouchableOpacity style={styles.mainBanner} onPress={() => navigation.navigate("PharmacyMapScreen")}>
           <LinearGradient
             colors={["#FF9A9E", "#FAD0C4"]}
             start={{ x: 0, y: 0 }}
@@ -101,7 +83,16 @@ const HomeScreen = () => {
             horizontal
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.doctorCard}>
+              <TouchableOpacity
+                style={styles.doctorCard}
+                onPress={() =>
+                  navigation.navigate("DoctorDetailScreen", {
+                    id: item.id,
+                    name: item.name,
+                    specialty: item.specialty,
+                  })
+                }
+              >
                 <Image source={item.image} style={styles.doctorImage} />
                 <View style={styles.doctorInfo}>
                   <Text style={styles.doctorName}>{item.name}</Text>
@@ -109,14 +100,14 @@ const HomeScreen = () => {
                 </View>
                 <TouchableOpacity
                   style={styles.bookButton}
-                  onPress={() =>
+                  onPress={(e) => {
+                    e.stopPropagation() // 부모 터치 이벤트 방지
                     navigation.navigate("AppointmentScreen", {
                       doctorId: item.id,
                       doctorName: item.name,
                       specialty: item.specialty,
-                      doctorImage: item.image,
                     })
-                  }
+                  }}
                 >
                   <Text style={styles.bookButtonText}>예약</Text>
                 </TouchableOpacity>
@@ -125,6 +116,28 @@ const HomeScreen = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.doctorList}
           />
+        </View>
+
+        {/* 진료 요청서 섹션 */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.requestFormCard} onPress={() => navigation.navigate("DiagnosisHistoryScreen")}>
+            <LinearGradient
+              colors={["#FFB75E", "#ED8F03"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.requestFormGradient}
+            >
+              <View style={styles.requestFormContent}>
+                <View>
+                  <Text style={styles.requestFormTitle}>진료 요청서</Text>
+                  <Text style={styles.requestFormSubtitle}>의사에게 직접 진료 요청을 보내세요</Text>
+                </View>
+                <View style={styles.requestFormIconContainer}>
+                  <Text style={styles.requestFormIcon}>📋</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
         {/* AI 서비스 섹션 */}
@@ -174,21 +187,6 @@ const HomeScreen = () => {
                 </View>
                 <Text style={styles.aiTitle}>피부 관리 기록</Text>
                 <Text style={styles.aiDescription}>피부 분석 및 추천 내역을 확인하세요</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.aiCard} onPress={() => navigation.navigate("DiagnosisHistoryScreen")}>
-              <LinearGradient
-                colors={["#667eea", "#764ba2"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.aiCardGradient}
-              >
-                <View style={styles.aiIconContainer}>
-                  <Text style={styles.aiIcon}>📋</Text>
-                </View>
-                <Text style={styles.aiTitle}>진료 요청서</Text>
-                <Text style={styles.aiDescription}>온라인으로 진료를 요청하세요</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -242,7 +240,7 @@ const HomeScreen = () => {
           <Text style={styles.navIcon}>📅</Text>
           <Text style={styles.navText}>예약</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen",{})}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("ProfileScreen", {})}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navText}>프로필</Text>
         </TouchableOpacity>
@@ -278,14 +276,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
   },
-  // profileButton: {
-  //   width: 40,
-  //   height: 40,
-  //   borderRadius: 20,
-  //   overflow: "hidden",
-  //   borderWidth: 2,
-  //   borderColor: "#E9ECEF",
-  // },
   profileImage: {
     width: "100%",
     height: "100%",
@@ -516,18 +506,58 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   profileButton: {
-  backgroundColor: '#FF9A9E',
-  paddingVertical: 8,
-  paddingHorizontal: 16,
-  borderRadius: 20,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-profileText: {
-  color: 'white',
-  fontSize: 16,
-  fontWeight: 'bold',
-}
+    backgroundColor: "#FF9A9E",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  requestFormCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginVertical: 5,
+  },
+  requestFormGradient: {
+    padding: 20,
+  },
+  requestFormContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  requestFormTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 5,
+  },
+  requestFormSubtitle: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    opacity: 0.9,
+  },
+  requestFormIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  requestFormIcon: {
+    fontSize: 24,
+  },
 })
 
 export default HomeScreen
