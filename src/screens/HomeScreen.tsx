@@ -4,8 +4,7 @@ import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { useState, useEffect } from "react"
-import { appointmentService } from "../services/appointmentService"
-import { productService } from "../services/productService"
+import { appointmentService, productService } from "../services"
 
 import {
   View,
@@ -35,6 +34,14 @@ const HomeScreen = () => {
     const loadDoctors = async () => {
       try {
         setLoading(true)
+        
+        // appointmentService가 undefined인 경우 방어
+        if (!appointmentService || !appointmentService.getHomeDoctors) {
+          console.error('❌ appointmentService가 제대로 로드되지 않았습니다.');
+          setDoctors([]);
+          return;
+        }
+        
         const doctorsData = await appointmentService.getHomeDoctors()
         
         // 의사 데이터에 기본 이미지 추가
@@ -60,6 +67,14 @@ const HomeScreen = () => {
     const loadProducts = async () => {
       try {
         setProductsLoading(true)
+        
+        // productService가 undefined인 경우 방어
+        if (!productService || !productService.getPopularProducts) {
+          console.error('❌ productService가 제대로 로드되지 않았습니다.');
+          setProducts([]);
+          return;
+        }
+        
         const productsData = await productService.getPopularProducts()
         setProducts(productsData.slice(0, 4)) // 홈화면에는 4개만 표시
       } catch (error) {

@@ -96,7 +96,7 @@ def add_sample_data():
                 longitude=127.0024,
                 operating_hours={
                     "weekday": "08:00-18:00",
-                    "saturday": "08:00-13:00", 
+                    "saturday": "08:00-13:00",
                     "sunday": "휴무"
                 }
             ),
@@ -116,7 +116,7 @@ def add_sample_data():
             Hospital(
                 name="삼성서울병원",
                 address="서울특별시 강남구 일원로 81",
-                phone="02-3410-2114", 
+                phone="02-3410-2114",
                 description="최첨단 의료 장비와 우수한 의료진을 갖춘 병원",
                 latitude=37.4881,
                 longitude=127.0856,
@@ -207,7 +207,7 @@ def add_sample_data():
         
         db.commit()
         print("✅ 의사 데이터 추가 완료")
-
+        
         # 4. 쇼핑몰 데이터 추가
         shops = [
             Shop(

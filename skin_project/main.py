@@ -30,8 +30,8 @@ from medical_crud import (
 )
 
 # 추천 시스템 import (임시 주석 처리)
-# from product_description.crawler import crawl_olive_young_reviews
-# from recommendation import recommend_endpoint, RecommendQuery
+from product_description.crawler import crawl_olive_young_reviews
+# from recommendation import recommend_endpoint, RecommendQuery  # 존재하지 않는 import 제거
 
 # 환경변수 로드
 from dotenv import load_dotenv
