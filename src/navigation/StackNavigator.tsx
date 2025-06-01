@@ -26,6 +26,7 @@ import SkinHistoryScreen from "../screens/SkinHistoryScreen"
 import FindPasswordScreen from "../screens/FindPasswordScreen";
 import FindIdScreen from "../screens/FindIdScreen";
 import PharmacyMapScreen from "../screens/PharmacyMapScreen";
+import DoctorDetailScreen from '../screens/DoctorDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -67,7 +68,7 @@ const StackNavigator = () => {
             <Stack.Screen name="ReservationHistoryScreen" component={ReservationHistoryScreen} />
             <Stack.Screen name="RegisterUser" component={RegisterUser} />
             <Stack.Screen name="WriteReviewScreen" component={WriteReviewScreen} />
-            <Stack.Screen name="DoctorDetailScreen" component={ProductDetailScreen} />
+            <Stack.Screen name="DoctorDetailScreen" component={DoctorDetailScreen} />
             <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
             <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
