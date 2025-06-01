@@ -1,3 +1,4 @@
+// 복구 0601
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -17,7 +18,7 @@ import { RootStackParamList } from '../types/navigation';
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import EditReviewScreen from "../screens/EditReviewScreen";
-// import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
+import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
 import DiagnosisDetailScreen from "../screens/DiagnosisDetailScreen";
 import SkinDiagnosisScreen from "../screens/SkinDiagnosisScreen"
 import SkinAnalysisResultScreen from "../screens/SkinAnalysisResultScreen"
@@ -25,6 +26,7 @@ import SkinHistoryScreen from "../screens/SkinHistoryScreen"
 import FindPasswordScreen from "../screens/FindPasswordScreen";
 import FindIdScreen from "../screens/FindIdScreen";
 import PharmacyMapScreen from "../screens/PharmacyMapScreen";
+import DoctorDetailScreen from '../screens/DoctorDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -66,11 +68,11 @@ const StackNavigator = () => {
             <Stack.Screen name="ReservationHistoryScreen" component={ReservationHistoryScreen} />
             <Stack.Screen name="RegisterUser" component={RegisterUser} />
             <Stack.Screen name="WriteReviewScreen" component={WriteReviewScreen} />
-            <Stack.Screen name="DoctorDetailScreen" component={ProductDetailScreen} />
+            <Stack.Screen name="DoctorDetailScreen" component={DoctorDetailScreen} />
             <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
             <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
-            {/* //<Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} /> */}
+            <Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} />
             <Stack.Screen name="DiagnosisDetailScreen" component={DiagnosisDetailScreen} />
             <Stack.Screen name="SkinAnalysisResultScreen" component={SkinAnalysisResultScreen} />
             <Stack.Screen name="SkinDiagnosisScreen" component={SkinDiagnosisScreen} />

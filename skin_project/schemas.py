@@ -1,8 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
-from pydantic import BaseModel
 from datetime import datetime
-from pydantic import BaseModel
 from typing import List, Optional
 
 class GenderEnum(str, Enum):
@@ -152,6 +150,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
 
+# AI 추천 시스템용 스키마 (main 브랜치에서 추가)
 class RecommendAIRequest(BaseModel):
     diagnosis: List[str]
     skin_type: str

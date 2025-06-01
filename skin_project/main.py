@@ -16,7 +16,7 @@ from database import SessionLocal, Base, engine
 from core.models import db_models
 from core.models.medical_models import Hospital, Doctor, Appointment
 from core.models.db_models import User, Review, Product, Shop, ProductShop
-from schemas import ProductCreate
+from schemas import ProductCreate, Token
 from crud import create_product
 
 # 의료진 CRUD 함수들 import
@@ -32,6 +32,13 @@ from medical_crud import (
 # 추천 시스템 import (임시 주석 처리)
 # from product_description.crawler import crawl_olive_young_reviews
 # from recommendation import recommend_endpoint, RecommendQuery
+
+# 환경변수 로드
+from dotenv import load_dotenv
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "default-key")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 # 데이터베이스 연결 테스트
 try:
@@ -56,6 +63,10 @@ app = FastAPI(
     description="스킨케어 앱을 위한 백엔드 API",
     version="1.0.0"
 )
+
+# 추천 시스템 라우터 추가 (main 브랜치에서 가져온 기능)
+from recommendation import router as recommend_router
+app.include_router(recommend_router)
 
 # CORS 설정
 app.add_middleware(

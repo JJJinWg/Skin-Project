@@ -223,10 +223,7 @@ const WriteReviewScreen = () => {
       >
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>←</Text>
+            style={styles.backButton}>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>리뷰 작성</Text>
           <TouchableOpacity 
@@ -462,7 +459,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'white',
+    
     justifyContent: 'center',
     alignItems: 'center',
   },
