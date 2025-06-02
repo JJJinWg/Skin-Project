@@ -1,3 +1,47 @@
+# 📱 Skin Patient App
+
+환자용 피부 건강 관리 앱 - 피부 상태를 기록하고 의료진의 진단을 받을 수 있는 환자용 앱입니다.
+
+---
+
+## 🚀 개발 환경 실행 가이드
+
+### ✅ 1. 프로젝트 설정
+
+```bash
+npm install
+```
+
+### ✅ 2. 개발 서버 실행
+
+**처음 설치 시 (한 번만 실행):**
+```bash
+npm run android:full  # adb reverse + 앱 빌드&설치
+```
+
+**개발 중 (매번 실행):**
+```bash
+npm run dev  # adb reverse + Metro 서버 시작
+```
+
+### ✅ 3. 포트 설정
+
+- **환자 앱 Metro 서버**: `8082`
+- **백엔드 API**: `8000`
+- **의사 앱 Metro 서버**: `8081`
+
+### ✅ 4. 사용 가능한 스크립트
+
+```bash
+npm run dev          # 개발 서버 시작 (adb reverse 포함)
+npm run setup        # adb reverse 설정만
+npm run start:patient # Metro 서버만 시작
+npm run android      # 앱 빌드 & 실행
+npm run android:full # 포트 설정 + 앱 빌드 & 실행
+```
+
+---
+
 ## 🛠 GitHub 협업 가이드: 기능 개발부터 병합까지 (꼭 읽어주세요!)
 
 이 프로젝트는 안정적인 협업을 위해 `main` 브랜치를 보호하고, 모든 작업을 **별도 브랜치 + Pull Request(PR)** 방식으로 관리합니다.
@@ -96,6 +140,21 @@ git pull origin main
 - 절대 `main` 브랜치에서 직접 작업하지 마세요.
 - 무조건 **기능 단위로 브랜치 생성 → PR → 머지** 순서로 진행합니다.
 - 충돌 방지를 위해 작업 전 항상 `git pull origin main`을 먼저 하세요.
+- 개발 시 반드시 `npm run dev`로 Metro 서버를 시작하세요.
+
+---
+
+## 📱 앱 구조
+
+```
+src/
+├── components/     # 재사용 가능한 UI 컴포넌트
+├── screens/       # 화면별 컴포넌트
+├── navigation/    # 네비게이션 설정
+├── services/      # API 통신 로직
+├── config/        # 앱 설정 및 상수
+└── types/         # TypeScript 타입 정의
+```
 
 ---
 
