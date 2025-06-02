@@ -7,6 +7,10 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
+    "start:patient": "react-native start --port 8082",
+    "setup": "adb reverse tcp:8082 tcp:8082",
+    "dev": "npm run setup && npm run start:patient",
+    "android:full": "npm run setup && npm run android",
     "test": "jest"
   },
   "dependencies": {

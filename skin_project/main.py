@@ -2027,18 +2027,23 @@ def get_user_medical_diagnoses(user_id: int, skip: int = 0, limit: int = 100, db
         
         formatted_diagnoses = []
         for record in medical_records:
+            # 예약 정보에서 병원 정보 가져오기
+            hospital_name = "병원 정보 없음"
+            if record.appointment and record.appointment.hospital:
+                hospital_name = record.appointment.hospital.name
+            
             formatted_diagnoses.append({
                 "id": record.id,
-                "date": record.diagnosis_date.strftime("%Y-%m-%d"),
+                "date": record.created_at.strftime("%Y-%m-%d"),
                 "doctorName": record.doctor.name if record.doctor else "의사 정보 없음",
-                "hospitalName": record.hospital.name if record.hospital else "병원 정보 없음",
-                "diagnosis": record.diagnosis,
-                "symptoms": record.symptoms,
-                "treatment": record.treatment,
-                "prescription": record.prescription,
-                "notes": record.notes,
-                "severity": record.severity or "보통",
-                "followUpDate": record.follow_up_date.strftime("%Y-%m-%d") if record.follow_up_date else None
+                "hospitalName": hospital_name,
+                "diagnosis": record.diagnosis or "진단 정보 없음",
+                "symptoms": record.appointment.symptoms if record.appointment else "증상 정보 없음",
+                "treatment": record.treatment or "치료 정보 없음",
+                "prescription": record.prescription or "처방 정보 없음",
+                "notes": record.notes or "",
+                "severity": "보통",  # MedicalRecord에 severity 필드가 없으므로 기본값
+                "followUpDate": record.next_visit_date.strftime("%Y-%m-%d") if record.next_visit_date else None
             })
         
         return {
