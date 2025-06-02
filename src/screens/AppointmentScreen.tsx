@@ -18,7 +18,6 @@ import { Calendar, type DateData } from "react-native-calendars"
 import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
-import { appointmentService } from '../services/appointmentService'
 
 type AppointmentScreenRouteProp = RouteProp<
   { params: { doctorId: number; doctorName: string; specialty: string } },
@@ -67,7 +66,7 @@ const AppointmentScreen = () => {
       setAvailableTimes([])
     } finally {
       setLoading(false)
-    }
+    }, 500) // 로딩 효과를 위한 지연
   }
 
   // 날짜 선택 핸들러
@@ -193,7 +192,7 @@ const AppointmentScreen = () => {
   }
 
   // 예약 완료 핸들러
-  const handleConfirmAppointment = async () => {
+  const handleConfirmAppointment = () => {
     if (!selectedDate || !selectedTime) {
       Alert.alert("알림", "날짜와 시간을 모두 선택해주세요.")
       return

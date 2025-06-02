@@ -1,5 +1,9 @@
+<<<<<<< HEAD
+from fastapi import Body, APIRouter
+=======
 from fastapi import Body, APIRouter, Depends
 from sqlalchemy.orm import Session
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 from schemas import RecommendAIRequest
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
@@ -10,11 +14,18 @@ from dotenv import load_dotenv
 router = APIRouter()
 
 # 환경변수 로딩
+<<<<<<< HEAD
+load_dotenv()
+=======
 load_dotenv('config.env')
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 
 # 모델 초기화
 model = SentenceTransformer("jhgan/ko-sbert-nli")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+<<<<<<< HEAD
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+=======
 
 # Pinecone API 키 확인
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
@@ -23,6 +34,7 @@ if PINECONE_API_KEY:
     pc = Pinecone(api_key=PINECONE_API_KEY)
 else:
     print("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. AI 추천 기능이 제한됩니다.")
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 
 INDEXES = {
     "토너": "toner",
@@ -30,6 +42,10 @@ INDEXES = {
     "크림": "cream"
 }
 
+<<<<<<< HEAD
+@router.post("/recommend/ai")
+def recommend_ai(data: RecommendAIRequest = Body(...)):
+=======
 # 데이터베이스 세션 의존성
 def get_db():
     from database import SessionLocal
@@ -49,6 +65,7 @@ def recommend_ai(data: RecommendAIRequest = Body(...), db: Session = Depends(get
             "추천 리스트": []
         }
 
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
     # 1. 분석 요약 생성
     analysis_prompt = (
         f"피부 타입: {data.skin_type}, 민감도: {data.sensitivity}, 피부 고민: {', '.join(data.diagnosis)}\n"

@@ -17,7 +17,7 @@ from core.models import db_models
 from core.models.medical_models import Hospital, Doctor, Appointment
 from core.models.db_models import (
     User, Product, Shop, ProductShop, RecommendationHistory, RecommendationProduct,
-    ProductIngredient, ProductSkinType, ProductBenefit, ProductReview, CrawledReview
+    ProductIngredient, ProductSkinType, ProductBenefit, ProductReview, CrawledReview, GenderEnum
 )
 from schemas import ProductCreate, Token
 from crud import create_product
@@ -1219,10 +1219,42 @@ def init_database():
         try:
             # 사용자 데이터
             users = [
-                User(email="test@example.com", password="hashed_password", name="테스트 사용자", phone="010-1234-5678"),
-                User(email="user2@example.com", password="hashed_password2", name="사용자2", phone="010-2345-6789"),
-                User(email="user3@example.com", password="hashed_password3", name="사용자3", phone="010-3456-7890"),
-                User(email="user4@example.com", password="hashed_password4", name="사용자4", phone="010-4567-8901")
+                User(
+                    email="test@example.com", 
+                    hashed_password="hashed_password", 
+                    username="테스트사용자", 
+                    phone_number="010-1234-5678",
+                    gender=GenderEnum.female,
+                    age=25,
+                    skin_type="지성"
+                ),
+                User(
+                    email="user2@example.com", 
+                    hashed_password="hashed_password2", 
+                    username="사용자2", 
+                    phone_number="010-2345-6789",
+                    gender=GenderEnum.male,
+                    age=30,
+                    skin_type="건성"
+                ),
+                User(
+                    email="user3@example.com", 
+                    hashed_password="hashed_password3", 
+                    username="사용자3", 
+                    phone_number="010-3456-7890",
+                    gender=GenderEnum.female,
+                    age=28,
+                    skin_type="복합성"
+                ),
+                User(
+                    email="user4@example.com", 
+                    hashed_password="hashed_password4", 
+                    username="사용자4", 
+                    phone_number="010-4567-8901",
+                    gender=GenderEnum.other,
+                    age=35,
+                    skin_type="민감성"
+                )
             ]
             for user in users:
                 existing = db.query(User).filter(User.email == user.email).first()
@@ -1242,11 +1274,133 @@ def init_database():
                     db.add(shop)
             
             # 병원 및 의사 데이터 (기본)
-            from setup_database import add_sample_data
+            from setup_database import create_tables
             try:
-                add_sample_data()  # 의료진 관련 데이터만 추가
+                # 의료진 관련 데이터만 별도로 추가
+                # 병원 데이터 추가
+                hospitals = [
+                    Hospital(
+                        name="서울대학교병원",
+                        address="서울특별시 종로구 대학로 101",
+                        phone="02-2072-2114",
+                        description="국내 최고 수준의 의료진과 시설을 갖춘 종합병원",
+                        latitude=37.5804,
+                        longitude=127.0024,
+                        operating_hours={
+                            "weekday": "08:00-18:00",
+                            "saturday": "08:00-13:00",
+                            "sunday": "휴무"
+                        }
+                    ),
+                    Hospital(
+                        name="연세대학교병원",
+                        address="서울특별시 서대문구 연세로 50-1",
+                        phone="02-2228-5800",
+                        description="첨단 의료 기술과 전문 의료진을 보유한 대학병원",
+                        latitude=37.5602,
+                        longitude=126.9423,
+                        operating_hours={
+                            "weekday": "08:30-17:30",
+                            "saturday": "08:30-12:30",
+                            "sunday": "휴무"
+                        }
+                    ),
+                    Hospital(
+                        name="삼성서울병원",
+                        address="서울특별시 강남구 일원로 81",
+                        phone="02-3410-2114",
+                        description="최첨단 의료 장비와 우수한 의료진을 갖춘 병원",
+                        latitude=37.4881,
+                        longitude=127.0856,
+                        operating_hours={
+                            "weekday": "08:00-18:00",
+                            "saturday": "08:00-13:00",
+                            "sunday": "휴무"
+                        }
+                    )
+                ]
+                
+                for hospital in hospitals:
+                    existing = db.query(Hospital).filter(Hospital.name == hospital.name).first()
+                    if not existing:
+                        db.add(hospital)
+                
+                db.commit()
+                
+                # 의사 데이터 추가
+                doctors = [
+                    Doctor(
+                        hospital_id=1,
+                        name="김민수",
+                        specialization="피부과",
+                        experience_years=15,
+                        education="서울대학교 의과대학 졸업\n서울대학교병원 피부과 전공의\n대한피부과학회 정회원",
+                        description="피부과 전문의로 15년간 다양한 피부 질환 치료 경험을 보유하고 있습니다.",
+                        profile_image_url="https://example.com/doctor1.jpg",
+                        consultation_fee=50000,
+                        available_days=["mon", "tue", "wed", "thu", "fri"],
+                        available_times={"start": "09:00", "end": "17:00"},
+                        rating=4.8,
+                        review_count=128,
+                        is_active=True
+                    ),
+                    Doctor(
+                        hospital_id=2,
+                        name="이영희",
+                        specialization="성형외과",
+                        experience_years=12,
+                        education="연세대학교 의과대학 졸업\n연세대학교병원 성형외과 전공의\n대한성형외과학회 정회원",
+                        description="성형외과 전문의로 자연스러운 미용 시술을 전문으로 합니다.",
+                        profile_image_url="https://example.com/doctor2.jpg",
+                        consultation_fee=60000,
+                        available_days=["mon", "tue", "wed", "thu", "fri"],
+                        available_times={"start": "10:00", "end": "18:00"},
+                        rating=4.6,
+                        review_count=86,
+                        is_active=True
+                    ),
+                    Doctor(
+                        hospital_id=3,
+                        name="박철수",
+                        specialization="피부과",
+                        experience_years=18,
+                        education="고려대학교 의과대학 졸업\n삼성서울병원 피부과 전공의\n대한피부과학회 정회원",
+                        description="아토피와 알레르기 피부염 치료 전문의입니다.",
+                        profile_image_url="https://example.com/doctor3.jpg",
+                        consultation_fee=55000,
+                        available_days=["mon", "tue", "wed", "thu", "fri", "sat"],
+                        available_times={"start": "09:30", "end": "16:30"},
+                        rating=4.7,
+                        review_count=95,
+                        is_active=True
+                    ),
+                    Doctor(
+                        hospital_id=1,
+                        name="최지영",
+                        specialization="피부과",
+                        experience_years=20,
+                        education="서울대학교 의과대학 졸업\n서울대학교병원 피부과 전공의\n대한피부과학회 정회원",
+                        description="피부암 진단 및 레이저 치료 전문의입니다.",
+                        profile_image_url="https://example.com/doctor4.jpg",
+                        consultation_fee=70000,
+                        available_days=["mon", "tue", "wed", "thu", "fri"],
+                        available_times={"start": "11:00", "end": "19:00"},
+                        rating=4.9,
+                        review_count=156,
+                        is_active=True
+                    )
+                ]
+                
+                for doctor in doctors:
+                    existing = db.query(Doctor).filter(Doctor.name == doctor.name, Doctor.hospital_id == doctor.hospital_id).first()
+                    if not existing:
+                        db.add(doctor)
+                
+                db.commit()
+                print("✅ 의료진 데이터 추가 완료")
+                
             except Exception as e:
-                print(f"⚠️ 샘플 의료 데이터 추가 중 오류 (무시): {e}")
+                print(f"⚠️ 의료진 데이터 추가 중 오류 (무시): {e}")
             
             db.commit()
             print("✅ 기본 데이터 추가 완료")
@@ -1254,30 +1408,374 @@ def init_database():
         finally:
             db.close()
         
+        # 3-1. 추가 샘플 데이터 (의료진 관련)
+        print("🏥 3-1단계: 의료진 샘플 데이터 추가 중...")
+        db = SessionLocal()
+        try:
+            from core.models.medical_models import Appointment, MedicalRecord, DoctorReview, DoctorSchedule
+            from datetime import date, time
+            
+            # 예약 데이터 추가
+            appointments = [
+                Appointment(
+                    user_id=1,
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2024, 3, 15),
+                    appointment_time=time(14, 0),
+                    status='confirmed',
+                    symptoms='얼굴 여드름 치료 상담',
+                    notes='처음 방문',
+                    consultation_type='일반진료'
+                ),
+                Appointment(
+                    user_id=2,
+                    doctor_id=2,
+                    hospital_id=2,
+                    appointment_date=date(2024, 3, 20),
+                    appointment_time=time(15, 30),
+                    status='pending',
+                    symptoms='피부 미용 상담',
+                    notes='보톡스 문의',
+                    consultation_type='시술상담'
+                ),
+                Appointment(
+                    user_id=3,
+                    doctor_id=3,
+                    hospital_id=3,
+                    appointment_date=date(2024, 3, 25),
+                    appointment_time=time(10, 0),
+                    status='completed',
+                    symptoms='아토피 재진',
+                    notes='약물 처방 변경',
+                    consultation_type='재진'
+                ),
+                Appointment(
+                    user_id=4,
+                    doctor_id=4,
+                    hospital_id=1,
+                    appointment_date=date(2024, 3, 30),
+                    appointment_time=time(16, 0),
+                    status='confirmed',
+                    symptoms='피부 분석 요청',
+                    notes='피부 타입 확인',
+                    consultation_type='피부분석'
+                )
+            ]
+            
+            for appointment in appointments:
+                existing = db.query(Appointment).filter(
+                    Appointment.doctor_id == appointment.doctor_id,
+                    Appointment.appointment_date == appointment.appointment_date,
+                    Appointment.appointment_time == appointment.appointment_time
+                ).first()
+                if not existing:
+                    db.add(appointment)
+            
+            db.commit()
+            print("✅ 예약 데이터 추가 완료")
+
+            # 진료 기록 데이터 추가
+            medical_records = [
+                MedicalRecord(
+                    appointment_id=3,  # completed 상태의 예약에 대해서만
+                    user_id=3,
+                    doctor_id=3,
+                    diagnosis="아토피 피부염",
+                    treatment="항히스타민제 처방 및 보습제 사용법 안내",
+                    prescription="세티리진 10mg 1일 1회, 스테로이드 연고",
+                    next_visit_date=date(2024, 4, 25),
+                    notes="증상 호전 양상. 보습제 꾸준히 사용할 것"
+                )
+            ]
+            
+            for record in medical_records:
+                existing = db.query(MedicalRecord).filter(
+                    MedicalRecord.appointment_id == record.appointment_id
+                ).first()
+                if not existing:
+                    db.add(record)
+            
+            db.commit()
+            print("✅ 진료 기록 데이터 추가 완료")
+
+            # 의사 리뷰 데이터 추가
+            doctor_reviews = [
+                DoctorReview(
+                    user_id=3,
+                    doctor_id=3,
+                    appointment_id=3,
+                    rating=5,
+                    review_text="친절하고 자세한 설명해주셔서 감사합니다. 치료 효과도 좋아요."
+                )
+            ]
+            
+            for review in doctor_reviews:
+                existing = db.query(DoctorReview).filter(
+                    DoctorReview.appointment_id == review.appointment_id
+                ).first()
+                if not existing:
+                    db.add(review)
+            
+            db.commit()
+            print("✅ 의사 리뷰 데이터 추가 완료")
+
+            # 의사 스케줄 데이터 추가
+            doctor_schedules = [
+                DoctorSchedule(
+                    doctor_id=1,
+                    date=date(2024, 3, 15),
+                    is_available=True,
+                    start_time=time(9, 0),
+                    end_time=time(17, 0),
+                    reason=None
+                ),
+                DoctorSchedule(
+                    doctor_id=2,
+                    date=date(2024, 3, 20),
+                    is_available=True,
+                    start_time=time(10, 0),
+                    end_time=time(18, 0),
+                    reason=None
+                ),
+                DoctorSchedule(
+                    doctor_id=3,
+                    date=date(2024, 3, 25),
+                    is_available=True,
+                    start_time=time(9, 30),
+                    end_time=time(16, 30),
+                    reason=None
+                ),
+                DoctorSchedule(
+                    doctor_id=4,
+                    date=date(2024, 3, 30),
+                    is_available=True,
+                    start_time=time(11, 0),
+                    end_time=time(19, 0),
+                    reason=None
+                ),
+                DoctorSchedule(
+                    doctor_id=1,
+                    date=date(2024, 4, 1),
+                    is_available=False,
+                    start_time=None,
+                    end_time=None,
+                    reason="학회 참석"
+                )
+            ]
+            
+            for schedule in doctor_schedules:
+                existing = db.query(DoctorSchedule).filter(
+                    DoctorSchedule.doctor_id == schedule.doctor_id,
+                    DoctorSchedule.date == schedule.date
+                ).first()
+                if not existing:
+                    db.add(schedule)
+            
+            db.commit()
+            print("✅ 의사 스케줄 데이터 추가 완료")
+            
+        except Exception as e:
+            print(f"⚠️ 의료진 샘플 데이터 추가 중 오류 (무시): {e}")
+        finally:
+            db.close()
+        
         # 4. 실제 크롤링 제품 데이터 import
         print("📦 4단계: 실제 제품 데이터 import 중...")
-        import_response = import_crawled_products()
-        if not import_response.get("success"):
-            raise HTTPException(status_code=500, detail="제품 데이터 import 실패")
+        db = SessionLocal()
+        try:
+            import pandas as pd
+            import os
+            import re
+            
+            # 1. 기존 샘플 제품 데이터 완전 삭제
+            print("🗑️ 기존 샘플 제품 데이터 삭제 중...")
+            db.execute(text("DELETE FROM product_benefits"))
+            db.execute(text("DELETE FROM product_skin_types"))
+            db.execute(text("DELETE FROM product_ingredients"))
+            db.execute(text("DELETE FROM product_shops"))
+            db.execute(text("DELETE FROM products"))
+            db.commit()
+            print("✅ 기존 데이터 삭제 완료")
+            
+            # 2. 크롤링된 제품 데이터 CSV 파일들
+            csv_files = [
+                ("../crawler/data/product_list_toner.csv", "토너"),
+                ("../crawler/data/product_list_cream.csv", "크림"), 
+                ("../crawler/data/product_list_ampoule.csv", "앰플")
+            ]
+            
+            total_imported = 0
+            import_results = []
+            
+            for csv_file, category in csv_files:
+                if not os.path.exists(csv_file):
+                    print(f"⚠️ 파일을 찾을 수 없습니다: {csv_file}")
+                    import_results.append({
+                        "category": category,
+                        "error": "파일 없음"
+                    })
+                    continue
+                
+                try:
+                    df = pd.read_csv(csv_file)
+                    print(f"📄 {category} 파일: {len(df)}개 제품 발견")
+                    
+                    imported_count = 0
+                    for _, row in df.iterrows():
+                        # 가격 문자열 파싱 ("49,000" -> 49000)
+                        price_str = str(row.get('price_discounted', '0')).replace(',', '').replace('"', '')
+                        try:
+                            price = int(price_str)
+                        except:
+                            price = 0
+                        
+                        # 제품명에서 브랜드명 제거하여 깔끔하게 만들기
+                        brand = str(row.get('brand', 'Unknown'))
+                        full_name = str(row.get('name', ''))
+                        
+                        # 제품명에서 브랜드명이 포함되어 있으면 제거
+                        if brand.lower() in full_name.lower():
+                            name = full_name.replace(brand, '').strip()
+                            # 앞뒤 콤마나 공백 제거
+                            name = re.sub(r'^[,\s]+|[,\s]+$', '', name)
+                        else:
+                            name = full_name
+                        
+                        # 너무 긴 이름 줄이기 (괄호 부분 제거)
+                        if '(' in name:
+                            name = name.split('(')[0].strip()
+                        if '[' in name and ']' in name:
+                            # [기획] 같은 부분만 제거하고 나머지는 유지
+                            name = re.sub(r'\[[^\]]*기획[^\]]*\]', '', name).strip()
+                        
+                        # 빈 이름이면 기본값 설정
+                        if not name or name.strip() == '':
+                            name = f"{brand} {category}"
+                        
+                        # Product 객체 생성
+                        product = Product(
+                            name=name[:100],  # 이름 길이 제한
+                            brand=brand,
+                            category=category,
+                            price=price,
+                            original_price=price + int(price * 0.1),  # 원가는 10% 높게 설정
+                            rating=4.0 + (hash(name) % 10) / 10,  # 4.0~4.9 랜덤 평점
+                            review_count=20 + (hash(brand + name) % 50),  # 20~70 랜덤 리뷰 수
+                            description=f"{brand}의 {category} 제품입니다. 고품질 원료로 만든 프리미엄 화장품입니다.",
+                            volume="50ml",  # 기본 용량
+                            is_popular=imported_count < 5,  # 처음 5개만 인기 제품
+                            is_new=imported_count < 3,  # 처음 3개만 신제품
+                            image_url=row.get('image_url', '')
+                        )
+                        
+                        db.add(product)
+                        db.flush()  # ID 생성을 위해 flush
+                        
+                        # 기본 성분 추가
+                        if category == "토너":
+                            ingredients = ["히알루론산", "나이아신아마이드", "글리세린"]
+                        elif category == "크림":
+                            ingredients = ["세라마이드", "시어버터", "판테놀"]
+                        else:  # 앰플
+                            ingredients = ["비타민C", "펩타이드", "레티놀"]
+                        
+                        for ingredient in ingredients:
+                            db.add(ProductIngredient(product_id=product.id, ingredient=ingredient))
+                        
+                        # 기본 피부타입 추가
+                        skin_types = ["건성", "지성", "복합성"]
+                        for skin_type in skin_types:
+                            db.add(ProductSkinType(product_id=product.id, skin_type=skin_type))
+                        
+                        # 기본 효능 추가
+                        if category == "토너":
+                            benefits = ["수분공급", "각질제거", "진정"]
+                        elif category == "크림":
+                            benefits = ["보습", "영양공급", "탄력"]
+                        else:  # 앰플
+                            benefits = ["미백", "주름개선", "트러블케어"]
+                        
+                        for benefit in benefits:
+                            db.add(ProductBenefit(product_id=product.id, benefit=benefit))
+                        
+                        # 기본 쇼핑몰 판매정보 추가 (ProductShop)
+                        # 올리브영, 쿠팡, 네이버쇼핑에서 판매한다고 가정
+                        shops = db.query(Shop).limit(4).all()  # 앞에서 생성한 4개 쇼핑몰
+                        
+                        for i, shop in enumerate(shops):
+                            # 쇼핑몰별로 약간 다른 가격 설정
+                            shop_price = price + (i * 1000)  # 쇼핑몰별로 1000원씩 차이
+                            is_lowest = (i == 0)  # 첫 번째 쇼핑몰이 최저가
+                            shipping_fee = 0 if shop_price >= 30000 or i == 0 else 2500  # 3만원 이상 또는 첫 번째 쇼핑몰은 무료배송
+                            
+                            db.add(ProductShop(
+                                product_id=product.id,
+                                shop_id=shop.id,
+                                price=shop_price,
+                                shipping="무료배송" if shipping_fee == 0 else "유료배송",
+                                shipping_fee=shipping_fee,
+                                installment=f"{2+i}개월" if shop_price >= 20000 else None,
+                                is_free_shipping=(shipping_fee == 0),
+                                is_lowest_price=is_lowest,
+                                is_card_discount=(i % 2 == 1)  # 홀수 번째 쇼핑몰은 카드할인
+                            ))
+                        
+                        imported_count += 1
+                    
+                    db.commit()
+                    total_imported += imported_count
+                    
+                    import_results.append({
+                        "category": category,
+                        "imported": imported_count,
+                        "file": csv_file
+                    })
+                    
+                    print(f"✅ {category}: {imported_count}개 제품 import 완료")
+                    
+                except Exception as file_error:
+                    print(f"❌ {csv_file} 처리 실패: {file_error}")
+                    import_results.append({
+                        "category": category,
+                        "error": str(file_error)
+                    })
+            
+            import_response = {
+                "success": True,
+                "message": f"✅ 크롤링된 제품 데이터 import 완료!",
+                "summary": {
+                    "총_제품": total_imported,
+                    "카테고리": len([r for r in import_results if "imported" in r])
+                },
+                "details": import_results
+            }
+            
+        finally:
+            db.close()
         
         # 5. 크롤링된 리뷰 데이터 import
         print("📊 5단계: 크롤링 리뷰 데이터 import 중...")
         db = SessionLocal()
         try:
             from crud import bulk_create_crawled_reviews
-            import pandas as pd
-            import os
             
-            csv_files = [
+            csv_files_reviews = [
                 ("../crawler/data/reviews_bulk_toner.csv", "토너"),
                 ("../crawler/data/reviews_bulk_cream.csv", "크림"), 
                 ("../crawler/data/reviews_bulk_ampoule.csv", "앰플")
             ]
             
             total_reviews = 0
-            for csv_file, category in csv_files:
-                if os.path.exists(csv_file):
+            for csv_file, category in csv_files_reviews:
+                if not os.path.exists(csv_file):
+                    print(f"⚠️ 파일을 찾을 수 없습니다: {csv_file}")
+                    continue
+                
+                try:
                     df = pd.read_csv(csv_file)
+                    print(f"📄 {category} 파일: {len(df)}개 리뷰 발견")
+                    
                     reviews_data = []
                     for _, row in df.iterrows():
                         review_data = {
@@ -1285,19 +1783,31 @@ def init_database():
                             "source_product_name": str(row.get('product_name', f'{category} 제품')),
                             "source_product_id": str(row.get('product_id', '')),
                             "reviewer_name": None,
-                            "rating": float(row.get('star', 4.0)) if pd.notna(row.get('star')) else 4.0,
+                            "rating": row.get('star', 4.0),
                             "content": str(row.get('review', '좋은 제품입니다.')),
-                            "skin_type": str(row.get('skin_type', '')) if pd.notna(row.get('skin_type')) else None,
-                            "age_group": str(row.get('age', '')) if pd.notna(row.get('age')) else None,
-                            "review_date": str(row.get('date', '')) if pd.notna(row.get('date')) else None,
-                            "helpful_count": int(row.get('helpful', 0)) if pd.notna(row.get('helpful')) else 0
+                            "skin_type": row.get('skin_type') if pd.notna(row.get('skin_type')) else None,
+                            "age_group": row.get('age') if pd.notna(row.get('age')) else None,
+                            "review_date": row.get('date') if pd.notna(row.get('date')) else None,
+                            "helpful_count": row.get('helpful', 0)
                         }
                         reviews_data.append(review_data)
                     
                     stats = bulk_create_crawled_reviews(db, reviews_data)
                     total_reviews += stats["created"]
+                    print(f"✅ {category}: {stats['created']}개 새로 저장, {stats['duplicates']}개 중복 제외")
+                    
+                except Exception as file_error:
+                    print(f"❌ {category} 리뷰 파일 처리 실패: {file_error}")
+                    
+        except Exception as e:
+            print(f"❌ 리뷰 데이터 import 중 오류: {e}")
         finally:
             db.close()
+        
+        print(f"📊 리뷰 데이터 import 완료: 총 {total_reviews}개 저장")
+        
+        # import_response에 리뷰 수 추가
+        import_response['summary']['리뷰_수'] = total_reviews
 
         return {
             "success": True,
@@ -1306,18 +1816,19 @@ def init_database():
                 "1️⃣ 기존 데이터 완전 삭제",
                 "2️⃣ 모든 테이블 생성",
                 "3️⃣ 기본 데이터 추가 (사용자, 쇼핑몰, 병원, 의사)",
+                "3️⃣-1 의료진 샘플 데이터 추가 (예약, 진료기록, 의사리뷰, 스케줄)",
                 f"4️⃣ 실제 크롤링 제품 {import_response['summary']['총_제품']}개 추가",
-                f"5️⃣ 실제 크롤링 리뷰 {total_reviews}개 추가"
+                f"5️⃣ 실제 크롤링 리뷰 {import_response['summary']['리뷰_수']}개 추가"
             ],
             "summary": {
                 "제품_수": import_response['summary']['총_제품'],
-                "리뷰_수": total_reviews,
+                "리뷰_수": import_response['summary']['리뷰_수'],
                 "카테고리": ["토너", "크림", "앰플"],
                 "데이터_출처": "올리브영 크롤링"
             },
             "ready": [
-                "✅ 75개의 실제 올리브영 제품 데이터!",
-                f"✅ {total_reviews}개의 실제 사용자 리뷰!",
+                "✅ 실제 올리브영 제품 데이터!",
+                f"✅ {import_response['summary']['리뷰_수']}개의 실제 사용자 리뷰!",
                 "✅ 완전한 쇼핑몰 판매정보!",
                 "✅ 프로덕션 레디!"
             ]
@@ -1516,18 +2027,23 @@ def get_user_medical_diagnoses(user_id: int, skip: int = 0, limit: int = 100, db
         
         formatted_diagnoses = []
         for record in medical_records:
+            # 예약 정보에서 병원 정보 가져오기
+            hospital_name = "병원 정보 없음"
+            if record.appointment and record.appointment.hospital:
+                hospital_name = record.appointment.hospital.name
+            
             formatted_diagnoses.append({
                 "id": record.id,
-                "date": record.diagnosis_date.strftime("%Y-%m-%d"),
+                "date": record.created_at.strftime("%Y-%m-%d"),
                 "doctorName": record.doctor.name if record.doctor else "의사 정보 없음",
-                "hospitalName": record.hospital.name if record.hospital else "병원 정보 없음",
-                "diagnosis": record.diagnosis,
-                "symptoms": record.symptoms,
-                "treatment": record.treatment,
-                "prescription": record.prescription,
-                "notes": record.notes,
-                "severity": record.severity or "보통",
-                "followUpDate": record.follow_up_date.strftime("%Y-%m-%d") if record.follow_up_date else None
+                "hospitalName": hospital_name,
+                "diagnosis": record.diagnosis or "진단 정보 없음",
+                "symptoms": record.appointment.symptoms if record.appointment else "증상 정보 없음",
+                "treatment": record.treatment or "치료 정보 없음",
+                "prescription": record.prescription or "처방 정보 없음",
+                "notes": record.notes or "",
+                "severity": "보통",  # MedicalRecord에 severity 필드가 없으므로 기본값
+                "followUpDate": record.next_visit_date.strftime("%Y-%m-%d") if record.next_visit_date else None
             })
         
         return {
@@ -1592,7 +2108,7 @@ def get_skin_options():
     return {
         "success": True,
         "data": {
-            "skinTypes": ["건성", "지성", "복합성", "민감성", "트러블성"],
+            "skinTypes": ["건성", "지성", "복합성(정상)"],
             "concerns": ["여드름", "홍조", "각질", "주름", "미백", "모공", "탄력"]
         }
     }
@@ -1681,215 +2197,3 @@ def delete_user_recommendation_history(history_id: int, db: Session = Depends(ge
     except Exception as e:
         print(f"❌ 추천 내역 삭제 실패: {e}")
         raise HTTPException(status_code=500, detail=f"추천 내역 삭제 실패: {str(e)}")
-
-@app.get("/api/database/analyze-unmatched")
-def analyze_unmatched_reviews(db: Session = Depends(get_db)):
-    """매칭되지 않은 리뷰들 분석 및 디버깅"""
-    try:
-        from core.models.db_models import Product, CrawledReview
-        from sqlalchemy import text
-        
-        # 1. 매칭되지 않은 리뷰들 조회
-        unmatched_reviews = db.query(CrawledReview).filter(
-            CrawledReview.product_id.is_(None)
-        ).limit(20).all()
-        
-        # 2. 모든 제품명 조회
-        all_products = db.query(Product).all()
-        product_names = [p.name for p in all_products]
-        product_brands = list(set([p.brand for p in all_products]))
-        
-        # 3. 매칭되지 않은 리뷰 분석
-        analysis_results = []
-        
-        for review in unmatched_reviews:
-            review_name = review.source_product_name
-            
-            # 가능한 매칭 후보 찾기
-            candidates = []
-            
-            # 브랜드 포함 여부 확인
-            matching_brands = [brand for brand in product_brands 
-                             if brand.lower() in review_name.lower()]
-            
-            # 키워드 포함 여부 확인
-            keywords = ['토너', '크림', '앰플', '세럼', '클렌저', '선크림']
-            matching_keywords = [kw for kw in keywords 
-                               if kw in review_name]
-            
-            # 유사한 제품명 찾기 (간단한 부분 문자열 매칭)
-            similar_products = []
-            for product in all_products:
-                # 제품명의 일부가 리뷰명에 포함되어 있는지 확인
-                product_words = product.name.split()
-                review_words = review_name.split()
-                
-                # 2글자 이상의 공통 단어가 있는지 확인
-                common_words = []
-                for pw in product_words:
-                    for rw in review_words:
-                        if len(pw) >= 2 and len(rw) >= 2:
-                            if pw.lower() in rw.lower() or rw.lower() in pw.lower():
-                                common_words.append((pw, rw))
-                
-                if common_words:
-                    similar_products.append({
-                        "product_id": product.id,
-                        "product_name": product.name,
-                        "brand": product.brand,
-                        "category": product.category,
-                        "common_words": common_words
-                    })
-            
-            analysis_results.append({
-                "review_id": review.id,
-                "review_name": review_name,
-                "review_name_length": len(review_name),
-                "matching_brands": matching_brands,
-                "matching_keywords": matching_keywords,
-                "similar_products": similar_products[:3],  # 상위 3개만
-                "is_garbled": any(char in review_name for char in ['?', '□', '', '???']),
-                "has_special_chars": any(char in review_name for char in ['[', ']', '(', ')', '+', '*', '&']),
-                "analysis": {
-                    "likely_garbled": len([c for c in review_name if ord(c) > 127]) > len(review_name) * 0.3,
-                    "very_long": len(review_name) > 100,
-                    "has_numbers": any(char.isdigit() for char in review_name),
-                    "has_korean": any(ord(char) >= 44032 and ord(char) <= 55203 for char in review_name)
-                }
-            })
-        
-        # 4. 전체 통계
-        total_unmatched = db.query(CrawledReview).filter(CrawledReview.product_id.is_(None)).count()
-        total_reviews = db.query(CrawledReview).count()
-        
-        # 5. 매칭 가능성 분석
-        potentially_matchable = 0
-        definitely_garbled = 0
-        
-        for result in analysis_results:
-            if result['similar_products'] or result['matching_brands']:
-                potentially_matchable += 1
-            elif result['analysis']['likely_garbled']:
-                definitely_garbled += 1
-        
-        return {
-            "success": True,
-            "summary": {
-                "total_reviews": total_reviews,
-                "total_unmatched": total_unmatched,
-                "analyzed_sample": len(analysis_results),
-                "potentially_matchable": potentially_matchable,
-                "definitely_garbled": definitely_garbled,
-                "match_rate": f"{((total_reviews - total_unmatched) / total_reviews * 100):.1f}%"
-            },
-            "sample_analysis": analysis_results,
-            "recommendations": [
-                "✅ 이미 매칭률이 매우 높음" if total_unmatched < 100 else "❌ 추가 매칭 필요",
-                f"🔧 {potentially_matchable}개 리뷰는 수동 매칭 가능할 것 같음",
-                f"🗑️ {definitely_garbled}개 리뷰는 텍스트 오류로 매칭 불가능",
-                "📊 크롤링 품질 개선 필요" if definitely_garbled > 5 else "📊 크롤링 품질 양호"
-            ],
-            "available_products": {
-                "total_products": len(all_products),
-                "categories": list(set([p.category for p in all_products])),
-                "brands": product_brands[:10]  # 상위 10개 브랜드만
-            }
-        }
-        
-    except Exception as e:
-        print(f"❌ 미매칭 리뷰 분석 실패: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "미매칭 리뷰 분석 중 오류가 발생했습니다."
-        }
-
-@app.get("/api/debug/test-regex")
-def test_regex_patterns(db: Session = Depends(get_db)):
-    """정규식 패턴 테스트용 디버그 API"""
-    try:
-        from sqlalchemy import text
-        
-        # 테스트 케이스들
-        test_cases = [
-            "[장벽강화원액] 퍼셀 20억/mL 픽셀바이옴 원액 20ml 기획 (+7ml)",
-            "[모공에센스] VT 리들샷 100 에센스 50ml (+리들샷 300 1ml*3ea기획 / 단품)"
-        ]
-        
-        results = []
-        
-        for test_case in test_cases:
-            # 1. 퍼셀 제거 테스트
-            purcell_result = db.execute(text("""
-                SELECT REGEXP_REPLACE(:test_case, '퍼셀\\s*', '', 'g') as result
-            """), {"test_case": test_case}).fetchone()
-            
-            # 2. VT 제거 테스트  
-            vt_result = db.execute(text("""
-                SELECT REGEXP_REPLACE(:test_case, 'VT\\s*', '', 'g') as result
-            """), {"test_case": test_case}).fetchone()
-            
-            # 3. 기획정보 제거 테스트
-            promo_result = db.execute(text("""
-                SELECT REGEXP_REPLACE(:test_case, '\\s*\\(\\+[^)]*\\)', '', 'g') as result
-            """), {"test_case": test_case}).fetchone()
-            
-            # 4. 복합 기획정보 제거 테스트
-            complex_promo_result = db.execute(text("""
-                SELECT REGEXP_REPLACE(:test_case, '\\s*\\([^)]*기획[^)]*\\)', '', 'g') as result
-            """), {"test_case": test_case}).fetchone()
-            
-            results.append({
-                "original": test_case,
-                "purcell_removed": purcell_result[0] if purcell_result else None,
-                "vt_removed": vt_result[0] if vt_result else None,
-                "promo_removed": promo_result[0] if promo_result else None,
-                "complex_promo_removed": complex_promo_result[0] if complex_promo_result else None
-            })
-        
-        # 실제 제품명들과 비교
-        products = db.query(Product).filter(
-            Product.name.like('%픽셀바이옴%')
-        ).all() + db.query(Product).filter(
-            Product.name.like('%리들샷%')
-        ).all()
-        
-        product_names = [p.name for p in products]
-        
-        return {
-            "success": True,
-            "test_results": results,
-            "matching_products": product_names,
-            "explanation": "정규식 패턴들이 어떻게 작동하는지 확인"
-        }
-        
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-@app.post("/api/database/clear-review-matching")
-def clear_review_matching(db: Session = Depends(get_db)):
-    """모든 크롤링 리뷰의 product_id를 NULL로 초기화"""
-    try:
-        from sqlalchemy import text
-        
-        # 모든 매칭 정보 제거
-        result = db.execute(text("UPDATE crawled_reviews SET product_id = NULL"))
-        affected_rows = result.rowcount
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": f"✅ {affected_rows}개 리뷰의 매칭 정보를 초기화했습니다",
-            "explanation": "크롤링된 리뷰들은 이제 독립적으로 표시됩니다"
-        }
-        
-    except Exception as e:
-        db.rollback()
-        return {
-            "success": False,
-            "error": str(e),
-            "message": "매칭 정보 초기화 실패"
-        }

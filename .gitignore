@@ -105,3 +105,6 @@ metro-cache/
 venv/
 __pycache__/
 *.pyc
+skin_project/config.env
+skin_project/.env
+skin_project/*.env
