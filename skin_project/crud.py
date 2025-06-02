@@ -304,36 +304,74 @@ def bulk_create_crawled_reviews(db: Session, reviews_data: list):
     created_count = 0
     duplicate_count = 0
     
-    for review_data in reviews_data:
-        # 중복 확인 (내용과 출처로 판별)
-        existing = db.query(CrawledReview).filter(
-            CrawledReview.source == review_data.get("source", "oliveyoung"),
-            CrawledReview.source_product_name == review_data.get("source_product_name"),
-            CrawledReview.content == review_data.get("content")
-        ).first()
-        
-        if existing:
-            duplicate_count += 1
-            continue
-        
-        # 새 리뷰 생성
-        review = CrawledReview(
-            source=review_data.get("source", "oliveyoung"),
-            source_product_name=review_data.get("source_product_name"),
-            source_product_id=review_data.get("source_product_id"),
-            reviewer_name=review_data.get("reviewer_name"),
-            rating=review_data.get("rating"),
-            content=review_data.get("content"),
-            skin_type=review_data.get("skin_type"),
-            age_group=review_data.get("age_group"),
-            review_date=review_data.get("review_date"),
-            helpful_count=review_data.get("helpful_count", 0)
-        )
-        
-        db.add(review)
-        created_count += 1
+    print(f"🔍 리뷰 데이터 처리 시작: {len(reviews_data)}개")
     
-    db.commit()
+    # 먼저 전체 리뷰 수 확인
+    total_existing = db.query(CrawledReview).count()
+    print(f"📊 기존 DB 리뷰 수: {total_existing}개")
+    
+    for i, review_data in enumerate(reviews_data):
+        try:
+            # 데이터 정리
+            source = review_data.get("source", "oliveyoung")
+            product_name = review_data.get("source_product_name", "")
+            content = review_data.get("content", "")
+            
+            # 빈 데이터 스킵
+            if not product_name or not content:
+                print(f"⚠️ 빈 데이터 스킵: {i+1}")
+                continue
+            
+            # 중복 확인 (더 간단한 조건)
+            existing = db.query(CrawledReview).filter(
+                CrawledReview.source == source,
+                CrawledReview.source_product_name == product_name,
+                CrawledReview.content == content
+            ).first()
+            
+            if existing:
+                duplicate_count += 1
+                if duplicate_count <= 5:  # 처음 5개만 로그 출력
+                    print(f"🔄 중복 발견: {product_name} - {content[:30]}...")
+                continue
+            
+            # 새 리뷰 생성
+            review = CrawledReview(
+                source=source,
+                source_product_name=product_name,
+                source_product_id=str(review_data.get("source_product_id", "")),
+                reviewer_name=review_data.get("reviewer_name"),
+                rating=float(review_data.get("rating", 4.0)) if review_data.get("rating") is not None else 4.0,
+                content=content,
+                skin_type=review_data.get("skin_type"),
+                age_group=review_data.get("age_group"),
+                review_date=review_data.get("review_date"),
+                helpful_count=int(review_data.get("helpful_count", 0)) if review_data.get("helpful_count") is not None else 0
+            )
+            
+            db.add(review)
+            created_count += 1
+            
+            # 진행 상황 출력 (100개마다)
+            if created_count % 100 == 0:
+                print(f"💾 진행 상황: {created_count}개 저장됨")
+            
+        except Exception as e:
+            print(f"❌ 리뷰 {i+1} 처리 실패: {e}")
+            continue
+    
+    try:
+        db.commit()
+        print(f"✅ DB 커밋 완료: {created_count}개 저장, {duplicate_count}개 중복")
+    except Exception as e:
+        print(f"❌ DB 커밋 실패: {e}")
+        db.rollback()
+        return {
+            "created": 0,
+            "duplicates": 0,
+            "total": len(reviews_data),
+            "error": str(e)
+        }
     
     return {
         "created": created_count,
