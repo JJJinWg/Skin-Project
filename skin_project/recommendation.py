@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 from fastapi import Body, APIRouter
+=======
+from fastapi import Body, APIRouter, Depends
+from sqlalchemy.orm import Session
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 from schemas import RecommendAIRequest
 from sentence_transformers import SentenceTransformer
 from openai import OpenAI
@@ -9,12 +14,27 @@ from dotenv import load_dotenv
 router = APIRouter()
 
 # 환경변수 로딩
+<<<<<<< HEAD
 load_dotenv()
+=======
+load_dotenv('config.env')
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 
 # 모델 초기화
 model = SentenceTransformer("jhgan/ko-sbert-nli")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+<<<<<<< HEAD
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+=======
+
+# Pinecone API 키 확인
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+pc = None
+if PINECONE_API_KEY:
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+else:
+    print("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. AI 추천 기능이 제한됩니다.")
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
 
 INDEXES = {
     "토너": "toner",
@@ -22,8 +42,30 @@ INDEXES = {
     "크림": "cream"
 }
 
+<<<<<<< HEAD
 @router.post("/recommend/ai")
 def recommend_ai(data: RecommendAIRequest = Body(...)):
+=======
+# 데이터베이스 세션 의존성
+def get_db():
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.post("/recommend/ai")
+def recommend_ai(data: RecommendAIRequest = Body(...), db: Session = Depends(get_db)):
+    # Pinecone API 키 확인
+    if not pc:
+        return {
+            "error": "PINECONE_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요.",
+            "분석 요약": "API 키 설정이 필요합니다.",
+            "추천 리스트": []
+        }
+
+>>>>>>> d4c002558cdc099393eb5a34f7c38be1fd4207a0
     # 1. 분석 요약 생성
     analysis_prompt = (
         f"피부 타입: {data.skin_type}, 민감도: {data.sensitivity}, 피부 고민: {', '.join(data.diagnosis)}\n"
@@ -111,6 +153,34 @@ def recommend_ai(data: RecommendAIRequest = Body(...)):
                 "제품명": line.split(":")[0].strip(),
                 "추천이유": line.split(":")[-1].strip()
             })
+
+    # 4. 추천 결과를 DB에 자동 저장
+    try:
+        from crud import create_recommendation_history
+        
+        # 추천 내역 저장용 데이터 구성
+        recommendation_data = {
+            "user_id": getattr(data, 'user_id', 1),  # 임시 사용자 ID
+            "skin_type": data.skin_type,
+            "sensitivity": data.sensitivity,
+            "concerns": data.diagnosis,
+            "ai_explanation": analysis_response.choices[0].message.content.strip(),
+            "recommended_products": [
+                {
+                    "product_name": item.get("제품명", ""),
+                    "product_brand": "AI 추천",  # 브랜드 정보가 없으므로 기본값
+                    "product_category": item.get("카테고리", ""),
+                    "reason": item.get("추천이유", "")
+                } for item in enriched_list
+            ]
+        }
+        
+        saved_history = create_recommendation_history(db, recommendation_data)
+        print(f"✅ AI 추천 결과 자동 저장 완료: ID {saved_history.id}")
+        
+    except Exception as save_error:
+        print(f"⚠️ 추천 내역 저장 실패: {save_error}")
+        # 저장 실패해도 추천 결과는 반환
 
     return {
         "분석 요약": analysis_response.choices[0].message.content.strip(),

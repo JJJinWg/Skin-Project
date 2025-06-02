@@ -17,6 +17,8 @@ import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import { diagnosisService } from "../services/diagnosisService"
+import React from "react"
 
 const SkinDiagnosisScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
@@ -78,7 +80,7 @@ const SkinDiagnosisScreen = () => {
   }
 
   // 사진 분석 시작
-  const handleAnalyzePhoto = () => {
+  const handleAnalyzePhoto = async () => {
     if (!selectedImage) {
       Alert.alert("알림", "분석할 사진을 먼저 선택해주세요.")
       return
@@ -86,12 +88,23 @@ const SkinDiagnosisScreen = () => {
 
     setIsAnalyzing(true)
 
-    // AI 분석 API 호출 시뮬레이션
-    setTimeout(() => {
+    try {
+      const result = await diagnosisService.analyzeSkin(selectedImage.uri)
+      if (result) {
+        // 분석 결과 화면으로 이동
+        navigation.navigate("SkinAnalysisResultScreen", { 
+          imageUri: selectedImage.uri,
+          analysisResult: result
+        })
+      } else {
+        Alert.alert("오류", "피부 분석에 실패했습니다. 다시 시도해주세요.")
+      }
+    } catch (error) {
+      console.error("피부 분석 실패:", error)
+      Alert.alert("오류", "피부 분석 중 문제가 발생했습니다. 다시 시도해주세요.")
+    } finally {
       setIsAnalyzing(false)
-      // 분석 결과 화면으로 이동
-      navigation.navigate("SkinAnalysisResultScreen", { imageUri: selectedImage.uri })
-    }, 3000) // 3초 후 결과 화면으로 이동
+    }
   }
 
   // 뒤로가기
@@ -110,10 +123,10 @@ const SkinDiagnosisScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity  >
+          
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI 피부 검진</Text>
+        <Text style={styles.headerTitle}>         AI 피부 검진</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -151,17 +164,6 @@ const SkinDiagnosisScreen = () => {
 
         {/* 사진 선택 버튼 */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
-            <LinearGradient
-              colors={["#A18CD1", "#FBC2EB"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.photoButtonGradient}
-            >
-              <Text style={styles.photoButtonText}>카메라로 촬영</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.photoButton} onPress={handleSelectPhoto}>
             <LinearGradient
               colors={["#84FAB0", "#8FD3F4"]}
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    
     justifyContent: "center",
     alignItems: "center",
   },

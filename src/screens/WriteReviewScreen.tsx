@@ -1,5 +1,5 @@
 // 리뷰 작성 화면
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavigationProp, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import {
@@ -16,8 +16,13 @@ import {
   Keyboard,
   Alert,
   Modal,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { reviewService } from '../services/reviewService';
+import { productService } from '../services/productService';
+import { imageUploadService } from '../services/imageUploadService';
 
 type WriteReviewRouteProps = RouteProp<
   { params: { productId?: number; productName?: string; productImage?: any } },
@@ -28,25 +33,30 @@ const WriteReviewScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const route = useRoute<WriteReviewRouteProps>();
   
-  // 제품 정보 (제품 상세 페이지에서 넘어온 경우)
-  const productId = route.params?.productId;
-  const productName = route.params?.productName || '제품을 선택해주세요';
-  const productImage = route.params?.productImage;
+  // 라우트 파라미터에서 제품 정보 가져오기
+  const { productId: initialProductId, productName: initialProductName, productImage: initialProductImage } = route.params || {};
   
-  // 상태 관리
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [isProductModalVisible, setProductModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
   
   // 애니메이션 값
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const translateAnim = useRef(new Animated.Value(0)).current;
   
+  // 선택된 제품 정보
+  const [productId, setProductId] = useState<number | null>(initialProductId || null);
+  const [productName, setProductName] = useState(initialProductName || '제품을 선택해주세요');
+  const [productImage, setProductImage] = useState(initialProductImage || null);
+  
   // 키보드 이벤트 리스너
-  React.useEffect(() => {
+  useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
       () => {
@@ -91,23 +101,55 @@ const WriteReviewScreen = () => {
     };
   }, [fadeAnim, translateAnim]);
   
-  // 샘플 제품 목록 (실제로는 API에서 가져올 것) 우리는 아마 샘플로 몇개 그냥 등록하는식으로해야할거같아요.
-  const sampleProducts = [
-    { id: 1, name: 'Beplain 녹두 진정 토너', image: require('../assets/product1.png') },
-    { id: 2, name: 'Torriden 다이브인 세럼', image: require('../assets/product2.png') },
-    { id: 3, name: '아이소이 불가리안 로즈 세럼', image: require('../assets/product1.png') },
-    { id: 4, name: '라운드랩 자작나무 수분 크림', image: require('../assets/product2.png') },
-    { id: 5, name: '코스알엑스 스네일 무친 에센스', image: require('../assets/product1.png') },
-  ];
+  // 제품 목록 로드
+  const loadProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      setProductError(null);
+      
+      // productService를 사용하여 제품 목록 가져오기 (30개 제품)
+      const productsData = await productService.getProducts(undefined, undefined, undefined, 30);
+      setProducts(productsData);
+      console.log('✅ WriteReviewScreen 제품 목록 로딩 성공:', productsData.length, '개');
+    } catch (error) {
+      console.error('제품 목록 로딩 실패:', error);
+      setProductError('제품 목록을 불러올 수 없습니다. 서버 연결을 확인해주세요.');
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 제품 목록 로드
+  useEffect(() => {
+    if (isProductModalVisible) {
+      loadProducts();
+    }
+  }, [isProductModalVisible]);
   
-  // 이미지 추가 함수 (실제로는 이미지 피커 구현 필요)
-  const handleAddImage = () => {
-    // 이미지 피커 로직 구현 필요
-    // 여기서는 더미 이미지 추가
-    if (images.length < 5) {
-      setImages([...images, '../assets/product1.png']);
-    } else {
-      Alert.alert('알림', '이미지는 최대 5개까지 추가할 수 있습니다.');
+  // 이미지 추가 함수 (바로 갤러리에서 선택)
+  const handleAddImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('알림', '최대 5장까지 추가할 수 있습니다.');
+      return;
+    }
+
+    try {
+      // Alert 없이 바로 갤러리에서 이미지 선택 (카메라 옵션도 포함됨)
+      const result = await imageUploadService.pickImageFromGallery({
+        quality: 0.8,
+        maxWidth: 800,
+        maxHeight: 600,
+      });
+
+      if (result.success && result.uri) {
+        setImages(prev => [...prev, result.uri!]);
+      } else if (result.error && !result.error.includes('취소')) {
+        Alert.alert('오류', result.error);
+      }
+    } catch (error) {
+      console.error('이미지 선택 실패:', error);
+      Alert.alert('오류', '이미지 선택 중 오류가 발생했습니다.');
     }
   };
   
@@ -118,8 +160,8 @@ const WriteReviewScreen = () => {
     setImages(newImages);
   };
   
-  // 리뷰 제출 함수
-  const handleSubmitReview = () => {
+  // 리뷰 제출 함수 (실제 API 연동)
+  const handleSubmitReview = async () => {
     if (rating === 0) {
       Alert.alert('알림', '별점을 선택해주세요.');
       return;
@@ -130,16 +172,30 @@ const WriteReviewScreen = () => {
       return;
     }
     
+    if (reviewText.trim().length < 20) {
+      Alert.alert('알림', '리뷰는 최소 20자 이상 작성해주세요.');
+      return;
+    }
+    
     if (!productId) {
       Alert.alert('알림', '제품을 선택해주세요.');
       return;
     }
     
+    try {
     setIsSubmitting(true);
     
-    // 리뷰 제출 로직 (API 호출 등)
-    setTimeout(() => {
-      setIsSubmitting(false);
+      // reviewService를 사용하여 리뷰 제출
+      const reviewData = {
+        product_id: productId,
+        rating: rating,
+        content: reviewText.trim(),
+        images: images, // 이미지 URL 배열
+      };
+      
+      const result = await reviewService.createReview(reviewData);
+      
+      if (result.success) {
       Alert.alert(
         '리뷰가 등록되었습니다',
         '소중한 리뷰를 작성해주셔서 감사합니다.',
@@ -150,14 +206,29 @@ const WriteReviewScreen = () => {
           }
         ]
       );
-    }, 1500);
+      } else {
+        Alert.alert('오류', result.message);
+      }
+    } catch (error) {
+      console.error('리뷰 제출 실패:', error);
+      Alert.alert(
+        '오류',
+        '리뷰 등록에 실패했습니다. 서버 연결을 확인하고 다시 시도해주세요.',
+        [
+          { text: '확인' }
+        ]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // 제품 선택 함수
   const handleSelectProduct = (product: any) => {
-    // 실제로는 navigation.setParams 또는 상태 업데이트
+    setProductId(product.id);
+    setProductName(product.name);
+    setProductImage(product.image || { uri: 'https://via.placeholder.com/150?text=Product+Image' });
     setProductModalVisible(false);
-    Alert.alert('제품 선택', `${product.name}을(를) 선택했습니다.`);
   };
   
   return (
@@ -175,10 +246,7 @@ const WriteReviewScreen = () => {
       >
         <View style={styles.headerContent}>
           <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>←</Text>
+            style={styles.backButton}>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>리뷰 작성</Text>
           <TouchableOpacity 
@@ -276,7 +344,7 @@ const WriteReviewScreen = () => {
             
             {images.map((image, index) => (
               <View key={index} style={styles.imageContainer}>
-                <Image source={require('../assets/product1.png')} style={styles.uploadedImage} />
+                <Image source={{ uri: image }} style={styles.uploadedImage} />
                 <TouchableOpacity 
                   style={styles.removeImageButton}
                   onPress={() => handleRemoveImage(index)}
@@ -356,16 +424,36 @@ const WriteReviewScreen = () => {
             />
             
             <ScrollView style={styles.productList}>
-              {sampleProducts.map((product) => (
+              {loadingProducts ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#FF9A9E" />
+                  <Text style={styles.loadingText}>제품 목록을 불러오는 중...</Text>
+                </View>
+              ) : productError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorIcon}>⚠️</Text>
+                  <Text style={styles.errorTitle}>연결 오류</Text>
+                  <Text style={styles.errorText}>{productError}</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={loadProducts}>
+                    <Text style={styles.retryButtonText}>다시 시도</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : products.length > 0 ? (
+                products.map((product) => (
                 <TouchableOpacity
                   key={product.id}
                   style={styles.productItem}
                   onPress={() => handleSelectProduct(product)}
                 >
-                  <Image source={product.image} style={styles.productItemImage} />
+                    <Image source={product.image || { uri: 'https://via.placeholder.com/150?text=Product+Image' }} style={styles.productItemImage} />
                   <Text style={styles.productItemName}>{product.name}</Text>
                 </TouchableOpacity>
-              ))}
+                ))
+              ) : (
+                <View style={styles.noProductsContainer}>
+                  <Text style={styles.noProductsText}>등록된 제품이 없습니다.</Text>
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -394,7 +482,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -729,6 +817,58 @@ const styles = StyleSheet.create({
   productItemName: {
     fontSize: 14,
     color: '#212529',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#6C757D',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorIcon: {
+    fontSize: 24,
+    color: '#FF0000',
+    marginBottom: 10,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF0000',
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    padding: 15,
+    borderRadius: 8,
+    backgroundColor: '#FF9A9E',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  noProductsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noProductsText: {
+    fontSize: 14,
+    color: '#6C757D',
   },
 });
 

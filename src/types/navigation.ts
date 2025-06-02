@@ -7,7 +7,15 @@ export type RootStackParamList = {
   HomeScreen: undefined;
   ReservationScreen: undefined;
   SkinDiagnosisScreen: undefined;
-  SkinAnalysisResultScreen: { imageUri: string }
+  SkinAnalysisResultScreen: { 
+    imageUri: string;
+    analysisResult: {
+      skinType: string;
+      concerns: string[];
+      recommendations: string[];
+      imageUrl: string;
+    }
+  }
   FindCosmeticsScreen: undefined;
   ProductReviewScreen: undefined;
   ProductDetailScreen: { id: number };

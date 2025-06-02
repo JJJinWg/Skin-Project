@@ -20,9 +20,10 @@ import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { launchImageLibrary } from "react-native-image-picker"
 import { StackNavigationProp } from "@react-navigation/stack";
+import { userService } from "../services/userService"
 
 type EditProfileScreenRouteProp = RouteProp<
-  { params: { userInfo: { name: string; email: string; phone: string; birthdate: string; profileImage: any } } },
+  { params: { userInfo: { id: number; name: string; email: string; phone: string; birthdate: string; profileImage: any } } },
   "params"
 >
 
@@ -92,7 +93,7 @@ const EditProfileScreen = () => {
   }
 
   // 저장 버튼 핸들러
-  const handleSave = () => {
+  const handleSave = async () => {
     // 입력값 검증
     if (!name.trim()) {
       Alert.alert("알림", "이름을 입력해주세요.")
@@ -114,26 +115,34 @@ const EditProfileScreen = () => {
       return
     }
 
-    // 저장 로직 (실제로는 API 호출)
     setIsLoading(true)
 
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      setIsLoading(false)
-
-      // 수정된 사용자 정보
-      const updatedUserInfo = {
+    try {
+      const result = await userService.updateUser({
+        id: userInfo.id,
         name,
         email,
         phone,
         birthdate,
         profileImage,
+      })
+      setIsLoading(false)
+      if (result.success) {
+        navigation.replace("ProfileScreen", { updatedUserInfo: {
+          ...userInfo,
+          name,
+          email,
+          phone,
+          birthdate,
+          profileImage,
+        } })
+      } else {
+        Alert.alert("오류", result.message || "프로필 수정에 실패했습니다.")
       }
-
-      // ProfileScreen으로 돌아가면서 수정된 정보 전달
-      // navigate 대신 replace를 사용하여 현재 화면을 네비게이션 스택에서 제거
-      navigation.replace("ProfileScreen", { updatedUserInfo })
-    }, 1000)
+    } catch (error) {
+      setIsLoading(false)
+      Alert.alert("오류", "프로필 수정 중 오류가 발생했습니다.")
+    }
   }
 
   // 취소 버튼 핸들러
@@ -161,8 +170,8 @@ const EditProfileScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleCancel}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton} >
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>정보 수정</Text>
         <View style={styles.placeholder} />
@@ -284,7 +293,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },

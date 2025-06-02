@@ -3,7 +3,7 @@
 
 
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   View,
   Text,
@@ -20,58 +20,53 @@ import {
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { productService, type Product } from "../services/productService"
 
 // 화장품 타입 정의
-type Cosmetic = {
-  id: number
-  name: string
-  brand: string
-  category: string
-  price: string
-  rating: number
-  reviewCount: number
-  image: any
-  description: string
-  ingredients: string[]
-  suitableFor: string[]
-  notSuitableFor: string[]
-  reviews: {
-    id: number
-    userName: string
-    rating: number
-    comment: string
-    date: string
-  }[]
+type Cosmetic = Product & {
+  suitableFor: string[];
+  notSuitableFor: string[];
 }
 
-// 피부 타입 옵션
-const skinTypeOptions = ["건성", "지성", "복합성", "중성", "민감성"]
-
-// 피부 고민 옵션
-const skinConcernOptions = [
-  "건조함",
-  "유분과다",
-  "여드름",
-  "색소침착",
-  "주름",
-  "모공",
-  "민감성",
-  "홍조",
-  "탄력저하",
-  "각질",
-]
+// 피부 타입과 고민 옵션 타입 정의
+interface SkinOptions {
+  skinTypes: string[];
+  concerns: string[];
+}
 
 const FindCosmeticsScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
-  const [selectedSkinType, setSelectedSkinType] = useState<string | null>(null)
+  const [selectedSkinType, setSelectedSkinType] = useState<string>("")
+  const [selectedSensitivity, setSelectedSensitivity] = useState<string>("")
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([])
-  const [additionalInfo, setAdditionalInfo] = useState("")
+  const [additionalInfo, setAdditionalInfo] = useState<string>("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [recommendedCosmetics, setRecommendedCosmetics] = useState<Cosmetic[]>([])
   const [showResults, setShowResults] = useState(false)
+  const [recommendedCosmetics, setRecommendedCosmetics] = useState<Cosmetic[]>([])
   const [aiExplanation, setAiExplanation] = useState("")
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [filteredCosmetics, setFilteredCosmetics] = useState<Cosmetic[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>("전체")
+  const [skinOptions, setSkinOptions] = useState<SkinOptions>({ skinTypes: [], concerns: [] })
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true)
+
+  // 피부 민감도 옵션
+  const sensitivityOptions = ["낮음", "보통", "높음"];
+
+  // 피부 타입과 고민 옵션 로드
+  useEffect(() => {
+    const loadSkinOptions = async () => {
+      try {
+        const response = await productService.getSkinOptions();
+        setSkinOptions(response);
+      } catch (error) {
+        console.error('피부 옵션 로드 실패:', error);
+        Alert.alert('오류', '피부 타입과 고민 옵션을 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    };
+
+    loadSkinOptions();
+  }, []);
 
   // 피부 고민 선택/해제 처리
   const toggleConcern = (concern: string) => {
@@ -88,18 +83,29 @@ const FindCosmeticsScreen = () => {
   }
 
   // 화장품 카테고리 필터링
-  useEffect(() => {
-    if (activeCategory) {
-      setFilteredCosmetics(recommendedCosmetics.filter((item) => item.category === activeCategory))
-    } else {
-      setFilteredCosmetics(recommendedCosmetics)
-    }
-  }, [activeCategory, recommendedCosmetics])
+  const filteredCosmetics = useMemo(() => {
+    return recommendedCosmetics.filter((cosmetic) => {
+      if (selectedCategory !== "전체" && cosmetic.category !== selectedCategory) {
+        return false
+      }
+      if (selectedConcerns.length > 0) {
+        return selectedConcerns.some((concern) => 
+          cosmetic.suitableFor?.includes(concern)
+        )
+      }
+      return true
+    })
+  }, [recommendedCosmetics, selectedCategory, selectedConcerns])
 
   // 화장품 추천 분석 시작
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!selectedSkinType) {
       Alert.alert("피부 타입을 선택해주세요.")
+      return
+    }
+
+    if (!selectedSensitivity) {
+      Alert.alert("피부 민감도를 선택해주세요.")
       return
     }
 
@@ -110,277 +116,24 @@ const FindCosmeticsScreen = () => {
 
     setIsAnalyzing(true)
 
-    // AI 분석 API 호출 시뮬레이션
-    setTimeout(() => {
-      // 모의 데이터 생성
-      const mockCosmetics: Cosmetic[] = [
-        {
-          id: 1,
-          name: "수분 세라마이드 크림",
-          brand: "세라비",
-          category: "크림",
-          price: "28,000원",
-          rating: 4.7,
-          reviewCount: 1243,
-          image: require("../assets/product1.png"),
-          description:
-            "세라마이드와 히알루론산이 풍부하게 함유된 수분 크림으로, 건조한 피부에 깊은 보습을 제공합니다. 피부 장벽을 강화하고 수분 손실을 방지하여 하루 종일 촉촉한 피부를 유지시켜 줍니다.",
-          ingredients: ["세라마이드", "히알루론산", "글리세린", "판테놀", "스쿠알란"],
-          suitableFor: ["건성", "민감성", "복합성"],
-          notSuitableFor: ["심한 지성"],
-          reviews: [
-            {
-              id: 1,
-              userName: "피부사랑",
-              rating: 5,
-              comment:
-                "건조한 피부에 정말 좋아요! 겨울에도 당김 없이 촉촉하게 유지됩니다. 자극도 없고 순한 편이라 민감한 피부에도 잘 맞을 것 같아요.",
-              date: "2023-05-15",
-            },
-            {
-              id: 2,
-              userName: "뷰티맘",
-              rating: 4,
-              comment:
-                "발림성이 좋고 흡수도 빠른 편이에요. 건조함이 많이 개선되었지만 아주 심한 건조함에는 조금 부족할 수 있어요.",
-              date: "2023-04-22",
-            },
-          ],
-        },
-        {
-          id: 2,
-          name: "진정 시카 토너",
-          brand: "닥터지",
-          category: "토너",
-          price: "22,000원",
-          rating: 4.5,
-          reviewCount: 876,
-          image: require("../assets/product2.png"),
-          description:
-            "센텔라아시아티카(시카) 성분이 함유된 진정 토너로, 민감하고 자극받은 피부를 빠르게 진정시켜줍니다. pH 밸런스를 맞춰 피부 장벽을 보호하고 다음 단계 스킨케어의 흡수를 돕습니다.",
-          ingredients: ["센텔라아시아티카", "판테놀", "알란토인", "마데카소사이드", "글리세린"],
-          suitableFor: ["민감성", "지성", "복합성", "여드름성"],
-          notSuitableFor: ["없음"],
-          reviews: [
-            {
-              id: 1,
-              userName: "민감성피부",
-              rating: 5,
-              comment:
-                "홍조와 자극으로 고생했는데 이 제품 쓰고 많이 진정되었어요. 자극 없이 순하고 피부가 편안해지는 느낌이에요.",
-              date: "2023-06-10",
-            },
-            {
-              id: 2,
-              userName: "여드름맘",
-              rating: 4,
-              comment: "여드름성 피부인 딸에게 사줬는데 좋아하네요. 진정 효과가 있고 자극이 없어서 계속 사용 중입니다.",
-              date: "2023-05-05",
-            },
-          ],
-        },
-        {
-          id: 3,
-          name: "비타민C 세럼",
-          brand: "클리오",
-          category: "세럼",
-          price: "35,000원",
-          rating: 4.6,
-          reviewCount: 1052,
-          image: require("../assets/product1.png"),
-          description:
-            "고농축 비타민C가 함유된 세럼으로, 피부 톤을 밝게 개선하고 색소침착을 완화합니다. 항산화 효과로 피부를 보호하고 콜라겐 생성을 촉진하여 탄력 있는 피부로 가꾸어 줍니다.",
-          ingredients: ["비타민C(아스코빅애시드)", "나이아신아마이드", "판테놀", "히알루론산", "비타민E"],
-          suitableFor: ["모든 피부 타입", "색소침착", "탄력 저하"],
-          notSuitableFor: ["매우 민감한 피부"],
-          reviews: [
-            {
-              id: 1,
-              userName: "화이트스킨",
-              rating: 5,
-              comment:
-                "사용한지 한 달 정도 됐는데 확실히 피부톤이 밝아졌어요! 기미도 조금씩 옅어지는 것 같고 피부가 환해진 느낌입니다.",
-              date: "2023-04-18",
-            },
-            {
-              id: 2,
-              userName: "맑은피부",
-              rating: 4,
-              comment: "흡수가 빠르고 끈적임이 적어서 좋아요. 비타민C 특유의 산화 냄새가 조금 있지만 효과는 좋습니다.",
-              date: "2023-03-22",
-            },
-          ],
-        },
-        {
-          id: 4,
-          name: "포어 컨트롤 클레이 마스크",
-          brand: "이니스프리",
-          category: "마스크팩",
-          price: "18,000원",
-          rating: 4.4,
-          reviewCount: 687,
-          image: require("../assets/product2.png"),
-          description:
-            "화산송이 클레이가 함유된 마스크로, 모공 속 노폐물과 과잉 피지를 효과적으로 제거합니다. 주 1-2회 사용으로 모공을 깨끗하게 관리하고 피부결을 매끄럽게 정돈해 줍니다.",
-          ingredients: ["화산송이", "카올린", "벤토나이트", "살리실산", "티트리오일"],
-          suitableFor: ["지성", "복합성", "모공 관리"],
-          notSuitableFor: ["건성", "민감성"],
-          reviews: [
-            {
-              id: 1,
-              userName: "모공고민",
-              rating: 5,
-              comment:
-                "일주일에 한 번씩 사용하는데 모공이 확실히 깨끗해지는 느낌이에요. 세안 후 피부가 매끈해지고 피지 조절에도 좋습니다.",
-              date: "2023-05-30",
-            },
-            {
-              id: 2,
-              userName: "지성피부",
-              rating: 4,
-              comment:
-                "여름에 특히 좋아요. 피지가 많이 조절되고 모공이 확 줄어든 느낌입니다. 다만 건조한 부위에는 사용하지 않는 게 좋아요.",
-              date: "2023-04-15",
-            },
-          ],
-        },
-        {
-          id: 5,
-          name: "수분 히알루론 앰플",
-          brand: "토리든",
-          category: "앰플",
-          price: "32,000원",
-          rating: 4.8,
-          reviewCount: 1532,
-          image: require("../assets/product1.png"),
-          description:
-            "5가지 분자 크기의 히알루론산이 함유된 고농축 수분 앰플로, 피부 깊숙이 수분을 공급하고 오랫동안 유지시켜 줍니다. 건조하고 푸석한 피부에 즉각적인 수분감을 선사합니다.",
-          ingredients: ["히알루론산", "판테놀", "세라마이드", "글리세린", "베타인"],
-          suitableFor: ["모든 피부 타입", "건조함", "탄력 저하"],
-          notSuitableFor: ["없음"],
-          reviews: [
-            {
-              id: 1,
-              userName: "수분부족",
-              rating: 5,
-              comment:
-                "건조한 피부에 정말 좋아요! 바르면 즉시 촉촉해지고 하루종일 당김이 없어요. 여러 제품 써봤지만 이 제품이 최고입니다.",
-              date: "2023-06-05",
-            },
-            {
-              id: 2,
-              userName: "푸석피부",
-              rating: 5,
-              comment:
-                "앰플 한 방울로도 얼굴 전체가 촉촉해져요. 흡수도 빠르고 끈적임 없이 산뜻해서 여름에도 부담 없이 사용 중입니다.",
-              date: "2023-05-20",
-            },
-          ],
-        },
-        {
-          id: 6,
-          name: "저자극 클렌징 폼",
-          brand: "라운드랩",
-          category: "클렌저",
-          price: "16,000원",
-          rating: 4.6,
-          reviewCount: 923,
-          image: require("../assets/product2.png"),
-          description:
-            "약산성 포뮬러의 저자극 클렌징 폼으로, 피부 자극 없이 메이크업과 노폐물을 부드럽게 제거합니다. 세안 후에도 당김 없이 촉촉한 사용감을 선사합니다.",
-          ingredients: ["판테놀", "센텔라아시아티카", "글리세린", "마데카소사이드", "알란토인"],
-          suitableFor: ["모든 피부 타입", "민감성", "건성"],
-          notSuitableFor: ["없음"],
-          reviews: [
-            {
-              id: 1,
-              userName: "민감성피부",
-              rating: 5,
-              comment:
-                "자극 없이 순하면서도 세정력이 좋아요. 세안 후 당김도 없고 피부가 편안해요. 민감한 피부에 강추합니다!",
-              date: "2023-05-25",
-            },
-            {
-              id: 2,
-              userName: "아토피맘",
-              rating: 4,
-              comment: "아토피 있는 아이도 사용 가능할 정도로 순해요. 거품도 풍성하고 세정력도 나쁘지 않습니다.",
-              date: "2023-04-30",
-            },
-          ],
-        },
-      ]
+    try {
+      // 백엔드 AI 추천 시스템 스키마에 맞게 요청 데이터 구성
+      const result = await productService.getCosmeticRecommendations({
+        diagnosis: selectedConcerns,        // concerns -> diagnosis로 변경
+        skin_type: selectedSkinType,       // skinType -> skin_type로 변경  
+        sensitivity: selectedSensitivity,   // 민감도 추가
+        additionalInfo: additionalInfo      // 추가 정보는 유지
+      });
 
-      // 사용자 입력에 따른 AI 설명 생성
-      const aiExplanation = `
-${selectedSkinType} 피부 타입과 ${selectedConcerns.join(
-        ", ",
-      )}에 대한 고민을 분석한 결과, 다음과 같은 제품들을 추천해 드립니다.
-
-피부 타입 분석:
-${selectedSkinType} 피부는 ${
-        selectedSkinType === "건성"
-          ? "수분 부족으로 인한 당김과 각질이 특징이며, 수분 공급과 보습이 중요합니다."
-          : selectedSkinType === "지성"
-            ? "과다한 피지 분비가 특징이며, 피지 조절과 모공 관리가 중요합니다."
-            : selectedSkinType === "복합성"
-              ? "T존은 지성, 볼과 턱은 건성인 특징이 있어 부위별 맞춤 케어가 필요합니다."
-              : selectedSkinType === "민감성"
-                ? "외부 자극에 민감하게 반응하며, 진정과 장벽 강화가 중요합니다."
-                : "균형 잡힌 피부 상태로, 기본적인 관리로 건강한 피부를 유지할 수 있습니다."
-      }
-
-주요 고민 분석:
-${selectedConcerns
-  .map((concern) => {
-    switch (concern) {
-      case "건조함":
-        return "- 건조함: 수분과 유분이 부족하여 나타나는 증상으로, 세라마이드나 히알루론산 성분이 도움이 됩니다."
-      case "유분과다":
-        return "- 유분과다: 과도한 피지 분비로 인한 증상으로, 피지 조절 성분과 가벼운 텍스처의 제품이 적합합니다."
-      case "여드름":
-        return "- 여드름: 모공 막힘과 염증으로 인한 증상으로, 살리실산, 티트리 오일 등의 성분이 효과적입니다."
-      case "색소침착":
-        return "- 색소침착: 멜라닌 색소가 과도하게 생성된 상태로, 비타민C, 나이아신아마이드 등이 개선에 도움이 됩니다."
-      case "주름":
-        return "- 주름: 콜라겐과 탄력 감소로 인한 증상으로, 레티놀, 펩타이드 등의 성분이 효과적입니다."
-      case "모공":
-        return "- 모공: 피지 분비와 탄력 저하로 인해 확장된 상태로, BHA, 클레이 성분 등이 도움이 됩니다."
-      case "민감성":
-        return "- 민감성: 외부 자극에 쉽게 반응하는 상태로, 진정 성분과 저자극 제품이 적합합니다."
-      case "홍조":
-        return "- 홍조: 혈관 확장으로 인한 증상으로, 진정 성분과 항염 성분이 도움이 됩니다."
-      case "탄력저하":
-        return "- 탄력저하: 콜라겐과 엘라스틴 감소로 인한 증상으로, 펩타이드, 레티놀 등이 효과적입니다."
-      case "각질":
-        return "- 각질: 각질 턴오버 주기 이상으로 인한 증상으로, AHA, PHA 등의 각질 제거 성분이 도움이 됩니다."
-      default:
-        return `- ${concern}: 맞춤형 케어가 필요한 고민입니다.`
+      setRecommendedCosmetics(result.products);
+      setAiExplanation(result.explanation);
+      setShowResults(true);
+    } catch (error) {
+      console.error('화장품 추천 실패:', error);
+      Alert.alert('오류', '화장품 추천을 불러오는데 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsAnalyzing(false);
     }
-  })
-  .join("\n")}
-
-${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
-
-이러한 분석을 바탕으로, 다른 사용자들의 리뷰와 평가를 고려하여 가장 효과적인 제품들을 선별했습니다. 특히 ${
-        selectedSkinType === "건성"
-          ? "수분 세라마이드 크림과 수분 히알루론 앰플"
-          : selectedSkinType === "지성"
-            ? "포어 컨트롤 클레이 마스크와 저자극 클렌징 폼"
-            : selectedSkinType === "복합성"
-              ? "진정 시카 토너와 비타민C 세럼"
-              : selectedSkinType === "민감성"
-                ? "진정 시카 토너와 저자극 클렌징 폼"
-                : "비타민C 세럼과 수분 히알루론 앰플"
-      }이 ${selectedSkinType} 피부 타입과 ${selectedConcerns.join(", ")} 고민에 가장 효과적일 것으로 예상됩니다.
-`
-
-      setAiExplanation(aiExplanation)
-      setRecommendedCosmetics(mockCosmetics)
-      setFilteredCosmetics(mockCosmetics)
-      setIsAnalyzing(false)
-      setShowResults(true)
-    }, 3000)
   }
 
   // 뒤로가기
@@ -389,9 +142,8 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
       // 결과 화면에서 뒤로가기 시 입력 화면으로
       setShowResults(false)
       setRecommendedCosmetics([])
-      setFilteredCosmetics([])
+      setSelectedCategory("전체")
       setAiExplanation("")
-      setActiveCategory(null)
     } else {
       // 입력 화면에서 뒤로가기 시 이전 화면으로
       navigation.goBack()
@@ -427,16 +179,49 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
     return ["전체", ...Array.from(new Set(categories))]
   }
 
+  // 필터링된 화장품 목록 렌더링
+  const renderFilteredCosmetics = () => {
+    return filteredCosmetics.map((cosmetic) => (
+      <TouchableOpacity
+        key={cosmetic.id}
+        style={styles.cosmeticCard}
+        onPress={() => navigation.navigate("ProductDetailScreen", { id: cosmetic.id })}
+      >
+        <Image source={cosmetic.image} style={styles.cosmeticImage} />
+        <View style={styles.cosmeticInfo}>
+          <Text style={styles.cosmeticBrand}>{cosmetic.brand}</Text>
+          <Text style={styles.cosmeticName}>{cosmetic.name}</Text>
+          <View style={styles.ratingContainer}>
+            {renderStars(cosmetic.rating)}
+            <Text style={styles.ratingText}>
+              {cosmetic.rating} ({cosmetic.reviewCount})
+            </Text>
+          </View>
+          <Text style={styles.cosmeticPrice}>{cosmetic.price}</Text>
+          <View style={styles.tagsContainer}>
+            {cosmetic.suitableFor.slice(0, 2).map((tag, index) => (
+              <View key={index} style={styles.tagBadge}>
+                <Text style={styles.tagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </TouchableOpacity>
+    ))
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity onPress={handleBackPress}>
+          <Text style={styles.backButtonText}>
+            뒤로
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{showResults ? "맞춤 화장품 추천" : "화장품 추천받기"}</Text>
+        <Text style={styles.headerTitle}>{showResults ? "         맞춤 화장품 추천" : "          화장품 추천받기"}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -470,16 +255,16 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
                 key={index}
                 style={[
                   styles.categoryButton,
-                  (category === "전체" && activeCategory === null) || activeCategory === category
+                  (category === "전체" && selectedCategory === "전체") || selectedCategory === category
                     ? styles.activeCategoryButton
                     : {},
                 ]}
-                onPress={() => setActiveCategory(category === "전체" ? null : category)}
+                onPress={() => setSelectedCategory(category === "전체" ? "전체" : category)}
               >
                 <Text
                   style={[
                     styles.categoryButtonText,
-                    (category === "전체" && activeCategory === null) || activeCategory === category
+                    (category === "전체" && selectedCategory === "전체") || selectedCategory === category
                       ? styles.activeCategoryButtonText
                       : {},
                   ]}
@@ -493,33 +278,7 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
           {/* 추천 화장품 목록 */}
           <View style={styles.cosmeticsContainer}>
             <Text style={styles.sectionTitle}>추천 화장품</Text>
-            {filteredCosmetics.map((cosmetic) => (
-              <TouchableOpacity
-                key={cosmetic.id}
-                style={styles.cosmeticCard}
-                onPress={() => navigation.navigate("ProductDetailScreen", { id: cosmetic.id })}
-              >
-                <Image source={cosmetic.image} style={styles.cosmeticImage} />
-                <View style={styles.cosmeticInfo}>
-                  <Text style={styles.cosmeticBrand}>{cosmetic.brand}</Text>
-                  <Text style={styles.cosmeticName}>{cosmetic.name}</Text>
-                  <View style={styles.ratingContainer}>
-                    {renderStars(cosmetic.rating)}
-                    <Text style={styles.ratingText}>
-                      {cosmetic.rating} ({cosmetic.reviewCount})
-                    </Text>
-                  </View>
-                  <Text style={styles.cosmeticPrice}>{cosmetic.price}</Text>
-                  <View style={styles.tagsContainer}>
-                    {cosmetic.suitableFor.slice(0, 2).map((tag, index) => (
-                      <View key={index} style={styles.tagBadge}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {renderFilteredCosmetics()}
           </View>
 
           {/* 하단 여백 */}
@@ -541,14 +300,40 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
             <Text style={styles.sectionTitle}>피부 타입</Text>
             <Text style={styles.sectionSubtitle}>자신의 피부 타입을 선택해주세요.</Text>
             <View style={styles.optionsContainer}>
-              {skinTypeOptions.map((type) => (
+              {isLoadingOptions ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#FF9A9E" />
+                  <Text style={styles.loadingText}>피부 옵션을 불러오는 중...</Text>
+                </View>
+              ) : (
+                skinOptions.skinTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.optionButton, selectedSkinType === type && styles.selectedOptionButton]}
+                    onPress={() => setSelectedSkinType(type)}
+                  >
+                    <Text style={[styles.optionButtonText, selectedSkinType === type && styles.selectedOptionButtonText]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </View>
+
+          {/* 피부 민감도 선택 */}
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>피부 민감도</Text>
+            <Text style={styles.sectionSubtitle}>자신의 피부 민감도를 선택해주세요.</Text>
+            <View style={styles.optionsContainer}>
+              {sensitivityOptions.map((sensitivity) => (
                 <TouchableOpacity
-                  key={type}
-                  style={[styles.optionButton, selectedSkinType === type && styles.selectedOptionButton]}
-                  onPress={() => setSelectedSkinType(type)}
+                  key={sensitivity}
+                  style={[styles.optionButton, selectedSensitivity === sensitivity && styles.selectedOptionButton]}
+                  onPress={() => setSelectedSensitivity(sensitivity)}
                 >
-                  <Text style={[styles.optionButtonText, selectedSkinType === type && styles.selectedOptionButtonText]}>
-                    {type}
+                  <Text style={[styles.optionButtonText, selectedSensitivity === sensitivity && styles.selectedOptionButtonText]}>
+                    {sensitivity}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -560,7 +345,7 @@ ${additionalInfo ? `추가 정보 분석:\n${additionalInfo}` : ""}
             <Text style={styles.sectionTitle}>피부 고민</Text>
             <Text style={styles.sectionSubtitle}>주요 피부 고민을 최대 3개까지 선택해주세요.</Text>
             <View style={styles.concernsContainer}>
-              {skinConcernOptions.map((concern) => (
+              {skinOptions.concerns.map((concern) => (
                 <TouchableOpacity
                   key={concern}
                   style={[styles.concernButton, selectedConcerns.includes(concern) && styles.selectedConcernButton]}
@@ -638,7 +423,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
   },

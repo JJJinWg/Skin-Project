@@ -1,7 +1,7 @@
 // 피부 검진 진단 내역과 화장품 추천 내역을 볼 수 있는 화면
 // 피부 관리 기록
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -13,10 +13,18 @@ import {
   ScrollView,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from "react-native"
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { productService } from "../services/productService"
+
+interface ApiResponse<T> {
+  data: T;
+  message: string;
+  success: boolean;
+}
 
 // 피부 분석 내역 타입
 type SkinAnalysisHistory = {
@@ -34,6 +42,12 @@ type SkinAnalysisHistory = {
     title: string
     severity: "low" | "medium" | "high"
   }[]
+  analysisResult: {
+    skinType: string
+    concerns: string[]
+    recommendations: string[]
+    imageUrl: string
+  }
 }
 
 // 화장품 추천 내역 타입
@@ -57,148 +71,74 @@ const SkinHistoryScreen = () => {
   const [analysisHistory, setAnalysisHistory] = useState<SkinAnalysisHistory[]>([])
   const [recommendationHistory, setRecommendationHistory] = useState<CosmeticRecommendationHistory[]>([])
   const [loading, setLoading] = useState(true)
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true)
 
-  // 피부 분석 내역 및 화장품 추천 내역 가져오기 (API 호출 시뮬레이션)
+  // 피부 분석 내역 가져오기
   useEffect(() => {
+    const loadSkinHistory = async () => {
+      try {
     setLoading(true)
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      // 피부 분석 내역 모의 데이터
-      const mockAnalysisHistory: SkinAnalysisHistory[] = [
-        {
-          id: 1,
-          date: "2023-06-15",
-          skinType: "복합성",
-          skinAge: 28,
-          moisture: 65,
-          wrinkles: 25,
-          pigmentation: 40,
-          pores: 55,
-          acne: 30,
-          imageUri: "https://example.com/skin-analysis-1.jpg",
-          issues: [
-            { title: "건조함", severity: "medium" },
-            { title: "모공 확장", severity: "high" },
-            { title: "색소침착", severity: "low" },
-          ],
-        },
-        {
-          id: 2,
-          date: "2023-05-10",
-          skinType: "건성",
-          skinAge: 29,
-          moisture: 55,
-          wrinkles: 30,
-          pigmentation: 35,
-          pores: 40,
-          acne: 20,
-          imageUri: "https://example.com/skin-analysis-2.jpg",
-          issues: [
-            { title: "건조함", severity: "high" },
-            { title: "각질", severity: "medium" },
-            { title: "주름", severity: "low" },
-          ],
-        },
-        {
-          id: 3,
-          date: "2023-04-05",
-          skinType: "지성",
-          skinAge: 27,
-          moisture: 70,
-          wrinkles: 20,
-          pigmentation: 30,
-          pores: 65,
-          acne: 45,
-          imageUri: "https://example.com/skin-analysis-3.jpg",
-          issues: [
-            { title: "유분과다", severity: "high" },
-            { title: "모공 확장", severity: "medium" },
-            { title: "여드름", severity: "medium" },
-          ],
-        },
-      ]
-
-      // 화장품 추천 내역 모의 데이터
-      const mockRecommendationHistory: CosmeticRecommendationHistory[] = [
-        {
-          id: 1,
-          date: "2023-06-15",
-          skinType: "복합성",
-          concerns: ["건조함", "모공 확장", "색소침착"],
-          recommendedProducts: [
-            {
-              id: 1,
-              name: "수분 세라마이드 크림",
-              brand: "세라비",
-              category: "크림",
-              image: require("../assets/product1.png"),
+        const response = await productService.getSkinAnalysisHistory(1) as any;
+        const historyData = response;
+        
+        // API 응답을 SkinAnalysis 타입에 맞게 변환
+        const formattedHistory: SkinAnalysisHistory[] = historyData.map((item: any) => ({
+          id: item.id,
+          date: item.date,
+          skinType: item.skinType,
+          skinAge: item.skinAge,
+          moisture: item.moisture,
+          wrinkles: item.wrinkles,
+          pigmentation: item.pigmentation,
+          pores: item.pores,
+          acne: item.acne,
+          imageUri: item.imageUri,
+          issues: item.issues.map((issue: any) => ({
+            title: issue.title,
+            severity: issue.severity,
+          })),
+          analysisResult: {
+            skinType: item.skinType,
+            concerns: item.issues.map((issue: any) => issue.title),
+            recommendations: item.recommendations || [],
+            imageUrl: item.imageUri,
             },
-            {
-              id: 2,
-              name: "진정 시카 토너",
-              brand: "닥터지",
-              category: "토너",
-              image: require("../assets/product2.png"),
-            },
-            {
-              id: 3,
-              name: "비타민C 세럼",
-              brand: "클리오",
-              category: "세럼",
-              image: require("../assets/product1.png"),
-            },
-          ],
-        },
-        {
-          id: 2,
-          date: "2023-05-10",
-          skinType: "건성",
-          concerns: ["건조함", "각질", "주름"],
-          recommendedProducts: [
-            {
-              id: 5,
-              name: "수분 히알루론 앰플",
-              brand: "토리든",
-              category: "앰플",
-              image: require("../assets/product1.png"),
-            },
-            {
-              id: 6,
-              name: "저자극 클렌징 폼",
-              brand: "라운드랩",
-              category: "클렌저",
-              image: require("../assets/product2.png"),
-            },
-          ],
-        },
-        {
-          id: 3,
-          date: "2023-04-05",
-          skinType: "지성",
-          concerns: ["유분과다", "모공 확장", "여드름"],
-          recommendedProducts: [
-            {
-              id: 4,
-              name: "포어 컨트롤 클레이 마스크",
-              brand: "이니스프리",
-              category: "마스크팩",
-              image: require("../assets/product2.png"),
-            },
-            {
-              id: 6,
-              name: "저자극 클렌징 폼",
-              brand: "라운드랩",
-              category: "클렌저",
-              image: require("../assets/product2.png"),
-            },
-          ],
-        },
-      ]
-
-      setAnalysisHistory(mockAnalysisHistory)
-      setRecommendationHistory(mockRecommendationHistory)
+        }))
+        
+        setAnalysisHistory(formattedHistory)
+      } catch (error) {
+        console.error('피부 분석 내역 로드 실패:', error)
+        Alert.alert('오류', '피부 분석 내역을 불러오는데 실패했습니다.')
+        setAnalysisHistory([])
+      } finally {
       setLoading(false)
-    }, 1500)
+      }
+    }
+
+    loadSkinHistory()
+  }, [])
+
+  // 화장품 추천 내역 가져오기
+  useEffect(() => {
+    const loadRecommendations = async () => {
+      try {
+        setRecommendationsLoading(true)
+        
+        // 실제 저장된 추천 내역 조회
+        const savedRecommendations = await productService.getRecommendationHistory(1); // 임시 사용자 ID
+        setRecommendationHistory(savedRecommendations)
+        
+        console.log(`📋 화장품 추천 내역: ${savedRecommendations.length}개 로드됨`);
+      } catch (error) {
+        console.error('화장품 추천 내역 로드 실패:', error)
+        Alert.alert('오류', '화장품 추천 내역을 불러오는데 실패했습니다.')
+        setRecommendationHistory([])
+      } finally {
+        setRecommendationsLoading(false)
+      }
+    }
+
+    loadRecommendations()
   }, [])
 
   // 날짜 포맷 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
@@ -247,7 +187,15 @@ const SkinHistoryScreen = () => {
   // 피부 분석 상세 화면으로 이동
   const navigateToAnalysisDetail = (analysisId: number) => {
     // 실제로는 해당 분석 ID를 사용하여 상세 화면으로 이동
-    navigation.navigate("SkinAnalysisResultScreen", { imageUri: "https://example.com/skin-analysis-1.jpg" })
+    navigation.navigate("SkinAnalysisResultScreen", {
+      imageUri: "https://example.com/skin-analysis-1.jpg",
+      analysisResult: {
+        skinType: '',
+        concerns: [],
+        recommendations: [],
+        imageUrl: "https://example.com/skin-analysis-1.jpg",
+      }
+    })
   }
 
   // 화장품 추천 상세 화면으로 이동
@@ -272,8 +220,8 @@ const SkinHistoryScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity style={styles.backButton}>
+       
         </TouchableOpacity>
         <Text style={styles.headerTitle}>내 피부 관리 기록</Text>
         <View style={styles.placeholder} />
@@ -512,7 +460,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F8F9FA",
     justifyContent: "center",
     alignItems: "center",
   },
