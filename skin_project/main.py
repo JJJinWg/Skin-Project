@@ -1592,7 +1592,7 @@ def get_skin_options():
     return {
         "success": True,
         "data": {
-            "skinTypes": ["건성", "지성", "복합성", "민감성", "트러블성"],
+            "skinTypes": ["건성", "지성", "복합성(정상)"],
             "concerns": ["여드름", "홍조", "각질", "주름", "미백", "모공", "탄력"]
         }
     }

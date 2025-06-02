@@ -11,7 +11,7 @@ from database import engine, SessionLocal
 from core.models.db_models import Base as UserBase
 from core.models.medical_models import Base as MedicalBase, Hospital, Doctor, Appointment, MedicalRecord, DoctorReview, DoctorSchedule
 from datetime import date, time, datetime, timedelta
-from core.models.db_models import User, Review, Product, ProductIngredient, ProductSkinType, ProductBenefit, Shop, ProductShop
+from core.models.db_models import User, Product, ProductIngredient, ProductSkinType, ProductBenefit, Shop, ProductShop, RecommendationHistory, RecommendationProduct, ProductReview, CrawledReview
 
 def create_tables():
     """모든 테이블 생성"""
@@ -240,78 +240,7 @@ def add_sample_data():
         db.commit()
         print("✅ 쇼핑몰 데이터 추가 완료")
 
-        # 5. 제품 데이터 추가
-        products = [
-            Product(
-                name="수분 크림",
-                brand="A브랜드",
-                category="크림",
-                price=30000,
-                original_price=35000,
-                rating=4.5,
-                review_count=100,
-                description="건성 피부를 위한 수분 크림",
-                volume="50ml",
-                is_popular=True,
-                is_new=False,
-                image_url="https://example.com/cream1.jpg"
-            ),
-            Product(
-                name="클렌징 오일",
-                brand="B브랜드",
-                category="클렌저",
-                price=25000,
-                original_price=28000,
-                rating=4.3,
-                review_count=80,
-                description="모든 피부 타입에 적합한 클렌징 오일",
-                volume="200ml",
-                is_popular=True,
-                is_new=True,
-                image_url="https://example.com/oil1.jpg"
-            ),
-            Product(
-                name="토너",
-                brand="C브랜드",
-                category="토너",
-                price=18000,
-                original_price=20000,
-                rating=4.2,
-                review_count=150,
-                description="순하고 보습력이 뛰어난 토너",
-                volume="150ml",
-                is_popular=False,
-                is_new=True,
-                image_url="https://example.com/toner1.jpg"
-            ),
-            Product(
-                name="선크림",
-                brand="D브랜드", 
-                category="선케어",
-                price=22000,
-                original_price=25000,
-                rating=4.7,
-                review_count=200,
-                description="SPF50+ PA+++ 자외선 차단제",
-                volume="50ml",
-                is_popular=True,
-                is_new=False,
-                image_url="https://example.com/sunscreen1.jpg"
-            )
-        ]
-        
-        for product in products:
-            existing = db.query(Product).filter(
-                Product.name == product.name,
-                Product.brand == product.brand
-            ).first()
-            if not existing:
-                db.add(product)
-        
-        db.commit()
-        print("✅ 제품 데이터 추가 완료")
-
-        # 6. 제품 판매처 데이터 추가
+        # 5. 제품 판매처 데이터 추가
         product_shops = [
             ProductShop(
                 product_id=1,
@@ -370,126 +299,7 @@ def add_sample_data():
         db.commit()
         print("✅ 제품 판매처 데이터 추가 완료")
 
-        # 7. 제품 성분 데이터 추가
-        product_ingredients = [
-            ProductIngredient(product_id=1, ingredient="히알루론산"),
-            ProductIngredient(product_id=1, ingredient="세라마이드"),
-            ProductIngredient(product_id=1, ingredient="글리세린"),
-            ProductIngredient(product_id=2, ingredient="호호바 오일"),
-            ProductIngredient(product_id=2, ingredient="아르간 오일"),
-            ProductIngredient(product_id=2, ingredient="올리브 오일"),
-            ProductIngredient(product_id=3, ingredient="나이아신아마이드"),
-            ProductIngredient(product_id=3, ingredient="하이알루론산"),
-            ProductIngredient(product_id=4, ingredient="징크옥사이드"),
-            ProductIngredient(product_id=4, ingredient="티타늄디옥사이드")
-        ]
-        
-        for ingredient in product_ingredients:
-            existing = db.query(ProductIngredient).filter(
-                ProductIngredient.product_id == ingredient.product_id,
-                ProductIngredient.ingredient == ingredient.ingredient
-            ).first()
-            if not existing:
-                db.add(ingredient)
-        
-        db.commit()
-        print("✅ 제품 성분 데이터 추가 완료")
-
-        # 8. 제품 피부 타입 데이터 추가
-        product_skin_types = [
-            ProductSkinType(product_id=1, skin_type="건성"),
-            ProductSkinType(product_id=1, skin_type="중성"),
-            ProductSkinType(product_id=1, skin_type="민감성"),
-            ProductSkinType(product_id=2, skin_type="지성"),
-            ProductSkinType(product_id=2, skin_type="복합성"),
-            ProductSkinType(product_id=3, skin_type="모든피부"),
-            ProductSkinType(product_id=4, skin_type="모든피부")
-        ]
-        
-        for skin_type in product_skin_types:
-            existing = db.query(ProductSkinType).filter(
-                ProductSkinType.product_id == skin_type.product_id,
-                ProductSkinType.skin_type == skin_type.skin_type
-            ).first()
-            if not existing:
-                db.add(skin_type)
-        
-        db.commit()
-        print("✅ 제품 피부 타입 데이터 추가 완료")
-
-        # 9. 제품 효능 데이터 추가
-        product_benefits = [
-            ProductBenefit(product_id=1, benefit="수분 공급"),
-            ProductBenefit(product_id=1, benefit="보습"),
-            ProductBenefit(product_id=1, benefit="진정"),
-            ProductBenefit(product_id=2, benefit="클렌징"),
-            ProductBenefit(product_id=2, benefit="모공 관리"),
-            ProductBenefit(product_id=2, benefit="영양 공급"),
-            ProductBenefit(product_id=3, benefit="수분 공급"),
-            ProductBenefit(product_id=3, benefit="각질 제거"),
-            ProductBenefit(product_id=4, benefit="자외선 차단"),
-            ProductBenefit(product_id=4, benefit="피부 보호")
-        ]
-        
-        for benefit in product_benefits:
-            existing = db.query(ProductBenefit).filter(
-                ProductBenefit.product_id == benefit.product_id,
-                ProductBenefit.benefit == benefit.benefit
-            ).first()
-            if not existing:
-                db.add(benefit)
-        
-        db.commit()
-        print("✅ 제품 효능 데이터 추가 완료")
-
-        # 10. 리뷰 데이터 추가
-        reviews = [
-            Review(
-                username="user1",
-                review_text="수분감이 정말 좋아요. 건성 피부에 딱이에요!",
-                skin_type="건성",
-                skin_concern="건조함",
-                sensitivity="보통",
-                rating=4.5
-            ),
-            Review(
-                username="user2",
-                review_text="클렌징이 깔끔하게 잘 돼요. 향도 좋고 추천합니다.",
-                skin_type="지성",
-                skin_concern="모공",
-                sensitivity="민감",
-                rating=4.0
-            ),
-            Review(
-                username="user3",
-                review_text="토너인데 보습력이 뛰어나네요. 계속 사용할 예정입니다.",
-                skin_type="복합성",
-                skin_concern="수분부족",
-                sensitivity="보통",
-                rating=4.2
-            ),
-            Review(
-                username="user4",
-                review_text="선크림 중에 최고에요. 백탁현상도 없고 발림성이 좋아요.",
-                skin_type="민감성",
-                skin_concern="색소침착",
-                sensitivity="민감",
-                rating=4.8
-            )
-        ]
-        
-        for review in reviews:
-            existing = db.query(Review).filter(
-                Review.username == review.username,
-                Review.review_text == review.review_text
-            ).first()
-            if not existing:
-                db.add(review)
-        
-        db.commit()
-        print("✅ 리뷰 데이터 추가 완료")
-
-        # 11. 예약 데이터 추가
+        # 6. 예약 데이터 추가
         appointments = [
             Appointment(
                 user_id=1,
@@ -549,7 +359,7 @@ def add_sample_data():
         db.commit()
         print("✅ 예약 데이터 추가 완료")
 
-        # 12. 진료 기록 데이터 추가
+        # 7. 진료 기록 데이터 추가
         medical_records = [
             MedicalRecord(
                 appointment_id=3,  # completed 상태의 예약에 대해서만
@@ -573,7 +383,7 @@ def add_sample_data():
         db.commit()
         print("✅ 진료 기록 데이터 추가 완료")
 
-        # 13. 의사 리뷰 데이터 추가
+        # 8. 의사 리뷰 데이터 추가
         doctor_reviews = [
             DoctorReview(
                 user_id=3,
@@ -594,7 +404,7 @@ def add_sample_data():
         db.commit()
         print("✅ 의사 리뷰 데이터 추가 완료")
 
-        # 14. 의사 스케줄 데이터 추가
+        # 9. 의사 스케줄 데이터 추가
         doctor_schedules = [
             DoctorSchedule(
                 doctor_id=1,
