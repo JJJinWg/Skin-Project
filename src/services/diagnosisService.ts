@@ -12,6 +12,7 @@ export interface DiagnosisRequest {
   previousTreatment: string
   allergies: string
   medications: string
+  medicalHistory: string
   additionalNotes: string
   images: Array<{
     uri: string
@@ -56,6 +57,7 @@ export const diagnosisService = {
     previousTreatment: string;
     allergies: string;
     medications: string;
+    medicalHistory: string;
     additionalNotes: string;
     images: Array<{
       uri: string;

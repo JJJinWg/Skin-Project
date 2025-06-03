@@ -64,6 +64,7 @@ class Appointment(Base):
     user_id = Column(Integer, nullable=False)  # users 테이블 참조
     doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="CASCADE"))
     hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"))
+    diagnosis_request_id = Column(Integer, nullable=True)  # diagnosis_requests 테이블 참조 (선택적)
     appointment_date = Column(Date, nullable=False)
     appointment_time = Column(Time, nullable=False)
     status = Column(String(20), default='pending')  # pending, confirmed, completed, cancelled
@@ -78,6 +79,7 @@ class Appointment(Base):
     hospital = relationship("Hospital", back_populates="appointments")
     medical_record = relationship("MedicalRecord", back_populates="appointment", uselist=False)
     review = relationship("DoctorReview", back_populates="appointment", uselist=False)
+    # diagnosis_request = relationship("DiagnosisRequest")  # 필요시 활성화
 
 class MedicalRecord(Base):
     __tablename__ = "medical_records"
