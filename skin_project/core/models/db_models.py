@@ -183,3 +183,25 @@ class CrawledReview(Base):
     
     # 관계 설정
     product = relationship("Product")
+
+# 진료 요청서 테이블
+class DiagnosisRequest(Base):
+    __tablename__ = "diagnosis_requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False)  # users 테이블 참조 (FK 제약 없음)
+    symptoms = Column(Text, nullable=False)  # 증상 설명
+    duration = Column(String(100))  # 증상 지속 기간 ("1주일", "2개월" 등)
+    severity = Column(String(20), default="mild")  # mild, moderate, severe
+    previous_treatment = Column(Text)  # 이전 치료 경험
+    allergies = Column(Text)  # 알레르기 정보
+    medications = Column(Text)  # 복용 중인 약물
+    medical_history = Column(Text)  # 과거 병력
+    additional_notes = Column(Text)  # 추가 메모
+    images = Column(JSON)  # 이미지 파일 경로들 (JSON 배열)
+    status = Column(String(20), default="pending")  # pending, reviewed, completed
+    reviewed_by_doctor_id = Column(Integer, nullable=True)  # 검토한 의사 ID (FK 제약 없음)
+    review_notes = Column(Text)  # 의사의 검토 메모
+    reviewed_at = Column(DateTime)  # 검토 일시
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

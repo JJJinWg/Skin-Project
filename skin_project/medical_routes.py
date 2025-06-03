@@ -1,10 +1,10 @@
 # medical_routes.py
 # 의료진/예약 시스템 API 라우터
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 
 from database import get_db
 from medical_schemas import (
@@ -18,6 +18,46 @@ from medical_schemas import (
 import medical_crud as crud
 
 router = APIRouter()
+
+# ========== 의사 대시보드 통계 API ==========
+@router.get("/doctors/{doctor_id}/dashboard-stats")
+def get_doctor_dashboard_stats(doctor_id: int, db: Session = Depends(get_db)):
+    """의사 대시보드용 통계 데이터 조회"""
+    try:
+        # 오늘 날짜
+        today = date.today()
+        
+        # 해당 의사의 모든 예약 조회
+        all_appointments = crud.get_appointments(
+            db, 
+            search_params=AppointmentSearchParams(doctor_id=doctor_id),
+            limit=1000  # 충분히 큰 수로 모든 데이터 조회
+        )
+        
+        # 오늘 예약 수
+        today_appointments = [apt for apt in all_appointments if apt.appointment_date == today]
+        
+        # 대기 중 예약 수 (scheduled/pending 상태)
+        pending_appointments = [apt for apt in all_appointments if apt.status in ['scheduled', 'pending']]
+        
+        # 완료된 예약 수
+        completed_appointments = [apt for apt in all_appointments if apt.status == 'completed']
+        
+        # 총 환자 수 (고유 user_id 개수)
+        unique_patients = set(apt.user_id for apt in all_appointments)
+        total_patients = len(unique_patients)
+        
+        return {
+            "success": True,
+            "data": {
+                "today_appointments": len(today_appointments),
+                "pending_appointments": len(pending_appointments), 
+                "completed_appointments": len(completed_appointments),
+                "total_patients": total_patients
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"통계 조회 중 오류가 발생했습니다: {str(e)}")
 
 # ========== 병원 API ==========
 @router.get("/hospitals", response_model=List[Hospital])
@@ -143,12 +183,56 @@ def get_appointment(appointment_id: int, db: Session = Depends(get_db)):
     return appointment
 
 @router.post("/appointments", response_model=Appointment)
-def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get_db)):
+async def create_appointment(request: Request, db: Session = Depends(get_db)):
     """새 예약 생성"""
     try:
-        return crud.create_appointment(db=db, appointment=appointment)
+        # Raw request body 읽기
+        body = await request.body()
+        print(f"🔍 Raw request body: {body}")
+        
+        # JSON 파싱
+        import json
+        data = json.loads(body.decode('utf-8'))
+        print(f"🔍 파싱된 JSON 데이터: {data}")
+        
+        from datetime import datetime
+        
+        print(f"🔍 받은 예약 데이터: {data}")
+        
+        # images 필드 제거하고 AppointmentCreate 스키마에 맞는 데이터만 추출
+        appointment_data_dict = {
+            "user_id": data.get("userId", 1),  # 기본값
+            "doctor_id": data["doctorId"],
+            "hospital_id": data.get("hospitalId", 1),  # 기본값
+            "appointment_date": datetime.strptime(data["date"], "%Y-%m-%d").date(),
+            "appointment_time": datetime.strptime(data["time"], "%H:%M").time(),
+            "symptoms": data.get("symptoms", ""),
+            "consultation_type": data.get("consultationType", "일반진료"),
+            "diagnosis_request_id": data.get("diagnosisRequestId", None)
+        }
+        
+        print(f"🔍 변환된 예약 데이터: {appointment_data_dict}")
+        
+        appointment_create = AppointmentCreate(**appointment_data_dict)
+        print(f"🔍 AppointmentCreate 객체 생성 성공")
+        
+        appointment = crud.create_appointment(db=db, appointment=appointment_create)
+        print(f"🔍 예약 생성 성공: {appointment.id}")
+        
+        return appointment
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        raise HTTPException(status_code=422, detail=f"올바르지 않은 JSON 형식: {str(e)}")
+    except KeyError as e:
+        print(f"❌ 필수 필드 누락: {e}")
+        raise HTTPException(status_code=422, detail=f"필수 필드가 누락되었습니다: {str(e)}")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"❌ 데이터 형식 오류: {e}")
+        raise HTTPException(status_code=422, detail=f"데이터 형식이 올바르지 않습니다: {str(e)}")
+    except Exception as e:
+        print(f"❌ 예약 생성 실패: {e}")
+        print(f"❌ 에러 타입: {type(e)}")
+        raise HTTPException(status_code=500, detail=f"예약 생성 중 오류가 발생했습니다: {str(e)}")
 
 @router.put("/appointments/{appointment_id}", response_model=Appointment)
 def update_appointment(

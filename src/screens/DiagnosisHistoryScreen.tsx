@@ -34,6 +34,7 @@ type DiagnosisRequest = {
   previousTreatment: string
   allergies: string
   medications: string
+  medicalHistory: string
   additionalNotes: string
   images: ImageType[]
 }
@@ -48,6 +49,7 @@ const DiagnosisHistoryScreen = () => {
     previousTreatment: "",
     allergies: "",
     medications: "",
+    medicalHistory: "",
     additionalNotes: "",
     images: [],
   })
@@ -333,6 +335,21 @@ const DiagnosisHistoryScreen = () => {
             placeholderTextColor="#ADB5BD"
             value={formData.medications}
             onChangeText={(text) => setFormData(prev => ({ ...prev, medications: text }))}
+          />
+        </View>
+
+        {/* 과거 병력 */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>과거 병력</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="과거에 겪은 병력이나 수술 이력을 작성해주세요"
+            placeholderTextColor="#ADB5BD"
+            value={formData.medicalHistory}
+            onChangeText={(text) => setFormData(prev => ({ ...prev, medicalHistory: text }))}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
           />
         </View>
 
