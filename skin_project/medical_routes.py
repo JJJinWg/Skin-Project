@@ -208,7 +208,8 @@ async def create_appointment(request: Request, db: Session = Depends(get_db)):
             "appointment_time": datetime.strptime(data["time"], "%H:%M").time(),
             "symptoms": data.get("symptoms", ""),
             "consultation_type": data.get("consultationType", "일반진료"),
-            "diagnosis_request_id": data.get("diagnosisRequestId", None)
+            "diagnosis_request_id": data.get("diagnosisRequestId", None),
+            "notes": data.get("notes", "")  # notes 필드 추가
         }
         
         print(f"🔍 변환된 예약 데이터: {appointment_data_dict}")
