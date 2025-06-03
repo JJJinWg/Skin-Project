@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from fastapi import FastAPI, Depends, HTTPException, status, Body
+from fastapi import FastAPI, Depends, HTTPException, status, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -17,7 +17,8 @@ from core.models import db_models
 from core.models.medical_models import Hospital, Doctor, Appointment
 from core.models.db_models import (
     User, Product, Shop, ProductShop, RecommendationHistory, RecommendationProduct,
-    ProductIngredient, ProductSkinType, ProductBenefit, ProductReview, CrawledReview, GenderEnum
+    ProductIngredient, ProductSkinType, ProductBenefit, ProductReview, CrawledReview, GenderEnum,
+    DiagnosisRequest
 )
 from schemas import ProductCreate, Token
 from crud import create_product
@@ -67,9 +68,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# 요청 로깅 미들웨어 추가
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"🌐 요청 받음: {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"📤 응답 보냄: {response.status_code}")
+    return response
+
 # 추천 시스템 라우터 추가 (main 브랜치에서 가져온 기능)
 from recommendation import router as recommend_router
 app.include_router(recommend_router)
+
+# 의료진 라우터 추가
+from medical_routes import router as medical_router
+app.include_router(medical_router, prefix="/api/medical")
 
 # CORS 설정
 app.add_middleware(
@@ -630,36 +643,169 @@ def create_product_api(product_data: dict, db: Session = Depends(get_db)):
 
 # ========== 진료 요청서 API ==========
 @app.post("/api/medical/diagnosis-requests")
-def create_diagnosis_request(data: dict):
+async def create_diagnosis_request(request: Request, db: Session = Depends(get_db)):
     """진료 요청서 제출"""
-    # TODO: 실제 진료 요청서 데이터베이스 저장 구현 필요
-    return {
-        "success": True,
-        "requestId": 9999,
-        "message": "진료 요청서가 제출되었습니다"
-    }
+    try:
+        # Raw request body 읽기
+        body = await request.body()
+        data = json.loads(body.decode('utf-8'))
+        print(f"🔍 진료 요청서 데이터: {data}")
+        
+        # DiagnosisRequest 객체 생성
+        diagnosis_request = DiagnosisRequest(
+            user_id=data.get("userId", 1),  # 실제로는 인증에서 가져와야 함
+            symptoms=data.get("symptoms", ""),
+            duration=data.get("duration", ""),
+            severity=data.get("severity", "mild"),
+            previous_treatment=data.get("previousTreatment", ""),
+            allergies=data.get("allergies", ""),
+            medications=data.get("medications", ""),
+            medical_history=data.get("medicalHistory", ""),
+            additional_notes=data.get("additionalNotes", ""),
+            images=data.get("images", []),  # JSON 배열로 저장
+            status="pending"
+        )
+        
+        db.add(diagnosis_request)
+        db.commit()
+        db.refresh(diagnosis_request)
+        
+        print(f"✅ 진료 요청서 생성 성공: {diagnosis_request.id}")
+        
+        return {
+            "success": True,
+            "requestId": diagnosis_request.id,
+            "message": "진료 요청서가 제출되었습니다",
+            "data": {
+                "id": diagnosis_request.id,
+                "status": diagnosis_request.status,
+                "createdAt": diagnosis_request.created_at.isoformat()
+            }
+        }
+    except Exception as e:
+        print(f"❌ 진료 요청서 생성 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"진료 요청서 제출 실패: {str(e)}")
 
 @app.get("/api/medical/diagnosis-requests")
-def get_diagnosis_requests(user_id: Optional[int] = None):
+def get_diagnosis_requests(user_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """진료 요청서 목록 조회"""
-    # TODO: 실제 진료 요청서 데이터베이스 조회 구현 필요
-    return []
+    try:
+        from core.models.db_models import DiagnosisRequest, User
+        
+        query = db.query(DiagnosisRequest)
+        if user_id:
+            query = query.filter(DiagnosisRequest.user_id == user_id)
+        
+        diagnosis_requests = query.offset(skip).limit(limit).all()
+        
+        formatted_requests = []
+        for request in diagnosis_requests:
+            # 사용자 정보 조회
+            user = db.query(User).filter(User.id == request.user_id).first()
+            
+            formatted_requests.append({
+                "id": request.id,
+                "userId": request.user_id,
+                "userName": user.username if user else "사용자",
+                "symptoms": request.symptoms,
+                "duration": request.duration,
+                "severity": request.severity,
+                "status": request.status,
+                "createdAt": request.created_at.strftime("%Y-%m-%d %H:%M"),
+                "hasImages": bool(request.images and len(request.images) > 0)
+            })
+        
+        return {
+            "success": True,
+            "data": formatted_requests
+        }
+    except Exception as e:
+        print(f"❌ 진료 요청서 목록 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 요청서 목록 조회 중 오류가 발생했습니다")
 
 @app.get("/api/medical/diagnosis-requests/{request_id}")
-def get_diagnosis_request(request_id: int):
+def get_diagnosis_request(request_id: int, db: Session = Depends(get_db)):
     """진료 요청서 상세 조회"""
-    # TODO: 실제 진료 요청서 데이터베이스 조회 구현 필요
-    raise HTTPException(status_code=404, detail="진료 요청서를 찾을 수 없습니다")
+    try:
+        from core.models.db_models import DiagnosisRequest, User
+        
+        request_obj = db.query(DiagnosisRequest).filter(DiagnosisRequest.id == request_id).first()
+        if not request_obj:
+            raise HTTPException(status_code=404, detail="진료 요청서를 찾을 수 없습니다")
+        
+        # 사용자 정보 조회
+        user = db.query(User).filter(User.id == request_obj.user_id).first()
+        
+        return {
+            "success": True,
+            "data": {
+                "id": request_obj.id,
+                "userId": request_obj.user_id,
+                "userName": user.username if user else "사용자",
+                "userAge": user.age if user else 0,
+                "userGender": user.gender if user else "unknown",
+                "userPhone": user.phone_number if user else "",
+                "userEmail": user.email if user else "",
+                "symptoms": request_obj.symptoms,
+                "duration": request_obj.duration,
+                "severity": request_obj.severity,
+                "previousTreatment": request_obj.previous_treatment,
+                "allergies": request_obj.allergies,
+                "medications": request_obj.medications,
+                "medicalHistory": request_obj.medical_history,
+                "additionalNotes": request_obj.additional_notes,
+                "images": request_obj.images or [],
+                "status": request_obj.status,
+                "createdAt": request_obj.created_at.strftime("%Y-%m-%d %H:%M"),
+                "reviewedByDoctorId": request_obj.reviewed_by_doctor_id,
+                "reviewNotes": request_obj.review_notes,
+                "reviewedAt": request_obj.reviewed_at.strftime("%Y-%m-%d %H:%M") if request_obj.reviewed_at else None
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 진료 요청서 상세 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 요청서 조회 중 오류가 발생했습니다")
 
 @app.patch("/api/medical/diagnosis-requests/{request_id}")
-def update_diagnosis_request_status(request_id: int, data: dict):
+def update_diagnosis_request_status(request_id: int, data: dict, db: Session = Depends(get_db)):
     """진료 요청서 상태 업데이트"""
-    # TODO: 실제 진료 요청서 상태 업데이트 구현 필요
-    status = data.get("status")
-    return {
-        "success": True,
-        "message": f"진료 요청서 상태가 '{status}'로 변경되었습니다"
-    }
+    try:
+        from core.models.db_models import DiagnosisRequest
+        
+        request_obj = db.query(DiagnosisRequest).filter(DiagnosisRequest.id == request_id).first()
+        if not request_obj:
+            raise HTTPException(status_code=404, detail="진료 요청서를 찾을 수 없습니다")
+        
+        # 상태 업데이트
+        if "status" in data:
+            request_obj.status = data["status"]
+        if "reviewedByDoctorId" in data:
+            request_obj.reviewed_by_doctor_id = data["reviewedByDoctorId"]
+        if "reviewNotes" in data:
+            request_obj.review_notes = data["reviewNotes"]
+        
+        # 검토 완료 시 시간 기록
+        if data.get("status") == "reviewed":
+            request_obj.reviewed_at = datetime.now()
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"진료 요청서 상태가 '{request_obj.status}'로 변경되었습니다",
+            "data": {
+                "id": request_obj.id,
+                "status": request_obj.status,
+                "updatedAt": request_obj.updated_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 진료 요청서 상태 업데이트 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 요청서 상태 업데이트 중 오류가 발생했습니다")
 
 # ========== 약국 API ==========
 @app.get("/api/pharmacies")
@@ -932,24 +1078,41 @@ def get_appointments_api(user_id: Optional[int] = None, skip: int = 0, limit: in
         raise HTTPException(status_code=500, detail="예약 목록 조회 중 오류가 발생했습니다")
 
 @app.post("/api/medical/appointments")
-def create_appointment_api(data: dict, db: Session = Depends(get_db)):
+async def create_appointment_api(request: Request, db: Session = Depends(get_db)):
     """예약 생성"""
     try:
+        # Raw request body 읽기
+        body = await request.body()
+        print(f"🔍 Raw request body: {body}")
+        
+        # JSON 파싱
+        import json
+        data = json.loads(body.decode('utf-8'))
+        print(f"🔍 파싱된 JSON 데이터: {data}")
+        
         from medical_schemas import AppointmentCreate
         from datetime import datetime
         
-        # 데이터 변환
-        appointment_data = AppointmentCreate(
-            user_id=data.get("userId", 1),  # 기본값
-            doctor_id=data["doctorId"],
-            hospital_id=data.get("hospitalId", 1),  # 기본값
-            appointment_date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
-            appointment_time=datetime.strptime(data["time"], "%H:%M").time(),
-            symptoms=data.get("symptoms", ""),
-            consultation_type=data.get("consultationType", "일반진료")
-        )
+        print(f"🔍 받은 예약 데이터: {data}")
+        
+        # images 필드 제거 (백엔드에서 처리하지 않음)
+        appointment_data_dict = {
+            "user_id": data.get("userId", 1),  # 기본값
+            "doctor_id": data["doctorId"],
+            "hospital_id": data.get("hospitalId", 1),  # 기본값
+            "appointment_date": datetime.strptime(data["date"], "%Y-%m-%d").date(),
+            "appointment_time": datetime.strptime(data["time"], "%H:%M").time(),
+            "symptoms": data.get("symptoms", ""),
+            "consultation_type": data.get("consultationType", "일반진료")
+        }
+        
+        print(f"🔍 변환된 예약 데이터: {appointment_data_dict}")
+        
+        appointment_data = AppointmentCreate(**appointment_data_dict)
+        print(f"🔍 AppointmentCreate 객체 생성 성공")
         
         appointment = create_appointment(db, appointment_data)
+        print(f"🔍 예약 생성 성공: {appointment.id}")
         
         return {
             "success": True,
@@ -963,11 +1126,19 @@ def create_appointment_api(data: dict, db: Session = Depends(get_db)):
                 "status": appointment.status
             }
         }
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        raise HTTPException(status_code=422, detail=f"올바르지 않은 JSON 형식: {str(e)}")
+    except KeyError as e:
+        print(f"❌ 필수 필드 누락: {e}")
+        raise HTTPException(status_code=422, detail=f"필수 필드가 누락되었습니다: {str(e)}")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"❌ 데이터 형식 오류: {e}")
+        raise HTTPException(status_code=422, detail=f"데이터 형식이 올바르지 않습니다: {str(e)}")
     except Exception as e:
         print(f"❌ 예약 생성 실패: {e}")
-        raise HTTPException(status_code=500, detail="예약 생성 중 오류가 발생했습니다")
+        print(f"❌ 에러 타입: {type(e)}")
+        raise HTTPException(status_code=500, detail=f"예약 생성 중 오류가 발생했습니다: {str(e)}")
 
 @app.delete("/api/medical/appointments/{appointment_id}")
 def cancel_appointment_api(appointment_id: int, db: Session = Depends(get_db)):
@@ -1136,7 +1307,7 @@ def reset_database():
         # 외래 키 제약조건 때문에 순서대로 삭제
         tables_to_delete = [
             "doctor_reviews", "doctor_schedules", "medical_records", "appointments", 
-            "doctors", "hospitals", "product_shops", "product_benefits", 
+            "doctors", "hospitals", "diagnosis_requests", "product_shops", "product_benefits", 
             "product_skin_types", "product_ingredients", "recommendation_products",
             "recommendation_history", "product_reviews", "crawled_reviews", "products", 
             "shops", "users"
@@ -1809,6 +1980,112 @@ def init_database():
         # import_response에 리뷰 수 추가
         import_response['summary']['리뷰_수'] = total_reviews
 
+        # 6. 진료 요청서 샘플 데이터 추가
+        print("📋 6단계: 진료 요청서 샘플 데이터 추가 중...")
+        db = SessionLocal()
+        try:
+            diagnosis_requests = [
+                DiagnosisRequest(
+                    user_id=1,
+                    symptoms="얼굴에 여드름이 많이 났어요. 특히 이마와 볼 부위에 염증성 여드름이 계속 생깁니다.",
+                    duration="2주째",
+                    severity="moderate",
+                    previous_treatment="약국에서 여드름 연고를 발라봤지만 효과가 없었습니다.",
+                    allergies="없음",
+                    medications="현재 복용 중인 약물 없음",
+                    medical_history="고등학교 때 여드름으로 피부과 치료받은 적 있음",
+                    additional_notes="생리 전에 더 심해지는 것 같습니다.",
+                    images=[],
+                    status="pending"
+                ),
+                DiagnosisRequest(
+                    user_id=2,
+                    symptoms="피부가 건조하고 각질이 많이 일어납니다. 세안 후 당김이 심해요.",
+                    duration="1개월 이상",
+                    severity="mild",
+                    previous_treatment="보습제를 여러 개 써봤지만 개선되지 않았습니다.",
+                    allergies="없음",
+                    medications="오메가3 복용 중",
+                    medical_history="없음",
+                    additional_notes="환절기에 더 심해지는 경향이 있습니다.",
+                    images=[],
+                    status="reviewed",
+                    reviewed_by_doctor_id=2,
+                    review_notes="건성 피부로 진단. 적절한 보습 케어 필요.",
+                    reviewed_at=datetime.now() - timedelta(days=2)
+                ),
+                DiagnosisRequest(
+                    user_id=3,
+                    symptoms="아토피가 재발한 것 같습니다. 팔꿈치와 무릎 뒤쪽이 가렵고 빨갛게 되었어요.",
+                    duration="1주일째",
+                    severity="severe",
+                    previous_treatment="이전에 처방받은 스테로이드 연고를 발랐습니다.",
+                    allergies="집먼지 진드기, 동물털",
+                    medications="항히스타민제 복용 중",
+                    medical_history="어릴 때부터 아토피 피부염 있음. 작년에 치료받아서 호전된 상태였음.",
+                    additional_notes="최근 스트레스를 많이 받아서 재발한 것 같습니다.",
+                    images=[],
+                    status="completed"
+                ),
+                DiagnosisRequest(
+                    user_id=4,
+                    symptoms="얼굴 전체적으로 기미와 잡티가 늘어나고 있습니다. 특히 볼과 이마 부위가 심해요.",
+                    duration="6개월째",
+                    severity="moderate",
+                    previous_treatment="미백 화장품을 사용해봤지만 효과가 제한적이었습니다.",
+                    allergies="없음",
+                    medications="비타민C 복용 중",
+                    medical_history="출산 후 기미가 생기기 시작함",
+                    additional_notes="레이저 치료에 대해 상담받고 싶습니다.",
+                    images=[],
+                    status="pending"
+                )
+            ]
+            
+            for request in diagnosis_requests:
+                existing = db.query(DiagnosisRequest).filter(
+                    DiagnosisRequest.user_id == request.user_id,
+                    DiagnosisRequest.symptoms == request.symptoms
+                ).first()
+                if not existing:
+                    db.add(request)
+            
+            db.commit()
+            print("✅ 진료 요청서 샘플 데이터 추가 완료")
+            
+            # 예약과 진료 요청서 연결
+            try:
+                from core.models.medical_models import Appointment
+                
+                diagnosis_request_1 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 1).first()
+                diagnosis_request_2 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 2).first()
+                diagnosis_request_3 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 3).first()
+                diagnosis_request_4 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 4).first()
+                
+                appointment_1 = db.query(Appointment).filter(Appointment.user_id == 1).first()
+                appointment_2 = db.query(Appointment).filter(Appointment.user_id == 2).first()
+                appointment_3 = db.query(Appointment).filter(Appointment.user_id == 3).first()
+                appointment_4 = db.query(Appointment).filter(Appointment.user_id == 4).first()
+                
+                if diagnosis_request_1 and appointment_1:
+                    appointment_1.diagnosis_request_id = diagnosis_request_1.id
+                if diagnosis_request_2 and appointment_2:
+                    appointment_2.diagnosis_request_id = diagnosis_request_2.id
+                if diagnosis_request_3 and appointment_3:
+                    appointment_3.diagnosis_request_id = diagnosis_request_3.id
+                if diagnosis_request_4 and appointment_4:
+                    appointment_4.diagnosis_request_id = diagnosis_request_4.id
+                
+                db.commit()
+                print("✅ 예약과 진료 요청서 연결 완료")
+            except Exception as e:
+                print(f"⚠️ 예약과 진료 요청서 연결 중 오류 (무시): {e}")
+                
+        except Exception as e:
+            print(f"❌ 진료 요청서 데이터 추가 실패: {e}")
+        finally:
+            db.close()
+
         return {
             "success": True,
             "message": "🎉 데이터베이스가 실제 크롤링 데이터로 완전히 초기화되었습니다!",
@@ -1818,11 +2095,13 @@ def init_database():
                 "3️⃣ 기본 데이터 추가 (사용자, 쇼핑몰, 병원, 의사)",
                 "3️⃣-1 의료진 샘플 데이터 추가 (예약, 진료기록, 의사리뷰, 스케줄)",
                 f"4️⃣ 실제 크롤링 제품 {import_response['summary']['총_제품']}개 추가",
-                f"5️⃣ 실제 크롤링 리뷰 {import_response['summary']['리뷰_수']}개 추가"
+                f"5️⃣ 실제 크롤링 리뷰 {import_response['summary']['리뷰_수']}개 추가",
+                "6️⃣ 진료 요청서 샘플 데이터 4개 추가 및 예약 연결"
             ],
             "summary": {
                 "제품_수": import_response['summary']['총_제품'],
                 "리뷰_수": import_response['summary']['리뷰_수'],
+                "진료요청서_수": 4,
                 "카테고리": ["토너", "크림", "앰플"],
                 "데이터_출처": "올리브영 크롤링"
             },
@@ -1830,6 +2109,7 @@ def init_database():
                 "✅ 실제 올리브영 제품 데이터!",
                 f"✅ {import_response['summary']['리뷰_수']}개의 실제 사용자 리뷰!",
                 "✅ 완전한 쇼핑몰 판매정보!",
+                "✅ 진료 요청서 시스템 완비!",
                 "✅ 프로덕션 레디!"
             ]
         }

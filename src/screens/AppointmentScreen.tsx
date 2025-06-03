@@ -206,6 +206,7 @@ const AppointmentScreen = () => {
       const appointmentData = {
         doctorId: doctorId,
         userId: 1, // 실제로는 로그인한 사용자 ID
+        hospitalId: 1, // 기본 병원 ID 추가
         date: selectedDate,
         time: selectedTime,
         symptoms: symptoms || '',

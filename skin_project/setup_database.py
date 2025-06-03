@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine, SessionLocal
-from core.models.db_models import Base as UserBase
+from core.models.db_models import Base as UserBase, DiagnosisRequest
 from core.models.medical_models import Base as MedicalBase, Hospital, Doctor, Appointment, MedicalRecord, DoctorReview, DoctorSchedule
 from datetime import date, time, datetime, timedelta
 from core.models.db_models import User, Product, ProductIngredient, ProductSkinType, ProductBenefit, Shop, ProductShop, RecommendationHistory, RecommendationProduct, ProductReview, CrawledReview
@@ -18,6 +18,11 @@ def create_tables():
     print("🔧 테이블 생성 중...")
     
     try:
+        # 기존 테이블 완전 삭제 후 재생성
+        print("🗑️ 기존 테이블 삭제 중...")
+        MedicalBase.metadata.drop_all(bind=engine)
+        UserBase.metadata.drop_all(bind=engine)
+        
         # 사용자 관련 테이블 생성
         UserBase.metadata.create_all(bind=engine)
         print("✅ 사용자 테이블 생성 완료")
@@ -305,6 +310,7 @@ def add_sample_data():
                 user_id=1,
                 doctor_id=1,
                 hospital_id=1,
+                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
                 appointment_date=date(2024, 3, 15),
                 appointment_time=time(14, 0),
                 status='confirmed',
@@ -316,6 +322,7 @@ def add_sample_data():
                 user_id=2,
                 doctor_id=2,
                 hospital_id=2,
+                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
                 appointment_date=date(2024, 3, 20),
                 appointment_time=time(15, 30),
                 status='pending',
@@ -327,6 +334,7 @@ def add_sample_data():
                 user_id=3,
                 doctor_id=3,
                 hospital_id=3,
+                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
                 appointment_date=date(2024, 3, 25),
                 appointment_time=time(10, 0),
                 status='completed',
@@ -338,6 +346,7 @@ def add_sample_data():
                 user_id=4,
                 doctor_id=4,
                 hospital_id=1,
+                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
                 appointment_date=date(2024, 3, 30),
                 appointment_time=time(16, 0),
                 status='confirmed',
@@ -348,12 +357,17 @@ def add_sample_data():
         ]
         
         for appointment in appointments:
-            existing = db.query(Appointment).filter(
-                Appointment.doctor_id == appointment.doctor_id,
-                Appointment.appointment_date == appointment.appointment_date,
-                Appointment.appointment_time == appointment.appointment_time
-            ).first()
-            if not existing:
+            # 중복 확인을 더 안전하게 처리
+            try:
+                existing = db.query(Appointment.id).filter(
+                    Appointment.doctor_id == appointment.doctor_id,
+                    Appointment.appointment_date == appointment.appointment_date,
+                    Appointment.appointment_time == appointment.appointment_time
+                ).first()
+                if not existing:
+                    db.add(appointment)
+            except Exception as e:
+                print(f"⚠️ 예약 중복 확인 실패, 그냥 추가: {e}")
                 db.add(appointment)
         
         db.commit()
@@ -458,6 +472,104 @@ def add_sample_data():
         
         db.commit()
         print("✅ 의사 스케줄 데이터 추가 완료")
+        
+        # 10. 진료 요청서 데이터 추가
+        diagnosis_requests = [
+            DiagnosisRequest(
+                user_id=1,
+                symptoms="얼굴에 여드름이 많이 났어요. 특히 이마와 볼 부위에 염증성 여드름이 계속 생깁니다.",
+                duration="2주째",
+                severity="moderate",
+                previous_treatment="약국에서 여드름 연고를 발라봤지만 효과가 없었습니다.",
+                allergies="없음",
+                medications="현재 복용 중인 약물 없음",
+                medical_history="고등학교 때 여드름으로 피부과 치료받은 적 있음",
+                additional_notes="생리 전에 더 심해지는 것 같습니다.",
+                images=[],
+                status="pending"
+            ),
+            DiagnosisRequest(
+                user_id=2,
+                symptoms="피부가 건조하고 각질이 많이 일어납니다. 세안 후 당김이 심해요.",
+                duration="1개월 이상",
+                severity="mild",
+                previous_treatment="보습제를 여러 개 써봤지만 개선되지 않았습니다.",
+                allergies="없음",
+                medications="오메가3 복용 중",
+                medical_history="없음",
+                additional_notes="환절기에 더 심해지는 경향이 있습니다.",
+                images=[],
+                status="reviewed",
+                reviewed_by_doctor_id=2,
+                review_notes="건성 피부로 진단. 적절한 보습 케어 필요.",
+                reviewed_at=datetime.now() - timedelta(days=2)
+            ),
+            DiagnosisRequest(
+                user_id=3,
+                symptoms="아토피가 재발한 것 같습니다. 팔꿈치와 무릎 뒤쪽이 가렵고 빨갛게 되었어요.",
+                duration="1주일째",
+                severity="severe",
+                previous_treatment="이전에 처방받은 스테로이드 연고를 발랐습니다.",
+                allergies="집먼지 진드기, 동물털",
+                medications="항히스타민제 복용 중",
+                medical_history="어릴 때부터 아토피 피부염 있음. 작년에 치료받아서 호전된 상태였음.",
+                additional_notes="최근 스트레스를 많이 받아서 재발한 것 같습니다.",
+                images=[],
+                status="completed"
+            ),
+            DiagnosisRequest(
+                user_id=4,
+                symptoms="얼굴 전체적으로 기미와 잡티가 늘어나고 있습니다. 특히 볼과 이마 부위가 심해요.",
+                duration="6개월째",
+                severity="moderate",
+                previous_treatment="미백 화장품을 사용해봤지만 효과가 제한적이었습니다.",
+                allergies="없음",
+                medications="비타민C 복용 중",
+                medical_history="출산 후 기미가 생기기 시작함",
+                additional_notes="레이저 치료에 대해 상담받고 싶습니다.",
+                images=[],
+                status="pending"
+            )
+        ]
+        
+        for request in diagnosis_requests:
+            existing = db.query(DiagnosisRequest).filter(
+                DiagnosisRequest.user_id == request.user_id,
+                DiagnosisRequest.symptoms == request.symptoms
+            ).first()
+            if not existing:
+                db.add(request)
+        
+        db.commit()
+        print("✅ 진료 요청서 데이터 추가 완료")
+        
+        # 11. 예약과 진료 요청서 연결
+        # 진료 요청서 ID를 가져와서 예약에 연결
+        try:
+            diagnosis_request_1 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 1).first()
+            diagnosis_request_2 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 2).first()
+            diagnosis_request_3 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 3).first()
+            diagnosis_request_4 = db.query(DiagnosisRequest).filter(DiagnosisRequest.user_id == 4).first()
+            
+            # 예약들도 가져와서 진료 요청서 ID 업데이트
+            appointment_1 = db.query(Appointment).filter(Appointment.user_id == 1).first()
+            appointment_2 = db.query(Appointment).filter(Appointment.user_id == 2).first()
+            appointment_3 = db.query(Appointment).filter(Appointment.user_id == 3).first()
+            appointment_4 = db.query(Appointment).filter(Appointment.user_id == 4).first()
+            
+            if diagnosis_request_1 and appointment_1:
+                appointment_1.diagnosis_request_id = diagnosis_request_1.id
+            if diagnosis_request_2 and appointment_2:
+                appointment_2.diagnosis_request_id = diagnosis_request_2.id
+            if diagnosis_request_3 and appointment_3:
+                appointment_3.diagnosis_request_id = diagnosis_request_3.id
+            if diagnosis_request_4 and appointment_4:
+                appointment_4.diagnosis_request_id = diagnosis_request_4.id
+            
+            db.commit()
+            print("✅ 예약과 진료 요청서 연결 완료")
+        except Exception as e:
+            print(f"⚠️ 예약과 진료 요청서 연결 중 오류 (무시): {e}")
         
         return True
         

@@ -99,6 +99,7 @@ class AppointmentBase(BaseModel):
     symptoms: Optional[str] = None
     notes: Optional[str] = None
     consultation_type: Optional[ConsultationType] = None
+    diagnosis_request_id: Optional[int] = None
 
 class AppointmentCreate(AppointmentBase):
     user_id: int
