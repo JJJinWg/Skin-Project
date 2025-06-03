@@ -1,11 +1,12 @@
 # medical_crud.py
 # 의료진/예약 시스템 CRUD 함수들
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 from datetime import date, time
 from typing import List, Optional
 from core.models.medical_models import Hospital, Doctor, Appointment, MedicalRecord, DoctorReview, DoctorSchedule
+from core.models.db_models import User  # User 모델 추가
 from medical_schemas import (
     HospitalCreate, HospitalUpdate,
     DoctorCreate, DoctorUpdate, DoctorSearchParams,
@@ -82,7 +83,10 @@ def update_doctor(db: Session, doctor_id: int, doctor: DoctorUpdate):
 
 # ========== 예약 CRUD ==========
 def get_appointments(db: Session, skip: int = 0, limit: int = 100, search_params: Optional[AppointmentSearchParams] = None):
-    query = db.query(Appointment)
+    query = db.query(Appointment).options(
+        joinedload(Appointment.doctor).joinedload(Doctor.hospital),
+        joinedload(Appointment.hospital)
+    ).join(User, Appointment.user_id == User.id)
     
     if search_params:
         if search_params.user_id:
@@ -98,10 +102,32 @@ def get_appointments(db: Session, skip: int = 0, limit: int = 100, search_params
         if search_params.date_to:
             query = query.filter(Appointment.appointment_date <= search_params.date_to)
     
-    return query.order_by(Appointment.appointment_date.desc()).offset(skip).limit(limit).all()
+    appointments = query.order_by(Appointment.appointment_date.desc()).offset(skip).limit(limit).all()
+    
+    # User 정보를 수동으로 추가
+    for appointment in appointments:
+        user = db.query(User).filter(User.id == appointment.user_id).first()
+        if user:
+            appointment.user = user
+    
+    return appointments
 
 def get_appointment(db: Session, appointment_id: int):
-    return db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    appointment = db.query(Appointment).options(
+        joinedload(Appointment.doctor).joinedload(Doctor.hospital),
+        joinedload(Appointment.hospital)
+    ).filter(Appointment.id == appointment_id).first()
+    
+    # User 정보도 수동으로 로드
+    if appointment:
+        user = db.query(User).filter(User.id == appointment.user_id).first()
+        if user:
+            appointment.user = user
+            print(f"🔍 medical_crud에서 사용자 정보 로드 성공: username={user.username}, age={user.age}, gender={user.gender}")
+        else:
+            print(f"❌ medical_crud에서 사용자 정보 로드 실패: user_id={appointment.user_id}")
+    
+    return appointment
 
 def create_appointment(db: Session, appointment: AppointmentCreate):
     # 중복 예약 체크
@@ -132,17 +158,19 @@ def update_appointment(db: Session, appointment_id: int, appointment: Appointmen
         db.refresh(db_appointment)
     return db_appointment
 
-def cancel_appointment(db: Session, appointment_id: int):
+def cancel_appointment(db: Session, appointment_id: int, cancellation_reason: str, cancelled_by: str):
     db_appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if db_appointment:
         db_appointment.status = 'cancelled'
+        db_appointment.cancellation_reason = cancellation_reason
+        db_appointment.cancelled_by = cancelled_by
         db.commit()
         db.refresh(db_appointment)
     return db_appointment
 
 # ========== 진료 기록 CRUD ==========
 def get_medical_records(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(MedicalRecord).filter(MedicalRecord.user_id == user_id).order_by(MedicalRecord.created_at.desc()).offset(skip).limit(limit).all()
+    return db.query(MedicalRecord).join(Appointment).filter(Appointment.user_id == user_id).order_by(MedicalRecord.created_at.desc()).offset(skip).limit(limit).all()
 
 def get_medical_record(db: Session, record_id: int):
     return db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
