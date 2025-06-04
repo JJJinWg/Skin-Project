@@ -35,19 +35,21 @@ const StackNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false, // 모든 화면에서 헤더 숨김
+        }}
+      >
         {!isAuthenticated ? (
           // 비인증 상태의 스택
           <>
             <Stack.Screen 
               name="Login" 
               component={LoginForm}
-              options={{ headerShown: false }}
             />
             <Stack.Screen 
               name="Register" 
               component={RegisterUser}
-              options={{ headerShown: false }}
             />
             <Stack.Screen name="FindPasswordScreen" component={FindPasswordScreen} />
             <Stack.Screen name="FindIdScreen" component={FindIdScreen} />
@@ -58,7 +60,6 @@ const StackNavigator = () => {
             <Stack.Screen 
               name="Home" 
               component={HomeScreen}
-              options={{ headerShown: false }}
             />
             <Stack.Screen name="ReservationScreen" component={ReservationScreen} />
             <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} /> 

@@ -119,29 +119,40 @@ const EditProfileScreen = () => {
 
     try {
       const result = await userService.updateUser({
-        id: userInfo.id,
         name,
         email,
         phone,
         birthdate,
         profileImage,
       })
-      setIsLoading(false)
+      
       if (result.success) {
-        navigation.replace("ProfileScreen", { updatedUserInfo: {
-          ...userInfo,
-          name,
-          email,
-          phone,
-          birthdate,
-          profileImage,
-        } })
+        Alert.alert("성공", "프로필이 성공적으로 수정되었습니다.", [
+          {
+            text: "확인",
+            onPress: () => {
+              // ProfileScreen으로 돌아가면서 업데이트된 정보 전달
+              navigation.navigate("ProfileScreen", { 
+                updatedUserInfo: {
+                  id: userInfo.id,
+                  name,
+                  email,
+                  phone,
+                  birthdate,
+                  profileImage,
+                }
+              });
+            }
+          }
+        ]);
       } else {
         Alert.alert("오류", result.message || "프로필 수정에 실패했습니다.")
       }
     } catch (error) {
-      setIsLoading(false)
+      console.error('프로필 수정 오류:', error);
       Alert.alert("오류", "프로필 수정 중 오류가 발생했습니다.")
+    } finally {
+      setIsLoading(false)
     }
   }
 

@@ -664,16 +664,20 @@ const styles = StyleSheet.create({
   categoryContainer: {
     marginTop: 200,
     zIndex: 5,
+    paddingVertical: 5,
   },
   categoryList: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 5,
   },
   categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
-    marginHorizontal: 5,
+    marginRight: 10,
     backgroundColor: '#F1F3F5',
+    minWidth: 60,
+    alignItems: 'center',
   },
   categoryButtonActive: {
     backgroundColor: '#FF9A9E',
@@ -681,6 +685,7 @@ const styles = StyleSheet.create({
   categoryButtonText: {
     fontSize: 14,
     color: '#6C757D',
+    fontWeight: '500',
   },
   categoryButtonTextActive: {
     color: '#FFFFFF',

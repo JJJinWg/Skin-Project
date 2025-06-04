@@ -16,7 +16,22 @@ export type RootStackParamList = {
       imageUrl: string;
     }
   }
-  FindCosmeticsScreen: undefined;
+  FindCosmeticsScreen: {
+    showResults?: boolean;
+    recommendationData?: {
+      skinType: string;
+      concerns: string[];
+      recommendedProducts: {
+        id: number;
+        name: string;
+        brand: string;
+        category: string;
+        image: any;
+      }[];
+      explanation: string;
+      isHistoryView?: boolean;
+    };
+  } | undefined;
   ProductReviewScreen: undefined;
   ProductDetailScreen: { id: number };
   ReservationHistoryScreen: undefined;
