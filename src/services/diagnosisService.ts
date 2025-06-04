@@ -131,24 +131,28 @@ export const diagnosisService = {
       console.log('📋 진단 내역 조회 중...');
       
       const response: any = await medicalApi.getUserDiagnoses(userId);
-      const diagnosesData = Array.isArray(response) ? response : response.data || [];
+      console.log('📋 백엔드 응답:', response);
+      
+      // 백엔드 응답 구조: { success: true, data: [...] }
+      const diagnosesData = response?.data || [];
       
       // API 응답을 Diagnosis 타입에 맞게 변환
       const formattedDiagnoses: Diagnosis[] = diagnosesData.map((diagnosis: any) => ({
         id: diagnosis.id,
-        doctorId: diagnosis.doctorId,
+        doctorId: diagnosis.doctorId || 1,
         doctorName: diagnosis.doctorName || '의사명',
-        doctorImage: diagnosis.doctorImage || require("../assets/doctor1.png"),
-        specialty: diagnosis.specialty || '전문분야',
+        doctorImage: require("../assets/doctor1.png"), // 기본 이미지
+        specialty: diagnosis.hospitalName || '피부과', // 병원명을 전문분야로 사용
         date: diagnosis.date,
-        symptoms: diagnosis.symptoms || '',
-        diagnosisContent: diagnosis.diagnosisContent || '',
-        treatment: diagnosis.treatment || '',
-        prescriptions: diagnosis.prescriptions || [],
-        followUpRequired: diagnosis.followUpRequired || false,
+        symptoms: diagnosis.symptoms || '증상 정보 없음', // 실제 증상 정보
+        diagnosisContent: diagnosis.diagnosis || '진단 정보 없음', // 실제 진단 정보
+        treatment: diagnosis.treatment || '치료 정보 없음',
+        prescriptions: diagnosis.prescription ? [diagnosis.prescription] : [],
+        followUpRequired: !!diagnosis.followUpDate,
         followUpDate: diagnosis.followUpDate,
       }));
       
+      console.log('📋 변환된 진단 내역:', formattedDiagnoses);
       return formattedDiagnoses;
     } catch (error) {
       console.error('❌ 진단 내역 조회 실패:', error);
@@ -157,28 +161,24 @@ export const diagnosisService = {
     }
   },
 
-  // 특정 진단 상세 조회 (실제 API 사용)
+  // 특정 진단 상세 조회 (진단 ID 기반)
   async getDiagnosisDetail(diagnosisId: number): Promise<Diagnosis | null> {
     try {
-      const response: any = await medicalApi.getDiagnosisDetail(diagnosisId);
-      const diagnosisData = response || response.data;
+      console.log('🔍 진단 상세 조회 중...', diagnosisId);
       
-      if (!diagnosisData) return null;
+      // 모든 진단을 가져온 후 특정 ID 필터링
+      // TODO: 백엔드에 진단 상세 조회 API가 추가되면 개별 호출로 변경
+      const allDiagnoses = await this.getUserDiagnoses(1); // 현재 사용자 ID는 하드코딩
       
-      return {
-        id: diagnosisData.id,
-        doctorId: diagnosisData.doctorId,
-        doctorName: diagnosisData.doctorName || '의사명',
-        doctorImage: diagnosisData.doctorImage || require("../assets/doctor1.png"),
-        specialty: diagnosisData.specialty || '전문분야',
-        date: diagnosisData.date,
-        symptoms: diagnosisData.symptoms || '',
-        diagnosisContent: diagnosisData.diagnosisContent || '',
-        treatment: diagnosisData.treatment || '',
-        prescriptions: diagnosisData.prescriptions || [],
-        followUpRequired: diagnosisData.followUpRequired || false,
-        followUpDate: diagnosisData.followUpDate,
-      };
+      const diagnosis = allDiagnoses.find(d => d.id === diagnosisId);
+      
+      if (!diagnosis) {
+        console.log('❌ 진단을 찾을 수 없습니다:', diagnosisId);
+        return null;
+      }
+      
+      console.log('✅ 진단 상세 조회 성공:', diagnosis);
+      return diagnosis;
     } catch (error) {
       console.error('❌ 진단 상세 조회 실패:', error);
       return null;

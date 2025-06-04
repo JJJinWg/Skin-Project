@@ -166,8 +166,14 @@ export const getProductById = async (id: number): Promise<Product | null> => {
     try {
       reviews = await medicalApi.getProductReviews(id) as any[];
       console.log(`✅ 제품 ${id} 리뷰 ${reviews.length}개 조회 성공`);
-    } catch (reviewError) {
-      console.warn(`⚠️ 제품 ${id} 리뷰 조회 실패:`, reviewError);
+    } catch (reviewError: any) {
+      // 404 에러는 리뷰가 없다는 의미이므로 에러로 취급하지 않음
+      if (reviewError?.message?.includes('status: 404') || reviewError?.status === 404) {
+        console.log(`📝 제품 ${id}에 대한 리뷰가 아직 없습니다.`);
+      } else {
+        // 다른 에러인 경우에만 경고 로그 출력
+        console.warn(`⚠️ 제품 ${id} 리뷰 조회 중 오류:`, reviewError);
+      }
       reviews = [];
     }
     
@@ -416,28 +422,38 @@ export const getProductsBySkinType = async (skinType: string): Promise<Product[]
   }
 }
 
-// 쇼핑몰 이미지 맵 (임시 하드코딩)
+// 쇼핑몰 로고 매핑
 const shopLogoMap: { [key: string]: any } = {
-  'ssg': require('../assets/shop_ssg.png'),
-  'naver': require('../assets/shop_naver.png'),
-  'ohouse': require('../assets/shop_ohouse.png'),
-  'himart': require('../assets/shop_himart.png'),
-  'lotte': require('../assets/shop_lotte.png'),
-  'emart': require('../assets/shop_emart.png'),
-  'gmarket': require('../assets/shop_gmarket.png'),
-  'auction': require('../assets/shop_auction.png'),
-  'coupang': require('../assets/shop_coupang.png'),
-  '11st': require('../assets/shop_11st.png'),
+  '올리브영': require('../assets/shop_ohouse.png'), // 임시로 오하우스 로고 사용
+  '화해': require('../assets/shop_gmarket.png'), // 임시로 지마켓 로고 사용
+  '네이버쇼핑': require('../assets/shop_naver.png'),
+  '쿠팡': require('../assets/shop_coupang.png'),
 };
-const defaultShopLogo = require('../assets/shop_naver.png'); // 임시 기본값
+const defaultShopLogo = require('../assets/shop_11st.png');
 
 // 제품의 쇼핑몰 정보 조회
 export const getProductShops = async (productId: number): Promise<ShopInfo[]> => {
   try {
     console.log('🛍️ 제품 쇼핑몰 정보 조회 중...', productId);
     
-    // 실제 API 호출
-    const shops = await medicalApi.getProductShops(productId) as any[];
+    // API 호출
+    const response = await medicalApi.getProductShops(productId) as any;
+    
+    console.log('🔍 백엔드 응답:', response);
+    
+    // 백엔드 응답 구조 확인: { success: true, data: [...] }
+    let shops = [];
+    if (response && response.success && Array.isArray(response.data)) {
+      shops = response.data;
+    } else if (Array.isArray(response)) {
+      // 만약 직접 배열로 응답하는 경우
+      shops = response;
+    } else {
+      console.warn('⚠️ 예상과 다른 응답 구조:', response);
+      return [];
+    }
+    
+    console.log('🔍 파싱된 쇼핑몰 데이터:', shops);
     
     // API 응답을 ShopInfo 인터페이스에 맞게 변환
     return shops.map((shop: any) => ({
@@ -616,6 +632,7 @@ export interface CosmeticRecommendationHistory {
   date: string;
   skinType: string;
   concerns: string[];
+  explanation?: string;
   recommendedProducts: {
     id: number;
     name: string;
@@ -632,20 +649,27 @@ export const getRecommendationHistory = async (userId: number): Promise<Cosmetic
     
     const response = await medicalApi.getRecommendationHistory(userId) as any;
     
+    console.log('🔍 백엔드 추천 내역 응답:', response);
+    
     if (response.success && response.data) {
-      return response.data.map((item: any) => ({
-        id: item.id,
-        date: item.date,
-        skinType: item.skinType,
-        concerns: item.concerns,
-        recommendedProducts: item.recommendedProducts.map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          brand: product.brand,
-          category: product.category,
-          image: getProductImage(null, product.id) // 기본 이미지 사용
-        }))
-      }));
+      return response.data.map((item: any) => {
+        console.log('🔍 개별 추천 내역 항목:', item);
+        
+        return {
+          id: item.id,
+          date: item.date,
+          skinType: item.skinType,
+          concerns: item.concerns,
+          explanation: item.explanation,
+          recommendedProducts: item.recommendedProducts.map((product: any) => ({
+            id: product.id,
+            name: product.name,
+            brand: product.brand,
+            category: product.category,
+            image: getProductImage(null, product.id) // 기본 이미지 사용
+          }))
+        };
+      });
     }
     
     return [];

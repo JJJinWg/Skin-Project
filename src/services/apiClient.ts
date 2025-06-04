@@ -73,7 +73,12 @@ class ApiClient {
       
       return data;
     } catch (error) {
-      console.error(`❌ API 요청 실패: ${url}`, error);
+      // 404 에러는 데이터가 없을 수 있는 정상적인 경우이므로 구분하여 처리
+      if (error instanceof Error && error.message.includes('status: 404')) {
+        console.log(`📭 요청된 리소스가 없습니다: ${url}`);
+      } else {
+        console.error(`❌ API 요청 실패: ${url}`, error);
+      }
       throw error;
     }
   }
@@ -149,6 +154,8 @@ export const medicalApi = {
   updateAppointmentStatus: (id: number, status: string) => 
     apiClient.patch(`/api/medical/appointments/${id}`, { status }),
   cancelAppointment: (id: number) => apiClient.delete(`/api/medical/appointments/${id}`),
+  cancelAppointmentWithReason: (id: number, cancellationReason: string) => 
+    apiClient.delete(`/api/medical/appointments/${id}?reason=${encodeURIComponent(cancellationReason)}`),
 
   // 진료 요청서 관련 API
   createDiagnosisRequest: (data: any) => apiClient.post('/api/medical/diagnosis-requests', data),

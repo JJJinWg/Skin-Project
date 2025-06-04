@@ -180,29 +180,33 @@ export const profileStyles = StyleSheet.create({
   },
   appointmentHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 10,
+  },
+  appointmentHeaderInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginTop: 5,
+    alignSelf: "flex-start",
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   doctorName: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  statusBadge: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 10,
     fontWeight: "bold",
   },
   specialty: {
     fontSize: 14,
     color: "#6C757D",
-    marginBottom: 10,
+    marginBottom: 5,
   },
   appointmentDetails: {
     marginBottom: 10,
@@ -210,6 +214,12 @@ export const profileStyles = StyleSheet.create({
   appointmentDate: {
     fontSize: 14,
     color: "#212529",
+    marginBottom: 5,
+  },
+  appointmentSymptoms: {
+    fontSize: 13,
+    color: "#6C757D",
+    fontStyle: "italic",
   },
   appointmentActions: {
     flexDirection: "row",

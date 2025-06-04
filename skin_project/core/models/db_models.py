@@ -1,5 +1,5 @@
 from database import Base
-from sqlalchemy import Column, Integer, String, Enum, UniqueConstraint, Float, DateTime, Boolean, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Enum, UniqueConstraint, Float, DateTime, Boolean, Text, ForeignKey, JSON, Date
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -26,6 +26,7 @@ class User(Base):
     gender = Column(Enum(GenderEnum), nullable=False)
     age = Column(Integer, nullable=False)
     skin_type = Column(String, nullable=False)
+    birthdate = Column(Date, nullable=True)
 
 # 제품 관련 모델들
 class Product(Base):
