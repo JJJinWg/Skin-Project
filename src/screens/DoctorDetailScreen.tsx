@@ -11,37 +11,59 @@ import {
   Image,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import { StackNavigationProp } from '@react-navigation/stack'
 import type { RootStackParamList } from '../types/navigation'
 import LinearGradient from 'react-native-linear-gradient'
 import { appointmentService } from '../services/appointmentService'
+import { medicalApi } from '../services/apiClient'
+
+// 의사 타입 정의
+interface DoctorDetail {
+  id: number;
+  name: string;
+  specialization: string;
+  hospital_id: number;
+  experience_years: number;
+  education: string;
+  description: string;
+  profile_image_url?: string;
+  rating: number;
+  review_count: number;
+  consultation_fee: number;
+  available_days: string;
+  available_times: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// 리뷰 타입 정의
+interface DoctorReview {
+  id: number;
+  user_id: number;
+  doctor_id: number;
+  appointment_id?: number;
+  rating: number;
+  review_text: string;
+  created_at: string;
+  patient_name?: string;
+}
 
 const DoctorDetailScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>()
-  const [activeTab, setActiveTab] = useState<'info' | 'reviews'>('info')
-  const [reviews, setReviews] = useState<any[]>([])
+  const route = useRoute<RouteProp<RootStackParamList, 'DoctorDetailScreen'>>()
+  const { doctorId, doctorName, specialty } = route.params
   
-  const doctor = {
-    id: 1,
-    name: 'Dr. Kim',
-    specialty: '피부과',
-    rating: 4.9,
-    reviews: 124,
-    reviewCount: 124,
-    description: '피부과 전문의로 10년 이상의 경력을 보유하고 있습니다.',
-    image: require('../assets/doctor1.png'),
-    hospital: '서울대학교병원',
-    experience: '10년',
-    education: ['서울대학교 의과대학 졸업', '서울대학교병원 피부과 전공의'],
-    workingHours: {
-      weekday: '09:00 - 18:00',
-      weekend: '09:00 - 13:00'
-    },
-    consultationFee: '50,000원'
-  }
-
+  const [activeTab, setActiveTab] = useState<'info' | 'reviews'>('info')
+  const [doctor, setDoctor] = useState<DoctorDetail | null>(null)
+  const [reviews, setReviews] = useState<DoctorReview[]>([])
+  const [loading, setLoading] = useState(true)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
   // 날짜 포맷 함수
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -74,20 +96,92 @@ const DoctorDetailScreen: React.FC = () => {
     )
   }
 
+  // 의사 정보와 리뷰 가져오기
+  useEffect(() => {
+    const loadDoctorData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // 의사 정보 가져오기
+        console.log(`👨‍⚕️ 의사 정보 조회 중... ID: ${doctorId}`)
+        const doctorData = await medicalApi.getDoctor(doctorId) as DoctorDetail
+        setDoctor(doctorData)
+        
+        // 리뷰 가져오기
+        console.log(`📝 의사 리뷰 조회 중... 의사 ID: ${doctorId}`)
+        try {
+          const reviewsData = await medicalApi.getDoctorReviews(doctorId) as DoctorReview[]
+          setReviews(reviewsData)
+        } catch (reviewError) {
+          console.log('📝 리뷰 데이터 없음 또는 조회 실패:', reviewError)
+          setReviews([])
+        }
+        
+      } catch (error) {
+        console.error('❌ 의사 정보 조회 실패:', error)
+        setError('의사 정보를 불러오는데 실패했습니다.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDoctorData()
+  }, [doctorId])
+
+  // 예약 처리 함수들
   const handleReservation = () => {
+    if (!doctor) return
+    
     navigation.navigate('AppointmentScreen', {
       doctorId: doctor.id,
       doctorName: doctor.name,
-      specialty: doctor.specialty
+      specialty: doctor.specialization
     })
   }
 
   const handleBookAppointment = () => {
+    if (!doctor) return
+    
     navigation.navigate('AppointmentScreen', {
       doctorId: doctor.id,
       doctorName: doctor.name,
-      specialty: doctor.specialty
+      specialty: doctor.specialization
     })
+  }
+
+  // 로딩 중일 때
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF9A9E" />
+          <Text style={styles.loadingText}>의사 정보를 불러오는 중...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  // 에러 발생 시
+  if (error || !doctor) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || '의사 정보를 찾을 수 없습니다.'}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => {
+              setLoading(true)
+              setError(null)
+            }}
+          >
+            <Text style={styles.retryButtonText}>다시 시도</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -106,15 +200,20 @@ const DoctorDetailScreen: React.FC = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* 의사 프로필 섹션 */}
         <View style={styles.profileSection}>
-          <Image source={doctor.image} style={styles.doctorImage} />
+          <Image 
+            source={doctor.profile_image_url ? { uri: doctor.profile_image_url } : require('../assets/doctor1.png')} 
+            style={styles.doctorImage} 
+          />
           <View style={styles.doctorInfo}>
             <Text style={styles.doctorName}>{doctor.name}</Text>
-            <Text style={styles.doctorSpecialty}>{doctor.specialty}</Text>
-            <Text style={styles.hospitalName}>{doctor.hospital}</Text>
+            <Text style={styles.doctorSpecialty}>{doctor.specialization}</Text>
+            <Text style={styles.hospitalName}>
+              {doctor.hospital_id ? '서울대학교병원' : '병원 정보 없음'}
+            </Text>
             <View style={styles.ratingContainer}>
-              {renderStars(doctor.rating)}
-              <Text style={styles.ratingText}>{doctor.rating}</Text>
-              <Text style={styles.reviewCountText}>({doctor.reviewCount}개 리뷰)</Text>
+              {renderStars(doctor.rating || 0)}
+              <Text style={styles.ratingText}>{doctor.rating?.toFixed(1) || 'N/A'}</Text>
+              <Text style={styles.reviewCountText}>({doctor.review_count || 0}개 리뷰)</Text>
             </View>
           </View>
         </View>
@@ -132,7 +231,7 @@ const DoctorDetailScreen: React.FC = () => {
             onPress={() => setActiveTab("reviews")}
           >
             <Text style={[styles.tabButtonText, activeTab === "reviews" && styles.activeTabButtonText]}>
-              리뷰 ({doctor.reviewCount})
+              리뷰 ({doctor.review_count || 0})
             </Text>
           </TouchableOpacity>
         </View>
@@ -143,20 +242,22 @@ const DoctorDetailScreen: React.FC = () => {
             {/* 소개 */}
             <View style={styles.infoCard}>
               <Text style={styles.cardTitle}>소개</Text>
-              <Text style={styles.description}>{doctor.description}</Text>
+              <Text style={styles.description}>
+                {doctor.description || '의사 소개 정보가 없습니다.'}
+              </Text>
             </View>
 
             {/* 학력 및 경력 */}
             <View style={styles.infoCard}>
               <Text style={styles.cardTitle}>학력 및 경력</Text>
               <View style={styles.experienceContainer}>
-                <Text style={styles.experienceText}>경력: {doctor.experience}</Text>
+                <Text style={styles.experienceText}>경력: {doctor.experience_years || 'N/A'}년</Text>
               </View>
-              {doctor.education.map((edu, index) => (
-                <Text key={index} style={styles.educationItem}>
-                  • {edu}
-                </Text>
-              ))}
+              {doctor.education ? (
+                <Text style={styles.educationItem}>• {doctor.education}</Text>
+              ) : (
+                <Text style={styles.educationItem}>• 학력 정보가 없습니다.</Text>
+              )}
             </View>
 
             {/* 진료 정보 */}
@@ -164,35 +265,42 @@ const DoctorDetailScreen: React.FC = () => {
               <Text style={styles.cardTitle}>진료 정보</Text>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>진료 시간</Text>
-                <Text style={styles.infoValue}>평일: 18:00~02:00, 주말/공휴일: 08:00~03:00</Text>
+                <Text style={styles.infoValue}>
+                  {doctor.available_times || '진료 시간 정보가 없습니다.'}
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>진료비</Text>
-                <Text style={styles.infoValue}>{doctor.consultationFee}</Text>
+                <Text style={styles.infoValue}>
+                  {doctor.consultation_fee ? `₩${doctor.consultation_fee.toLocaleString()}` : '진료비 정보가 없습니다.'}
+                </Text>
               </View>
             </View>
           </View>
         ) : (
           <View style={styles.reviewsContent}>
-            <FlatList
-              data={reviews}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.patientName}>{item.patientName}</Text>
-                    <Text style={styles.reviewDate}>{formatDate(item.date)}</Text>
+            {reviews.length > 0 ? (
+              <FlatList
+                data={reviews}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <Text style={styles.patientName}>{item.patient_name || '익명'}</Text>
+                      <Text style={styles.reviewDate}>{formatDate(item.created_at)}</Text>
+                    </View>
+                    <View style={styles.reviewRating}>{renderStars(item.rating)}</View>
+                    <Text style={styles.reviewContent}>{item.review_text}</Text>
                   </View>
-                  <View style={styles.reviewRating}>{renderStars(item.rating)}</View>
-                  <Text style={styles.reviewContent}>{item.content}</Text>
-                  <View style={styles.reviewFooter}>
-                    <Text style={styles.helpfulText}>도움됨 {item.helpful}</Text>
-                  </View>
-                </View>
-              )}
-              scrollEnabled={false}
-              contentContainerStyle={styles.reviewsList}
-            />
+                )}
+                scrollEnabled={false}
+                contentContainerStyle={styles.reviewsList}
+              />
+            ) : (
+              <View style={styles.noReviewsContainer}>
+                <Text style={styles.noReviewsText}>아직 리뷰가 없습니다.</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -254,10 +362,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
   loadingText: {
     fontSize: 16,
     color: "#6C757D",
+    marginTop: 10,
   },
   container: {
     flex: 1,
@@ -439,13 +549,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
   },
-  reviewFooter: {
-    alignItems: "flex-end",
-  },
-  helpfulText: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
   bottomContainer: {
     backgroundColor: "#FFFFFF",
     padding: 20,
@@ -464,6 +567,37 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#6C757D",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#FF9A9E",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  noReviewsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 50,
+  },
+  noReviewsText: {
+    fontSize: 16,
+    color: "#6C757D",
   },
 })
 

@@ -172,7 +172,7 @@ class DoctorReviewBase(BaseModel):
 class DoctorReviewCreate(DoctorReviewBase):
     user_id: int
     doctor_id: int
-    appointment_id: int
+    appointment_id: Optional[int] = None
 
 class DoctorReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
@@ -182,7 +182,7 @@ class DoctorReview(DoctorReviewBase):
     id: int
     user_id: int
     doctor_id: int
-    appointment_id: int
+    appointment_id: Optional[int] = None
     created_at: datetime
     doctor: Optional[Doctor] = None
 

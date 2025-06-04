@@ -146,6 +146,7 @@ export const medicalApi = {
   getDoctor: (id: number) => apiClient.get(`/api/medical/doctors/${id}`),
   getDoctorAvailableTimes: (doctorId: number, date: string) => 
     apiClient.get(`/api/medical/doctors/${doctorId}/available-times?date=${date}`),
+  getDoctorReviews: (doctorId: number) => apiClient.get(`/api/medical/doctors/${doctorId}/reviews`),
 
   // 예약 관련 API
   createAppointment: (data: any) => apiClient.post('/api/medical/appointments', data),
