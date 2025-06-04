@@ -171,7 +171,7 @@ const HomeScreen = () => {
               data={doctors}
               horizontal
               keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
+              scrollEnabled={true}
               nestedScrollEnabled={true}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.doctorCard}>
