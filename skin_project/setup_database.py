@@ -403,7 +403,7 @@ def add_sample_data():
                 Appointment.appointment_date == appointment.appointment_date,
                 Appointment.appointment_time == appointment.appointment_time
             ).first()
-            if not existing:
+                if not existing:
                     db.add(appointment)
             except Exception as e:
                 print(f"⚠️ 예약 중복 확인 실패, 그냥 추가: {e}")
