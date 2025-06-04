@@ -306,24 +306,25 @@ def add_sample_data():
 
         # 6. 예약 데이터 추가
         appointments = [
+            # pending 상태 예약들 (대기중)
             Appointment(
                 user_id=1,
                 doctor_id=1,
                 hospital_id=1,
-                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
-                appointment_date=date(2024, 3, 15),
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 4, 15),
                 appointment_time=time(14, 0),
-                status='confirmed',
+                status='pending',
                 symptoms='얼굴 여드름 치료 상담',
                 notes='처음 방문',
                 consultation_type='일반진료'
             ),
             Appointment(
                 user_id=2,
-                doctor_id=2,
-                hospital_id=2,
-                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
-                appointment_date=date(2024, 3, 20),
+                doctor_id=1,
+                hospital_id=1,
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 4, 16),
                 appointment_time=time(15, 30),
                 status='pending',
                 symptoms='피부 미용 상담',
@@ -332,9 +333,47 @@ def add_sample_data():
             ),
             Appointment(
                 user_id=3,
-                doctor_id=3,
-                hospital_id=3,
-                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
+                doctor_id=1,
+                hospital_id=1,
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 4, 17),
+                appointment_time=time(10, 0),
+                status='pending',
+                symptoms='아토피 상담',
+                notes='재발 확인',
+                consultation_type='일반진료'
+            ),
+            # confirmed 상태 예약들 (확정)
+            Appointment(
+                user_id=1,
+                doctor_id=1,
+                hospital_id=1,
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 3, 15),
+                appointment_time=time(14, 0),
+                status='confirmed',
+                symptoms='여드름 재진',
+                notes='치료 경과 확인',
+                consultation_type='재진'
+            ),
+            Appointment(
+                user_id=4,
+                doctor_id=1,
+                hospital_id=1,
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 3, 30),
+                appointment_time=time(16, 0),
+                status='confirmed',
+                symptoms='피부 분석 요청',
+                notes='피부 타입 확인',
+                consultation_type='피부분석'
+            ),
+            # completed 상태 예약들 (완료)
+            Appointment(
+                user_id=3,
+                doctor_id=1,
+                hospital_id=1,
+                diagnosis_request_id=None,
                 appointment_date=date(2024, 3, 25),
                 appointment_time=time(10, 0),
                 status='completed',
@@ -343,16 +382,16 @@ def add_sample_data():
                 consultation_type='재진'
             ),
             Appointment(
-                user_id=4,
-                doctor_id=4,
+                user_id=2,
+                doctor_id=1,
                 hospital_id=1,
-                diagnosis_request_id=None,  # 먼저 None으로 설정 (나중에 업데이트)
-                appointment_date=date(2024, 3, 30),
-                appointment_time=time(16, 0),
-                status='confirmed',
-                symptoms='피부 분석 요청',
-                notes='피부 타입 확인',
-                consultation_type='피부분석'
+                diagnosis_request_id=None,
+                appointment_date=date(2024, 3, 10),
+                appointment_time=time(11, 0),
+                status='completed',
+                symptoms='보톡스 시술',
+                notes='시술 완료',
+                consultation_type='시술상담'
             )
         ]
         
@@ -360,11 +399,11 @@ def add_sample_data():
             # 중복 확인을 더 안전하게 처리
             try:
                 existing = db.query(Appointment.id).filter(
-                    Appointment.doctor_id == appointment.doctor_id,
-                    Appointment.appointment_date == appointment.appointment_date,
-                    Appointment.appointment_time == appointment.appointment_time
-                ).first()
-                if not existing:
+                Appointment.doctor_id == appointment.doctor_id,
+                Appointment.appointment_date == appointment.appointment_date,
+                Appointment.appointment_time == appointment.appointment_time
+            ).first()
+            if not existing:
                     db.add(appointment)
             except Exception as e:
                 print(f"⚠️ 예약 중복 확인 실패, 그냥 추가: {e}")
@@ -377,8 +416,6 @@ def add_sample_data():
         medical_records = [
             MedicalRecord(
                 appointment_id=3,  # completed 상태의 예약에 대해서만
-                user_id=3,
-                doctor_id=3,
                 diagnosis="아토피 피부염",
                 treatment="항히스타민제 처방 및 보습제 사용법 안내",
                 prescription="세티리진 10mg 1일 1회, 스테로이드 연고",

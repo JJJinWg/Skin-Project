@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
+import json
 
 from database import get_db
 from medical_schemas import (
@@ -37,8 +38,8 @@ def get_doctor_dashboard_stats(doctor_id: int, db: Session = Depends(get_db)):
         # 오늘 예약 수
         today_appointments = [apt for apt in all_appointments if apt.appointment_date == today]
         
-        # 대기 중 예약 수 (scheduled/pending 상태)
-        pending_appointments = [apt for apt in all_appointments if apt.status in ['scheduled', 'pending']]
+        # 대기 중 예약 수 (scheduled/pending/confirmed 상태)
+        pending_appointments = [apt for apt in all_appointments if apt.status in ['scheduled', 'pending', 'confirmed']]
         
         # 완료된 예약 수
         completed_appointments = [apt for apt in all_appointments if apt.status == 'completed']
@@ -191,7 +192,6 @@ async def create_appointment(request: Request, db: Session = Depends(get_db)):
         print(f"🔍 Raw request body: {body}")
         
         # JSON 파싱
-        import json
         data = json.loads(body.decode('utf-8'))
         print(f"🔍 파싱된 JSON 데이터: {data}")
         
@@ -208,7 +208,8 @@ async def create_appointment(request: Request, db: Session = Depends(get_db)):
             "appointment_time": datetime.strptime(data["time"], "%H:%M").time(),
             "symptoms": data.get("symptoms", ""),
             "consultation_type": data.get("consultationType", "일반진료"),
-            "diagnosis_request_id": data.get("diagnosisRequestId", None)
+            "diagnosis_request_id": data.get("diagnosisRequestId", None),
+            "notes": data.get("notes", "")  # notes 필드 추가
         }
         
         print(f"🔍 변환된 예약 데이터: {appointment_data_dict}")
@@ -247,12 +248,34 @@ def update_appointment(
     return db_appointment
 
 @router.patch("/appointments/{appointment_id}/cancel")
-def cancel_appointment(appointment_id: int, db: Session = Depends(get_db)):
+async def cancel_appointment(
+    appointment_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
     """예약 취소"""
-    db_appointment = crud.cancel_appointment(db, appointment_id=appointment_id)
-    if db_appointment is None:
-        raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
-    return {"message": "예약이 취소되었습니다"}
+    try:
+        data = await request.json()
+        cancellation_reason = data.get("cancellation_reason")
+        cancelled_by = data.get("cancelled_by")
+        
+        if not cancellation_reason or not cancelled_by:
+            raise HTTPException(status_code=422, detail="cancellation_reason과 cancelled_by는 필수입니다")
+            
+        if cancelled_by not in ["doctor", "user"]:
+            raise HTTPException(status_code=400, detail="cancelled_by는 'doctor' 또는 'user'여야 합니다")
+        
+        db_appointment = crud.cancel_appointment(
+            db, 
+            appointment_id=appointment_id,
+            cancellation_reason=cancellation_reason,
+            cancelled_by=cancelled_by
+        )
+        if db_appointment is None:
+            raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
+        return {"message": "예약이 취소되었습니다", "appointment": db_appointment}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=422, detail="잘못된 JSON 형식입니다")
 
 # ========== 진료 기록 API ==========
 @router.get("/medical-records", response_model=List[MedicalRecord])

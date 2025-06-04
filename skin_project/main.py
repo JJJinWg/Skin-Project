@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -193,20 +194,34 @@ def auth_verify():
 
 # ========== 사용자 API ==========
 @app.get("/api/users/{user_id}")
-def get_user_profile(user_id: int):
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
     """사용자 프로필 조회"""
-    # TODO: 실제 사용자 데이터베이스 조회 구현 필요
-    return {
-        "success": True,
-        "data": {
-            "id": user_id,
-            "email": "test@example.com",
-            "name": "테스트 사용자",
-            "phone": "010-1234-5678",
-            "profileImage": None,
-            "createdAt": datetime.now().isoformat()
+    try:
+        from core.models.db_models import User
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"사용자 ID {user_id}를 찾을 수 없습니다")
+        
+        return {
+            "success": True,
+            "data": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.username,  # username 필드를 name으로 매핑
+                "phone": user.phone_number,
+                "profileImage": None,  # 프로필 이미지 필드가 없으므로 기본값
+                "age": user.age,
+                "gender": user.gender,
+                "skinType": user.skin_type,
+                "createdAt": user.created_at.isoformat() if user.created_at else None
+            }
         }
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 사용자 프로필 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="사용자 정보 조회 중 오류가 발생했습니다")
 
 @app.put("/api/users/{user_id}")
 def update_user_profile(user_id: int, data: dict):
@@ -768,6 +783,66 @@ def get_diagnosis_request(request_id: int, db: Session = Depends(get_db)):
         print(f"❌ 진료 요청서 상세 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="진료 요청서 조회 중 오류가 발생했습니다")
 
+@app.get("/api/medical/diagnosis-requests/{request_id}/patient-detail")
+def get_patient_detail_from_diagnosis_request(request_id: int, db: Session = Depends(get_db)):
+    """진료 요청서 기반 환자 상세 정보 조회"""
+    try:
+        from core.models.db_models import DiagnosisRequest, User
+        
+        request_obj = db.query(DiagnosisRequest).filter(DiagnosisRequest.id == request_id).first()
+        if not request_obj:
+            raise HTTPException(status_code=404, detail="진료 요청서를 찾을 수 없습니다")
+        
+        # 사용자 정보 조회
+        user = db.query(User).filter(User.id == request_obj.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="환자 정보를 찾을 수 없습니다")
+        
+        # 통증 정도 매핑
+        severity_mapping = {
+            "mild": "약간",
+            "moderate": "중간 정도", 
+            "severe": "심함"
+        }
+        
+        return {
+            "success": True,
+            "data": {
+                # 기본 환자 정보 (User 테이블에서)
+                "id": str(request_obj.id),
+                "name": user.username,
+                "age": user.age,
+                "gender": "남성" if user.gender == "male" else "여성",
+                "phone": user.phone_number,
+                "email": user.email,
+                "address": "정보 없음",  # DB에 없는 필드
+                "emergencyContact": "정보 없음",  # DB에 없는 필드
+                
+                # 의료 정보 (DiagnosisRequest 테이블에서)
+                "allergies": request_obj.allergies or "정보 없음",
+                "currentMedications": request_obj.medications or "정보 없음",
+                "medicalHistory": request_obj.medical_history or "정보 없음",
+                
+                # 진료 요청 내용
+                "symptoms": request_obj.symptoms,
+                "symptomDuration": request_obj.duration or "정보 없음",
+                "painLevel": severity_mapping.get(request_obj.severity, request_obj.severity or "정보 없음"),
+                "previousTreatment": request_obj.previous_treatment or "정보 없음",
+                "requestDate": request_obj.created_at.strftime("%Y-%m-%d"),
+                "appointmentTime": "09:00",  # 기본값 (실제로는 appointment 테이블과 연결 필요)
+                "images": request_obj.images or [],
+                
+                # 추가 정보
+                "diagnosisRequestId": request_obj.id,
+                "status": request_obj.status
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 환자 상세 정보 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="환자 상세 정보 조회 중 오류가 발생했습니다")
+
 @app.patch("/api/medical/diagnosis-requests/{request_id}")
 def update_diagnosis_request_status(request_id: int, data: dict, db: Session = Depends(get_db)):
     """진료 요청서 상태 업데이트"""
@@ -1049,16 +1124,34 @@ def get_doctor_available_times(doctor_id: int, date: str, db: Session = Depends(
         raise HTTPException(status_code=500, detail="가능 시간 조회 중 오류가 발생했습니다")
 
 @app.get("/api/medical/appointments")
-def get_appointments_api(user_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_appointments_api(user_id: Optional[int] = None, doctor_id: Optional[int] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """예약 목록 조회"""
     try:
         from medical_schemas import AppointmentSearchParams
-        search_params = AppointmentSearchParams(user_id=user_id) if user_id else None
+        from core.models.medical_models import MedicalRecord
+        from core.models.db_models import User
+        
+        # user_id 또는 doctor_id 기반으로 검색 파라미터 설정
+        search_params = None
+        if user_id:
+            search_params = AppointmentSearchParams(user_id=user_id)
+        elif doctor_id:
+            search_params = AppointmentSearchParams(doctor_id=doctor_id)
         
         appointments = get_appointments(db, skip=skip, limit=limit, search_params=search_params)
         
-        return [
-            {
+        result = []
+        for appointment in appointments:
+            # 진료 기록 존재 여부 확인
+            medical_record = db.query(MedicalRecord).filter(
+                MedicalRecord.appointment_id == appointment.id
+            ).first()
+            has_medical_record = medical_record is not None
+            
+            # 사용자 정보 조회
+            user = db.query(User).filter(User.id == appointment.user_id).first()
+            
+            result.append({
                 "id": appointment.id,
                 "doctorId": appointment.doctor_id,
                 "doctorName": appointment.doctor.name if appointment.doctor else "의사 정보 없음",
@@ -1069,10 +1162,23 @@ def get_appointments_api(user_id: Optional[int] = None, skip: int = 0, limit: in
                 "status": appointment.status,
                 "userId": appointment.user_id,
                 "symptoms": appointment.symptoms or "증상 정보 없음",
-                "consultationFee": appointment.doctor.consultation_fee if appointment.doctor else 50000
-            }
-            for appointment in appointments
-        ]
+                "consultationFee": appointment.doctor.consultation_fee if appointment.doctor else 50000,
+                "diagnosis_request_id": appointment.diagnosis_request_id,
+                # 진료 기록 관련 정보 추가
+                "hasMedicalRecord": has_medical_record,
+                "medicalRecordId": medical_record.id if medical_record else None,
+                # 사용자 정보 추가
+                "user": {
+                    "id": user.id if user else appointment.user_id,
+                    "username": user.username if user else "환자",
+                    "email": user.email if user else "",
+                    "phone_number": user.phone_number if user else "",
+                    "age": user.age if user else 0,
+                    "gender": user.gender if user and user.gender else "unknown"
+                }
+            })
+        
+        return result
     except Exception as e:
         print(f"❌ 예약 목록 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="예약 목록 조회 중 오류가 발생했습니다")
@@ -1166,7 +1272,19 @@ def get_appointment_api(appointment_id: int, db: Session = Depends(get_db)):
         if not appointment:
             raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
         
-        return {
+        # 사용자 정보 조회 - appointment.user에서 가져오기
+        user = getattr(appointment, 'user', None)
+        
+        print(f"🔍 조회된 사용자 정보: user_id={appointment.user_id}")
+        if user:
+            print(f"🔍 사용자 상세: username={user.username}, age={user.age}, gender={user.gender}")
+        else:
+            print(f"❌ 사용자 정보를 찾을 수 없음: user_id={appointment.user_id}")
+            # 전체 사용자 목록 확인
+            all_users = db.query(User).all()
+            print(f"🔍 전체 사용자 목록: {[(u.id, u.username) for u in all_users]}")
+
+        response_data = {
             "id": appointment.id,
             "doctorId": appointment.doctor_id,
             "doctorName": appointment.doctor.name if appointment.doctor else "의사 정보 없음",
@@ -1179,8 +1297,28 @@ def get_appointment_api(appointment_id: int, db: Session = Depends(get_db)):
             "symptoms": appointment.symptoms or "증상 정보 없음",
             "consultationFee": appointment.doctor.consultation_fee if appointment.doctor else 50000,
             "notes": appointment.notes or "",
-            "createdAt": appointment.created_at.isoformat()
+            "createdAt": appointment.created_at.isoformat(),
+            # 사용자 정보를 user 객체로 포함
+            "user": {
+                "id": user.id if user else appointment.user_id,
+                "username": user.username if user else "환자",
+                "email": user.email if user else "",
+                "phone_number": user.phone_number if user else "",
+                "age": user.age if user else None,
+                "gender": user.gender if user and user.gender else None
+            } if user else None,
+            # 기존 필드도 유지 (하위 호환성)
+            "userName": user.username if user else "환자",
+            "userAge": user.age if user else None,
+            "userGender": user.gender if user and user.gender else None,
+            "userPhone": user.phone_number if user else "",
+            "userEmail": user.email if user else "",
+            "consultationType": appointment.consultation_type or "일반진료"
         }
+        
+        print(f"🔍 반환할 응답 데이터: userName={response_data['userName']}, userAge={response_data['userAge']}, userGender={response_data['userGender']}")
+        
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -1393,7 +1531,7 @@ def init_database():
                 User(
                     email="test@example.com", 
                     hashed_password="hashed_password", 
-                    username="테스트사용자", 
+                    username="김영미", 
                     phone_number="010-1234-5678",
                     gender=GenderEnum.female,
                     age=25,
@@ -1402,7 +1540,7 @@ def init_database():
                 User(
                     email="user2@example.com", 
                     hashed_password="hashed_password2", 
-                    username="사용자2", 
+                    username="박남한", 
                     phone_number="010-2345-6789",
                     gender=GenderEnum.male,
                     age=30,
@@ -1411,7 +1549,7 @@ def init_database():
                 User(
                     email="user3@example.com", 
                     hashed_password="hashed_password3", 
-                    username="사용자3", 
+                    username="정아연", 
                     phone_number="010-3456-7890",
                     gender=GenderEnum.female,
                     age=28,
@@ -1420,10 +1558,10 @@ def init_database():
                 User(
                     email="user4@example.com", 
                     hashed_password="hashed_password4", 
-                    username="사용자4", 
+                    username="이소영", 
                     phone_number="010-4567-8901",
-                    gender=GenderEnum.other,
-                    age=35,
+                    gender=GenderEnum.female,
+                    age=32,
                     skin_type="민감성"
                 )
             ]
@@ -1588,49 +1726,165 @@ def init_database():
             
             # 예약 데이터 추가
             appointments = [
+                # user_id=1 (테스트사용자)의 다양한 예약들
                 Appointment(
                     user_id=1,
                     doctor_id=1,
                     hospital_id=1,
-                    appointment_date=date(2024, 3, 15),
+                    appointment_date=date(2025, 3, 10),
                     appointment_time=time(14, 0),
-                    status='confirmed',
+                    status='completed',
                     symptoms='얼굴 여드름 치료 상담',
-                    notes='처음 방문',
-                    consultation_type='일반진료'
+                    notes='첫 방문 - 여드름 치료',
+                    consultation_type='일반진료',
+                    diagnosis_request_id=1  # 나중에 연결
                 ),
                 Appointment(
-                    user_id=2,
-                    doctor_id=2,
-                    hospital_id=2,
-                    appointment_date=date(2024, 3, 20),
+                    user_id=1,
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 3, 20),
                     appointment_time=time(15, 30),
+                    status='confirmed',
+                    symptoms='여드름 재진 - 약물 효과 확인',
+                    notes='2주 후 재진',
+                    consultation_type='재진',
+                    diagnosis_request_id=1
+                ),
+                Appointment(
+                    user_id=1,
+                    doctor_id=4,
+                    hospital_id=1,
+                    appointment_date=date(2025, 6, 25),
+                    appointment_time=time(16, 0),
                     status='pending',
+                    symptoms='피부 톤 개선 상담',
+                    notes='레이저 치료 문의',
+                    consultation_type='시술상담',
+                    diagnosis_request_id=1
+                ),
+                Appointment(
+                    user_id=1,
+                    doctor_id=1,
+                    hospital_id=3,
+                    appointment_date=date(2025, 4, 5),
+                    appointment_time=time(10, 30),
+                    status='confirmed',
+                    symptoms='알레르기 피부염 검사',
+                    notes='알레르기 테스트 필요',
+                    consultation_type='피부분석',
+                    diagnosis_request_id=1
+                ),
+                # ⭐ 사용자 취소된 예약들 (알림 데이터용)
+                Appointment(
+                    user_id=2,
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 2, 28),
+                    appointment_time=time(11, 0),
+                    status='cancelled',
                     symptoms='피부 미용 상담',
-                    notes='보톡스 문의',
-                    consultation_type='시술상담'
+                    notes='환자 측에서 개인 사정으로 취소',
+                    consultation_type='시술상담',
+                    cancellation_reason='개인 사정으로 일정 변경',
+                    cancelled_by='user'
                 ),
                 Appointment(
                     user_id=3,
-                    doctor_id=3,
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 3, 5),
+                    appointment_time=time(14, 30),
+                    status='cancelled',
+                    symptoms='아토피 재진 예약',
+                    notes='환자가 다른 병원으로 이전',
+                    consultation_type='재진',
+                    cancellation_reason='다른 병원으로 이전하게 되어 취소합니다',
+                    cancelled_by='user'
+                ),
+                Appointment(
+                    user_id=4,
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 3, 12),
+                    appointment_time=time(9, 30),
+                    status='cancelled',
+                    symptoms='기미 치료 상담',
+                    notes='환자 측 갑작스런 해외 출장',
+                    consultation_type='시술상담',
+                    cancellation_reason='갑작스런 해외 출장으로 인한 취소',
+                    cancelled_by='user'
+                ),
+                # 다른 사용자들의 예약
+                Appointment(
+                    user_id=2,
+                    doctor_id=1,
+                    hospital_id=2,
+                    appointment_date=date(2025, 3, 18),
+                    appointment_time=time(15, 30),
+                    status='completed',
+                    symptoms='보톡스 시술 상담',
+                    notes='보톡스 문의',
+                    consultation_type='시술상담',
+                    diagnosis_request_id=2
+                ),
+                Appointment(
+                    user_id=3,
+                    doctor_id=1,
                     hospital_id=3,
-                    appointment_date=date(2024, 3, 25),
+                    appointment_date=date(2025, 3, 22),
                     appointment_time=time(10, 0),
                     status='completed',
                     symptoms='아토피 재진',
                     notes='약물 처방 변경',
-                    consultation_type='재진'
+                    consultation_type='재진',
+                    diagnosis_request_id=3
                 ),
                 Appointment(
                     user_id=4,
-                    doctor_id=4,
+                    doctor_id=1,
                     hospital_id=1,
-                    appointment_date=date(2024, 3, 30),
+                    appointment_date=date(2025, 3, 30),
                     appointment_time=time(16, 0),
+                    status='pending',
+                    symptoms='기미 레이저 치료',
+                    notes='IPL 레이저 상담',
+                    consultation_type='시술상담',
+                    diagnosis_request_id=4
+                ),
+                # 추가 예약들 (더 많은 데이터)
+                Appointment(
+                    user_id=1,  # 박남한 → 김영미
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 3, 18),
+                    appointment_time=time(11, 30),
+                    status='completed',
+                    symptoms='여드름 경과 확인',
+                    notes='치료 1주차 경과',
+                    consultation_type='재진'
+                ),
+                Appointment(
+                    user_id=1,  # 정아연 → 김영미
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 3, 22),
+                    appointment_time=time(9, 0),
+                    status='completed',
+                    symptoms='알레르기 반응 응급 상담',
+                    notes='자외선 노출 후 피부 반응',
+                    consultation_type='일반진료'
+                ),
+                Appointment(
+                    user_id=1,  # 이소영 → 김영미
+                    doctor_id=1,
+                    hospital_id=1,
+                    appointment_date=date(2025, 6, 15),
+                    appointment_time=time(14, 30),
                     status='confirmed',
-                    symptoms='피부 분석 요청',
-                    notes='피부 타입 확인',
-                    consultation_type='피부분석'
+                    symptoms='여드름 치료 완료 후 관리',
+                    notes='치료 완료 후 관리 방법 상담',
+                    consultation_type='재진'
                 )
             ]
             
@@ -1650,13 +1904,43 @@ def init_database():
             medical_records = [
                 MedicalRecord(
                     appointment_id=3,  # completed 상태의 예약에 대해서만
-                    user_id=3,
-                    doctor_id=3,
                     diagnosis="아토피 피부염",
                     treatment="항히스타민제 처방 및 보습제 사용법 안내",
                     prescription="세티리진 10mg 1일 1회, 스테로이드 연고",
                     next_visit_date=date(2024, 4, 25),
                     notes="증상 호전 양상. 보습제 꾸준히 사용할 것"
+                ),
+                # user_id=1의 완료된 예약에 대한 진료 기록
+                MedicalRecord(
+                    appointment_id=1,  # user_id=1의 첫 번째 completed 예약
+                    diagnosis="중등도 여드름 (Acne vulgaris)",
+                    severity="moderate",
+                    treatment="항생제 치료 및 국소 레티노이드 적용",
+                    prescription="독시사이클린 100mg 1일 2회, 트레티노인 크림 0.05% 취침 전 적용",
+                    precautions="임신 가능성 있는 경우 즉시 연락, 자외선 노출 주의, 과도한 세안 금지",
+                    next_visit_date=date(2024, 3, 24),
+                    notes="2주 후 재진 예정. 약물 부작용 모니터링 필요"
+                ),
+                # 다른 사용자의 진료 기록
+                MedicalRecord(
+                    appointment_id=6,  # user_id=1의 completed 예약
+                    diagnosis="미간 주름 개선",
+                    severity="mild",
+                    treatment="보톡스 주사 시술",
+                    prescription="보톡스 20units 미간 부위 주사",
+                    precautions="시술 후 4시간 동안 눕지 말 것, 24시간 내 운동 금지, 마사지 금지",
+                    next_visit_date=date(2024, 4, 18),
+                    notes="시술 후 2-3일 훨과 시작, 2주 후 결과 확인"
+                ),
+                MedicalRecord(
+                    appointment_id=7,  # user_id=3의 completed 예약  
+                    diagnosis="아토피 피부염 재발",
+                    severity="moderate",
+                    treatment="항히스타민제 처방 및 보습제 사용법 안내",
+                    prescription="세티리진 10mg 1일 1회, 하이드로코티손 크림 1% 1일 2회",
+                    precautions="알레르기 유발 요소 회피, 미지근한 물로 샤워, 면 소재 의류 착용",
+                    next_visit_date=date(2024, 4, 22),
+                    notes="증상 호전 양상. 보습제 꾸준히 사용할 것. 스트레스 관리 필요"
                 )
             ]
             
@@ -1674,10 +1958,48 @@ def init_database():
             doctor_reviews = [
                 DoctorReview(
                     user_id=3,
-                    doctor_id=3,
+                    doctor_id=1,
                     appointment_id=3,
                     rating=5,
                     review_text="친절하고 자세한 설명해주셔서 감사합니다. 치료 효과도 좋아요."
+                ),
+                # user_id=1이 작성한 리뷰들
+                DoctorReview(
+                    user_id=1,
+                    doctor_id=1,
+                    appointment_id=1,
+                    rating=5,
+                    review_text="김민수 선생님 정말 친절하시고 꼼꼼하게 진료해주셨어요. 여드름 치료 계획도 자세히 설명해주셔서 안심이 됩니다. 2주 후 재진 예약도 잡았어요!"
+                ),
+                # 다른 사용자들의 리뷰
+                DoctorReview(
+                    user_id=2,
+                    doctor_id=2,
+                    appointment_id=6,
+                    rating=4,
+                    review_text="보톡스 시술 받았는데 자연스럽게 잘 되었어요. 다만 대기시간이 조금 길었습니다."
+                ),
+                DoctorReview(
+                    user_id=3,
+                    doctor_id=3,
+                    appointment_id=7,
+                    rating=5,
+                    review_text="아토피 치료 전문가이신 것 같아요. 생활 습관 개선 방법까지 알려주셔서 감사합니다."
+                ),
+                # 추가 리뷰들 (다른 예약 기록이 없는 가상 리뷰)
+                DoctorReview(
+                    user_id=1,
+                    doctor_id=4,
+                    appointment_id=None,  # 이전 방문 기록
+                    rating=4,
+                    review_text="레이저 치료 상담을 받았는데 설명이 전문적이고 좋았어요. 다음에 시술 받아보려고 합니다."
+                ),
+                DoctorReview(
+                    user_id=4,
+                    doctor_id=1,
+                    appointment_id=None,
+                    rating=5,
+                    review_text="여드름 흉터 치료로 방문했는데 결과가 만족스러워요. 꾸준한 관리가 중요하다고 하셨는데 정말 맞는 것 같아요."
                 )
             ]
             
@@ -1745,6 +2067,39 @@ def init_database():
             
             db.commit()
             print("✅ 의사 스케줄 데이터 추가 완료")
+            
+            # ⭐ DoctorNotification 샘플 데이터 추가 (사용자 취소 알림)
+            print("🔔 알림 데이터 추가 중...")
+            from core.models.medical_models import DoctorNotification
+            from datetime import datetime
+            
+            # 사용자가 취소한 예약들 조회 (appointment_id 5, 6, 7)
+            cancelled_appointments = db.query(Appointment).filter(
+                Appointment.status == 'cancelled',
+                Appointment.cancelled_by == 'user'
+            ).all()
+            
+            doctor_notifications = []
+            for i, appointment in enumerate(cancelled_appointments[:3]):  # 처음 3개만
+                # 환자 정보 조회
+                user = db.query(User).filter(User.id == appointment.user_id).first()
+                patient_name = user.username if user else "환자"
+                
+                notification = DoctorNotification(
+                    appointment_id=appointment.id,
+                    is_read=False,
+                    cancellation_reason=appointment.cancellation_reason,
+                    cancelled_by=appointment.cancelled_by,
+                    created_at=datetime.now(),
+                    read_at=None
+                )
+                doctor_notifications.append(notification)
+            
+            for notification in doctor_notifications:
+                db.add(notification)
+            
+            db.commit()
+            print(f"✅ 알림 데이터 추가 완료: {len(doctor_notifications)}개 알림")
             
         except Exception as e:
             print(f"⚠️ 의료진 샘플 데이터 추가 중 오류 (무시): {e}")
@@ -2315,7 +2670,7 @@ def get_user_medical_diagnoses(user_id: int, skip: int = 0, limit: int = 100, db
             formatted_diagnoses.append({
                 "id": record.id,
                 "date": record.created_at.strftime("%Y-%m-%d"),
-                "doctorName": record.doctor.name if record.doctor else "의사 정보 없음",
+                "doctorName": record.appointment.doctor.name if record.appointment and record.appointment.doctor else "의사 정보 없음",
                 "hospitalName": hospital_name,
                 "diagnosis": record.diagnosis or "진단 정보 없음",
                 "symptoms": record.appointment.symptoms if record.appointment else "증상 정보 없음",
@@ -2477,3 +2832,569 @@ def delete_user_recommendation_history(history_id: int, db: Session = Depends(ge
     except Exception as e:
         print(f"❌ 추천 내역 삭제 실패: {e}")
         raise HTTPException(status_code=500, detail=f"추천 내역 삭제 실패: {str(e)}")
+
+@app.post("/api/medical/medical-records")
+async def create_medical_record(request: Request, db: Session = Depends(get_db)):
+    """진료 기록 생성"""
+    try:
+        print(f"🔥 진료 기록 생성 API 호출됨")
+        
+        # Raw request body 읽기
+        body = await request.body()
+        print(f"🔍 Raw body: {body}")
+        
+        data = json.loads(body.decode('utf-8'))
+        print(f"🔍 진료 기록 생성 데이터: {data}")
+        
+        from core.models.medical_models import MedicalRecord
+        
+        # 필수 필드 확인
+        if not data.get("appointment_id"):
+            raise HTTPException(status_code=400, detail="예약 ID가 필요합니다")
+        
+        # 각 필드의 값과 타입 로그
+        print(f"🔍 appointment_id: {data.get('appointment_id')} (type: {type(data.get('appointment_id'))})")
+        print(f"🔍 diagnosis: {data.get('diagnosis')} (type: {type(data.get('diagnosis'))})")
+        print(f"🔍 severity: {data.get('severity')} (type: {type(data.get('severity'))})")
+        print(f"🔍 treatment: {data.get('treatment')} (type: {type(data.get('treatment'))})")
+        print(f"🔍 prescription: {data.get('prescription')} (type: {type(data.get('prescription'))})")
+        print(f"🔍 precautions: {data.get('precautions')} (type: {type(data.get('precautions'))})")
+        print(f"🔍 next_visit_date: {data.get('next_visit_date')} (type: {type(data.get('next_visit_date'))})")
+        print(f"🔍 notes: {data.get('notes')} (type: {type(data.get('notes'))})")
+        
+        # 데이터 전처리 및 유효성 검사
+        def safe_string_or_none(value):
+            if value is None or value == "" or str(value).strip() == "":
+                return None
+            return str(value).strip()
+        
+        def safe_date_or_none(value):
+            if value is None or value == "" or str(value).strip() == "":
+                return None
+            try:
+                from datetime import datetime
+                return datetime.strptime(str(value), "%Y-%m-%d").date()
+            except:
+                return None
+        
+        # 필드 전처리
+        processed_data = {
+            "appointment_id": data.get("appointment_id"),
+            "diagnosis": safe_string_or_none(data.get("diagnosis")),
+            "severity": safe_string_or_none(data.get("severity")),
+            "treatment": safe_string_or_none(data.get("treatment")),
+            "prescription": safe_string_or_none(data.get("prescription")),
+            "precautions": safe_string_or_none(data.get("precautions")),
+            "next_visit_date": safe_date_or_none(data.get("next_visit_date")),
+            "notes": safe_string_or_none(data.get("notes"))
+        }
+        
+        print(f"🔧 전처리된 데이터: {processed_data}")
+        
+        # 필수 필드 체크
+        if not processed_data["diagnosis"]:
+            raise HTTPException(status_code=422, detail="진단명은 필수 입력 항목입니다.")
+        if not processed_data["treatment"]:
+            raise HTTPException(status_code=422, detail="치료 내용은 필수 입력 항목입니다.")
+        
+        # MedicalRecord 객체 생성
+        try:
+            medical_record = MedicalRecord(
+                appointment_id=processed_data["appointment_id"],
+                diagnosis=processed_data["diagnosis"],
+                severity=processed_data["severity"],
+                treatment=processed_data["treatment"],
+                prescription=processed_data["prescription"],
+                precautions=processed_data["precautions"],
+                next_visit_date=processed_data["next_visit_date"],
+                notes=processed_data["notes"]
+            )
+            print(f"✅ MedicalRecord 객체 생성 성공")
+            
+            db.add(medical_record)
+            print(f"✅ DB에 추가 성공")
+            
+            db.commit()
+            print(f"✅ DB 커밋 성공")
+            
+            db.refresh(medical_record)
+            print(f"✅ 객체 새로고침 성공: ID {medical_record.id}")
+            
+        except Exception as db_error:
+            print(f"❌ DB 작업 중 상세 에러: {db_error}")
+            print(f"❌ 에러 타입: {type(db_error)}")
+            db.rollback()
+            raise db_error
+        
+        # 예약 상태를 'completed'로 업데이트
+        from core.models.medical_models import Appointment
+        appointment = db.query(Appointment).filter(Appointment.id == data.get("appointment_id")).first()
+        if appointment:
+            appointment.status = 'completed'
+            db.commit()
+        
+        print(f"✅ 진료 기록 생성 성공: {medical_record.id}")
+        
+        return {
+            "success": True,
+            "recordId": medical_record.id,
+            "message": "진료 기록이 성공적으로 저장되었습니다",
+            "data": {
+                "id": medical_record.id,
+                "appointment_id": medical_record.appointment_id,
+                "diagnosis": medical_record.diagnosis,
+                "treatment": medical_record.treatment,
+                "createdAt": medical_record.created_at.isoformat()
+            }
+        }
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        raise HTTPException(status_code=422, detail=f"올바르지 않은 JSON 형식: {str(e)}")
+    except ValueError as e:
+        print(f"❌ 데이터 값 오류: {e}")
+        raise HTTPException(status_code=422, detail=f"데이터 형식 오류: {str(e)}")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ 진료 기록 생성 실패: {error_msg}")
+        
+        # 일반적인 DB 에러 패턴 체크
+        if "NOT NULL constraint failed" in error_msg:
+            raise HTTPException(status_code=422, detail="필수 입력 항목이 누락되었습니다. 진단명과 치료 내용을 확인해주세요.")
+        elif "foreign key constraint failed" in error_msg:
+            raise HTTPException(status_code=422, detail="잘못된 예약 ID입니다.")
+        elif "UNIQUE constraint failed" in error_msg:
+            raise HTTPException(status_code=422, detail="이미 해당 예약에 대한 진료 기록이 존재합니다.")
+        else:
+            raise HTTPException(status_code=500, detail=f"진료 기록 생성 중 오류가 발생했습니다: {error_msg}")
+
+@app.get("/api/medical/medical-records/{record_id}")
+def get_medical_record_detail(record_id: int, db: Session = Depends(get_db)):
+    """진료 기록 상세 조회"""
+    try:
+        from core.models.medical_models import MedicalRecord
+        
+        record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="진료 기록을 찾을 수 없습니다")
+        
+        return {
+            "success": True,
+            "data": {
+                "id": record.id,
+                "appointment_id": record.appointment_id,
+                "user_id": record.user_id,
+                "doctor_id": record.doctor_id,
+                "diagnosis": record.diagnosis,
+                "severity": record.severity,
+                "treatment": record.treatment,
+                "prescription": record.prescription,
+                "precautions": record.precautions,
+                "next_visit_date": record.next_visit_date.strftime("%Y-%m-%d") if record.next_visit_date else None,
+                "notes": record.notes,
+                "createdAt": record.created_at.strftime("%Y-%m-%d %H:%M")
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 진료 기록 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 기록 조회 중 오류가 발생했습니다")
+
+@app.patch("/api/medical/diagnosis-requests/{request_id}")
+def update_diagnosis_request_status(request_id: int, data: dict, db: Session = Depends(get_db)):
+    """진료 요청서 상태 업데이트"""
+    try:
+        from core.models.db_models import DiagnosisRequest
+        
+        request_obj = db.query(DiagnosisRequest).filter(DiagnosisRequest.id == request_id).first()
+        if not request_obj:
+            raise HTTPException(status_code=404, detail="진료 요청서를 찾을 수 없습니다")
+        
+        # 상태 업데이트
+        if "status" in data:
+            request_obj.status = data["status"]
+        if "reviewedByDoctorId" in data:
+            request_obj.reviewed_by_doctor_id = data["reviewedByDoctorId"]
+        if "reviewNotes" in data:
+            request_obj.review_notes = data["reviewNotes"]
+        
+        # 검토 완료 시 시간 기록
+        if data.get("status") == "reviewed":
+            request_obj.reviewed_at = datetime.now()
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"진료 요청서 상태가 '{request_obj.status}'로 변경되었습니다",
+            "data": {
+                "id": request_obj.id,
+                "status": request_obj.status,
+                "updatedAt": request_obj.updated_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 진료 요청서 상태 업데이트 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 요청서 상태 업데이트 중 오류가 발생했습니다")
+
+@app.get("/api/medical/medical-records/appointment/{appointment_id}")
+def check_medical_record_by_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    """특정 예약에 대한 진료 기록 존재 여부 확인"""
+    try:
+        from core.models.medical_models import MedicalRecord
+        
+        record = db.query(MedicalRecord).filter(MedicalRecord.appointment_id == appointment_id).first()
+        
+        if record:
+            return {
+                "success": True,
+                "exists": True,
+                "recordId": record.id,
+                "data": {
+                    "id": record.id,
+                    "appointment_id": record.appointment_id,
+                    "diagnosis": record.diagnosis,
+                    "severity": record.severity,
+                    "treatment": record.treatment,
+                    "prescription": record.prescription,
+                    "precautions": record.precautions,
+                    "next_visit_date": record.next_visit_date.isoformat() if record.next_visit_date else None,
+                    "notes": record.notes,
+                    "createdAt": record.created_at.isoformat()
+                }
+            }
+        else:
+            return {
+                "success": True,
+                "exists": False,
+                "recordId": None
+            }
+    except Exception as e:
+        print(f"❌ 진료 기록 확인 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 기록 확인 중 오류가 발생했습니다")
+
+@app.get("/api/medical/doctors/{doctor_id}/patients")
+def get_doctor_patients(doctor_id: int, db: Session = Depends(get_db)):
+    """의사의 환자 목록 조회"""
+    try:
+        from core.models.medical_models import Appointment, MedicalRecord
+        from core.models.db_models import User
+        from sqlalchemy import desc, func
+        
+        # 의사의 모든 예약에서 고유한 환자들을 찾음
+        # 서브쿼리: 각 환자의 최신 예약 ID 찾기
+        latest_appointments_subquery = (
+            db.query(
+                Appointment.user_id,
+                func.max(Appointment.id).label('latest_appointment_id')
+            )
+            .filter(Appointment.doctor_id == doctor_id)
+            .group_by(Appointment.user_id)
+            .subquery()
+        )
+        
+        # 최신 예약 정보와 사용자 정보 조인
+        patients_query = (
+            db.query(
+                Appointment,
+                User,
+                MedicalRecord
+            )
+            .join(
+                latest_appointments_subquery,
+                Appointment.id == latest_appointments_subquery.c.latest_appointment_id
+            )
+            .join(User, Appointment.user_id == User.id)
+            .outerjoin(MedicalRecord, MedicalRecord.appointment_id == Appointment.id)
+            .order_by(desc(Appointment.appointment_date), desc(Appointment.appointment_time))
+        )
+        
+        patients = patients_query.all()
+        
+        result = []
+        for appointment, user, medical_record in patients:
+            # 환자의 총 진료 횟수 계산 (완료된 예약만)
+            total_appointments = db.query(Appointment).filter(
+                Appointment.user_id == user.id,
+                Appointment.doctor_id == doctor_id,
+                Appointment.status == 'completed'  # 완료된 예약만 세기
+            ).count()
+            
+            # 치료 상태 결정
+            # 1. 최근 진료에서 다음 방문일이 없으면 완치 (치료 완료)
+            # 2. 다음 방문일이 있으면 치료 중
+            status = 'completed' if (medical_record and not medical_record.next_visit_date) else 'ongoing'
+            
+            result.append({
+                "id": f"patient_{user.id}",
+                "patientId": str(user.id),
+                "patientName": user.username or "환자",
+                "age": user.age or 0,
+                "gender": "남성" if user.gender == "male" else "여성" if user.gender == "female" else "정보 없음",
+                "phone": user.phone_number or "정보 없음",
+                "lastVisit": appointment.appointment_date.strftime("%Y-%m-%d"),
+                "diagnosis": medical_record.diagnosis if medical_record else "진료 기록 없음",
+                "totalVisits": total_appointments,
+                "status": status,
+                "latestAppointmentId": appointment.id,
+                "hasDiagnosisRequest": appointment.diagnosis_request_id is not None,
+                "diagnosisRequestId": appointment.diagnosis_request_id,
+                "symptoms": appointment.symptoms or "증상 정보 없음"
+            })
+        
+        print(f"🔍 의사 {doctor_id}의 환자 목록: {len(result)}명")
+        return result
+        
+    except Exception as e:
+        print(f"❌ 환자 목록 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="환자 목록 조회 중 오류가 발생했습니다")
+
+# ========== 예약 상태 관리 API ==========
+@app.patch("/api/medical/appointments/{appointment_id}/confirm")
+def confirm_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    """예약 확정 (pending → confirmed)"""
+    try:
+        from core.models.medical_models import Appointment
+        
+        appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+        if not appointment:
+            raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
+        
+        if appointment.status != 'pending':
+            raise HTTPException(status_code=400, detail="대기 중인 예약만 확정할 수 있습니다")
+        
+        appointment.status = 'confirmed'
+        appointment.updated_at = datetime.now()
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "예약이 확정되었습니다",
+            "data": {
+                "id": appointment.id,
+                "status": appointment.status,
+                "updatedAt": appointment.updated_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 예약 확정 실패: {e}")
+        raise HTTPException(status_code=500, detail="예약 확정 중 오류가 발생했습니다")
+
+@app.patch("/api/medical/appointments/{appointment_id}/complete")
+def complete_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    """진료 완료 (confirmed → completed)"""
+    try:
+        from core.models.medical_models import Appointment
+        
+        appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+        if not appointment:
+            raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
+        
+        if appointment.status != 'confirmed':
+            raise HTTPException(status_code=400, detail="확정된 예약만 완료할 수 있습니다")
+        
+        appointment.status = 'completed'
+        appointment.updated_at = datetime.now()
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "진료가 완료되었습니다",
+            "data": {
+                "id": appointment.id,
+                "status": appointment.status,
+                "updatedAt": appointment.updated_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 진료 완료 실패: {e}")
+        raise HTTPException(status_code=500, detail="진료 완료 중 오류가 발생했습니다")
+
+@app.patch("/api/medical/appointments/{appointment_id}/cancel")
+async def cancel_appointment_with_reason(appointment_id: int, request: Request, db: Session = Depends(get_db)):
+    """예약 취소 (의사 측)"""
+    try:
+        from core.models.medical_models import Appointment
+        
+        # 요청 데이터 파싱
+        body = await request.body()
+        data = json.loads(body.decode('utf-8'))
+        
+        print(f"🔄 예약 취소 요청: appointment_id={appointment_id}, reason={data.get('reason')}")
+        
+        appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+        if not appointment:
+            raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
+        
+        if appointment.status in ['completed', 'cancelled']:
+            raise HTTPException(status_code=400, detail="이미 완료되거나 취소된 예약입니다")
+        
+        # 예약 상태 변경
+        appointment.status = 'cancelled'
+        appointment.cancellation_reason = data.get('reason', '의사 측 취소')
+        appointment.cancelled_by = 'doctor'
+        appointment.updated_at = datetime.now()
+        
+        db.commit()
+        print(f"✅ 예약 취소 완료: appointment_id={appointment_id}, reason={appointment.cancellation_reason}")
+        
+        return {
+            "success": True,
+            "message": "예약이 취소되었습니다",
+            "data": {
+                "id": appointment.id,
+                "status": appointment.status,
+                "cancellation_reason": appointment.cancellation_reason,
+                "cancelled_by": appointment.cancelled_by,
+                "updatedAt": appointment.updated_at.isoformat()
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 예약 취소 실패: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="예약 취소 중 오류가 발생했습니다")
+
+# ========== 알림 관리 API ==========
+@app.get("/api/medical/doctors/{doctor_id}/notifications")
+def get_doctor_notifications(doctor_id: int, db: Session = Depends(get_db)):
+    """의사의 알림 목록 조회 (사용자 취소 예약)"""
+    try:
+        from core.models.medical_models import Appointment, DoctorNotification
+        from core.models.db_models import User
+        
+        # 읽지 않은 사용자 취소 알림 조회
+        notifications_query = (
+            db.query(DoctorNotification, Appointment, User)
+            .join(Appointment, DoctorNotification.appointment_id == Appointment.id)
+            .join(User, Appointment.user_id == User.id)
+            .filter(
+                Appointment.doctor_id == doctor_id,
+                DoctorNotification.is_read == False,
+                DoctorNotification.cancelled_by == 'user'
+            )
+            .order_by(DoctorNotification.created_at.desc())
+        )
+        
+        notifications = notifications_query.all()
+        
+        def get_time_ago(created_at):
+            """시간 차이를 한국어로 반환"""
+            now = datetime.now()
+            diff = now - created_at
+            
+            if diff.days > 0:
+                return f"{diff.days}일 전"
+            elif diff.seconds // 3600 > 0:
+                hours = diff.seconds // 3600
+                return f"{hours}시간 전"
+            elif diff.seconds // 60 > 0:
+                minutes = diff.seconds // 60
+                return f"{minutes}분 전"
+            else:
+                return "방금 전"
+        
+        def format_time_period(time_str):
+            """시간을 오전/오후 형태로 포맷"""
+            try:
+                time_obj = datetime.strptime(time_str, "%H:%M").time()
+                hour = time_obj.hour
+                minute = time_obj.minute
+                
+                if hour < 12:
+                    period = "오전"
+                    display_hour = hour if hour != 0 else 12
+                else:
+                    period = "오후"
+                    display_hour = hour if hour <= 12 else hour - 12
+                
+                return f"{period} {display_hour}:{minute:02d}"
+            except:
+                return time_str
+        
+        result = []
+        for notification, appointment, user in notifications:
+            time_ago = get_time_ago(notification.created_at)
+            formatted_time = format_time_period(appointment.appointment_time.strftime("%H:%M"))
+            
+            result.append({
+                "id": notification.id,
+                "appointmentId": appointment.id,
+                "patientName": user.username or "환자",
+                "appointmentDate": appointment.appointment_date.strftime("%Y-%m-%d"),
+                "appointmentTime": appointment.appointment_time.strftime("%H:%M"),
+                "formattedTime": formatted_time,
+                "cancellationReason": notification.cancellation_reason,
+                "cancelledAt": time_ago,  # "X시간 전" 형태
+                "symptoms": appointment.symptoms or "증상 정보 없음"
+            })
+        
+        return {
+            "success": True,
+            "data": result
+        }
+    except Exception as e:
+        print(f"❌ 알림 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="알림 조회 중 오류가 발생했습니다")
+
+@app.patch("/api/medical/notifications/{notification_id}/read")
+def mark_notification_as_read(notification_id: int, db: Session = Depends(get_db)):
+    """알림 읽음 처리"""
+    try:
+        from core.models.medical_models import DoctorNotification
+        
+        notification = db.query(DoctorNotification).filter(DoctorNotification.id == notification_id).first()
+        if not notification:
+            raise HTTPException(status_code=404, detail="알림을 찾을 수 없습니다")
+        
+        notification.is_read = True
+        notification.read_at = datetime.now()
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "알림이 읽음 처리되었습니다"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 알림 읽음 처리 실패: {e}")
+        raise HTTPException(status_code=500, detail="알림 읽음 처리 중 오류가 발생했습니다")
+
+@app.patch("/api/medical/appointments/{appointment_id}/mark-notification-read")
+def mark_appointment_notification_read(appointment_id: int, db: Session = Depends(get_db)):
+    """특정 예약의 알림을 읽음 처리 (예약 상세 화면 접근 시)"""
+    try:
+        from core.models.medical_models import DoctorNotification
+        
+        # 해당 예약의 읽지 않은 알림들을 찾아서 읽음 처리
+        notifications = db.query(DoctorNotification).filter(
+            DoctorNotification.appointment_id == appointment_id,
+            DoctorNotification.is_read == False
+        ).all()
+        
+        read_count = 0
+        for notification in notifications:
+            notification.is_read = True
+            notification.read_at = datetime.now()
+            read_count += 1
+        
+        if read_count > 0:
+            db.commit()
+            print(f"✅ 예약 {appointment_id}의 알림 {read_count}개 읽음 처리 완료")
+        
+        return {
+            "success": True,
+            "message": f"{read_count}개의 알림이 읽음 처리되었습니다",
+            "readCount": read_count
+        }
+    except Exception as e:
+        print(f"❌ 예약 알림 읽음 처리 실패: {e}")
+        raise HTTPException(status_code=500, detail="알림 읽음 처리 중 오류가 발생했습니다")
