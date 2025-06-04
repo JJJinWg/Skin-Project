@@ -399,11 +399,11 @@ def add_sample_data():
             # 중복 확인을 더 안전하게 처리
             try:
                 existing = db.query(Appointment.id).filter(
-                Appointment.doctor_id == appointment.doctor_id,
-                Appointment.appointment_date == appointment.appointment_date,
-                Appointment.appointment_time == appointment.appointment_time
-            ).first()
-            if not existing:
+                    Appointment.doctor_id == appointment.doctor_id,
+                    Appointment.appointment_date == appointment.appointment_date,
+                    Appointment.appointment_time == appointment.appointment_time
+                ).first()
+                if not existing:
                     db.add(appointment)
             except Exception as e:
                 print(f"⚠️ 예약 중복 확인 실패, 그냥 추가: {e}")
