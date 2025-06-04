@@ -97,35 +97,38 @@ const DoctorDetailScreen: React.FC = () => {
   }
 
   // 의사 정보와 리뷰 가져오기
-  useEffect(() => {
-    const loadDoctorData = async () => {
+  const loadDoctorData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // 의사 정보 가져오기
+      console.log(`👨‍⚕️ 의사 정보 조회 시작... ID: ${doctorId}`)
+      const doctorData = await medicalApi.getDoctor(doctorId) as DoctorDetail
+      console.log('👨‍⚕️ 의사 정보 조회 결과:', doctorData)
+      setDoctor(doctorData)
+      
+      // 리뷰 가져오기
+      console.log(`📝 의사 리뷰 조회 시작... 의사 ID: ${doctorId}`)
       try {
-        setLoading(true)
-        setError(null)
-        
-        // 의사 정보 가져오기
-        console.log(`👨‍⚕️ 의사 정보 조회 중... ID: ${doctorId}`)
-        const doctorData = await medicalApi.getDoctor(doctorId) as DoctorDetail
-        setDoctor(doctorData)
-        
-        // 리뷰 가져오기
-        console.log(`📝 의사 리뷰 조회 중... 의사 ID: ${doctorId}`)
-        try {
-          const reviewsData = await medicalApi.getDoctorReviews(doctorId) as DoctorReview[]
-          setReviews(reviewsData)
-        } catch (reviewError) {
-          console.log('📝 리뷰 데이터 없음 또는 조회 실패:', reviewError)
-          setReviews([])
-        }
-        
-      } catch (error) {
-        console.error('❌ 의사 정보 조회 실패:', error)
-        setError('의사 정보를 불러오는데 실패했습니다.')
-      } finally {
-        setLoading(false)
+        const reviewsData = await medicalApi.getDoctorReviews(doctorId) as DoctorReview[]
+        console.log('📝 의사 리뷰 조회 결과:', reviewsData)
+        setReviews(reviewsData)
+      } catch (reviewError) {
+        console.log('📝 리뷰 데이터 없음 또는 조회 실패:', reviewError)
+        setReviews([])
       }
+      
+    } catch (error) {
+      console.error('❌ 의사 정보 조회 실패:', error)
+      setError('의사 정보를 불러오는데 실패했습니다.')
+    } finally {
+      console.log('🏁 loadDoctorData 완료')
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadDoctorData()
   }, [doctorId])
 
@@ -175,6 +178,7 @@ const DoctorDetailScreen: React.FC = () => {
             onPress={() => {
               setLoading(true)
               setError(null)
+              loadDoctorData()
             }}
           >
             <Text style={styles.retryButtonText}>다시 시도</Text>
@@ -190,11 +194,7 @@ const DoctorDetailScreen: React.FC = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>의사 정보</Text>
-        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -328,8 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
@@ -337,26 +336,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F3F5",
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButtonText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#212529",
-  },
-  placeholder: {
-    width: 40,
   },
   loadingContainer: {
     flex: 1,

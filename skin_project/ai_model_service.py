@@ -125,6 +125,68 @@ class SkinAnalysisService:
             "양호", "건조", "유분과다", "트러블", "색소침착", "민감", "노화"
         ]
         
+        # 영어-한국어 매핑 테이블
+        self.translation_map = {
+            # 피부 타입
+            "oily": "지성",
+            "dry": "건성", 
+            "combination": "복합성",
+            "sensitive": "민감성",
+            "normal": "정상",
+            
+            # 피부 질환
+            "acne": "여드름",
+            "eczema": "습진",
+            "dermatitis": "아토피",
+            "psoriasis": "건선",
+            "rosacea": "주사",
+            "pigmentation": "색소침착",
+            "melasma": "기미",
+            "spots": "반점",
+            "inflammation": "염증",
+            "inflammatory": "염증성",
+            "normal": "정상",
+            
+            # 피부 상태
+            "wrinkle": "주름",
+            "wrinkles": "주름",
+            "fine_lines": "잔주름",
+            "aging": "노화",
+            "dryness": "건조",
+            "oiliness": "유분과다",
+            "acne": "트러블",
+            "pores": "모공",
+            "blackheads": "블랙헤드",
+            "whiteheads": "화이트헤드",
+            "dark_spots": "색소침착",
+            "hyperpigmentation": "색소침착",
+            "redness": "홍조",
+            "irritation": "자극",
+            "good": "양호",
+            "excellent": "매우 좋음",
+            "poor": "나쁨"
+        }
+        
+    def translate_to_korean(self, english_text: str) -> str:
+        """영어 텍스트를 한국어로 번역합니다."""
+        if not english_text:
+            return "알 수 없음"
+            
+        # 소문자로 변환하여 매핑 확인
+        english_lower = english_text.lower().strip()
+        
+        # 직접 매핑이 있는 경우
+        if english_lower in self.translation_map:
+            return self.translation_map[english_lower]
+            
+        # 부분 매칭 시도
+        for eng_key, kor_value in self.translation_map.items():
+            if eng_key in english_lower or english_lower in eng_key:
+                return kor_value
+                
+        # 매핑이 없는 경우 원본 반환 (한국어일 수도 있음)
+        return english_text
+        
     def load_models(self):
         """AI 모델들을 로드합니다."""
         try:
@@ -289,15 +351,21 @@ class SkinAnalysisService:
             predicted_class = np.argmax(predictions[0])
             confidence = float(predictions[0][predicted_class])
             
-            skin_type = self.skin_types[predicted_class] if predicted_class < len(self.skin_types) else "알 수 없음"
+            # 원본 결과를 한국어로 번역
+            raw_skin_type = self.skin_types[predicted_class] if predicted_class < len(self.skin_types) else "알 수 없음"
+            skin_type = self.translate_to_korean(raw_skin_type)
+            
+            # 모든 확률을 한국어로 변환
+            korean_probabilities = {}
+            for i in range(min(len(self.skin_types), len(predictions[0]))):
+                raw_type = self.skin_types[i]
+                korean_type = self.translate_to_korean(raw_type)
+                korean_probabilities[korean_type] = float(predictions[0][i])
             
             return {
                 "type": skin_type,
                 "confidence": confidence,
-                "all_probabilities": {
-                    self.skin_types[i]: float(predictions[0][i]) 
-                    for i in range(min(len(self.skin_types), len(predictions[0])))
-                }
+                "all_probabilities": korean_probabilities
             }
             
         except Exception as e:
@@ -327,13 +395,16 @@ class SkinAnalysisService:
                 predicted_class = classes[max_conf_idx]
                 confidence = float(confidences[max_conf_idx])
                 
-                disease = self.skin_diseases[predicted_class] if predicted_class < len(self.skin_diseases) else "알 수 없음"
+                # 원본 결과를 한국어로 번역
+                raw_disease = self.skin_diseases[predicted_class] if predicted_class < len(self.skin_diseases) else "알 수 없음"
+                disease = self.translate_to_korean(raw_disease)
                 
-                # 모든 탐지 결과의 통계
+                # 모든 탐지 결과의 통계를 한국어로 변환
                 class_counts = {}
                 for cls in classes:
-                    class_name = self.skin_diseases[cls] if cls < len(self.skin_diseases) else f"class_{cls}"
-                    class_counts[class_name] = class_counts.get(class_name, 0) + 1
+                    raw_class_name = self.skin_diseases[cls] if cls < len(self.skin_diseases) else f"class_{cls}"
+                    korean_class_name = self.translate_to_korean(raw_class_name)
+                    class_counts[korean_class_name] = class_counts.get(korean_class_name, 0) + 1
                 
                 return {
                     "disease": disease,
@@ -372,13 +443,16 @@ class SkinAnalysisService:
                 predicted_class = classes[max_conf_idx]
                 confidence = float(confidences[max_conf_idx])
                 
-                state = self.skin_states[predicted_class] if predicted_class < len(self.skin_states) else "알 수 없음"
+                # 원본 결과를 한국어로 번역
+                raw_state = self.skin_states[predicted_class] if predicted_class < len(self.skin_states) else "알 수 없음"
+                state = self.translate_to_korean(raw_state)
                 
-                # 모든 탐지 결과의 통계
+                # 모든 탐지 결과의 통계를 한국어로 변환
                 class_counts = {}
                 for cls in classes:
-                    class_name = self.skin_states[cls] if cls < len(self.skin_states) else f"class_{cls}"
-                    class_counts[class_name] = class_counts.get(class_name, 0) + 1
+                    raw_class_name = self.skin_states[cls] if cls < len(self.skin_states) else f"class_{cls}"
+                    korean_class_name = self.translate_to_korean(raw_class_name)
+                    class_counts[korean_class_name] = class_counts.get(korean_class_name, 0) + 1
                 
                 return {
                     "state": state,
