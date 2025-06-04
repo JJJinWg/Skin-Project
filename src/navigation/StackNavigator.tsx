@@ -20,6 +20,7 @@ import EditProfileScreen from "../screens/EditProfileScreen";
 import EditReviewScreen from "../screens/EditReviewScreen";
 import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
 import DiagnosisDetailScreen from "../screens/DiagnosisDetailScreen";
+import DiagnosisRequestScreen from "../screens/DiagnosisRequestScreen";
 import SkinDiagnosisScreen from "../screens/SkinDiagnosisScreen"
 import SkinAnalysisResultScreen from "../screens/SkinAnalysisResultScreen"
 import SkinHistoryScreen from "../screens/SkinHistoryScreen"
@@ -75,6 +76,7 @@ const StackNavigator = () => {
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
             <Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} />
             <Stack.Screen name="DiagnosisDetailScreen" component={DiagnosisDetailScreen} />
+            <Stack.Screen name="DiagnosisRequestScreen" component={DiagnosisRequestScreen} />
             <Stack.Screen name="SkinAnalysisResultScreen" component={SkinAnalysisResultScreen} />
             <Stack.Screen name="SkinDiagnosisScreen" component={SkinDiagnosisScreen} />
             <Stack.Screen name="SkinHistoryScreen" component={SkinHistoryScreen} />

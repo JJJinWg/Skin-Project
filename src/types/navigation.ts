@@ -14,6 +14,15 @@ export type RootStackParamList = {
       concerns: string[];
       recommendations: string[];
       imageUrl: string;
+      skinDisease?: string;
+      skinState?: string;
+      needsMedicalAttention?: boolean;
+      confidence?: {
+        skinType?: number;
+        disease?: number;
+        state?: number;
+      };
+      detailedAnalysis?: any;
     }
   }
   FindCosmeticsScreen: {
@@ -88,5 +97,14 @@ export type RootStackParamList = {
   DiagnosisDetailScreen: {diagnosisId: number}
 
   SkinHistoryScreen: undefined
+
+  DiagnosisRequestScreen: {
+    prefilledData?: {
+      symptoms?: string;
+      skinType?: string;
+      aiAnalysisResult?: any;
+      imageUri?: string;
+    };
+  } | undefined;
 
 };
