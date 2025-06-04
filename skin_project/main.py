@@ -208,13 +208,12 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
             "data": {
                 "id": user.id,
                 "email": user.email,
-                "name": user.username,  # username 필드를 name으로 매핑
-                "phone": user.phone_number,
-                "profileImage": None,  # 프로필 이미지 필드가 없으므로 기본값
+                "username": user.username,
+                "phone_number": user.phone_number,
                 "age": user.age,
                 "gender": user.gender,
-                "skinType": user.skin_type,
-                "createdAt": user.created_at.isoformat() if user.created_at else None
+                "skin_type": user.skin_type,
+                "birthdate": user.birthdate.strftime("%Y-%m-%d") if user.birthdate else None
             }
         }
     except HTTPException:
@@ -224,18 +223,61 @@ def get_user_profile(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="사용자 정보 조회 중 오류가 발생했습니다")
 
 @app.put("/api/users/{user_id}")
-def update_user_profile(user_id: int, data: dict):
+def update_user_profile(user_id: int, data: dict, db: Session = Depends(get_db)):
     """사용자 프로필 수정"""
-    # TODO: 실제 사용자 데이터베이스 업데이트 구현 필요
-    return {
-        "success": True,
-        "data": {
-            "id": user_id,
-            **data,
-            "updatedAt": datetime.now().isoformat()
-        },
-        "message": "프로필이 수정되었습니다"
-    }
+    try:
+        from core.models.db_models import User
+        from datetime import datetime, date
+        
+        # 사용자 존재 확인
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"사용자 ID {user_id}를 찾을 수 없습니다")
+        
+        # 수정 가능한 필드만 업데이트
+        if 'username' in data:
+            user.username = data['username']
+        if 'email' in data:
+            user.email = data['email']
+        if 'phone_number' in data:
+            user.phone_number = data['phone_number']
+        if 'birthdate' in data and data['birthdate']:
+            # 문자열을 date 객체로 변환
+            try:
+                user.birthdate = datetime.strptime(data['birthdate'], "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="올바르지 않은 생년월일 형식입니다. YYYY-MM-DD 형식을 사용해주세요.")
+        if 'age' in data:
+            user.age = data['age']
+        if 'gender' in data:
+            user.gender = data['gender']
+        if 'skin_type' in data:
+            user.skin_type = data['skin_type']
+        
+        # 데이터베이스에 커밋
+        db.commit()
+        db.refresh(user)
+        
+        return {
+            "success": True,
+            "data": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "phone_number": user.phone_number,
+                "age": user.age,
+                "gender": user.gender,
+                "skin_type": user.skin_type,
+                "birthdate": user.birthdate.strftime("%Y-%m-%d") if user.birthdate else None
+            },
+            "message": "프로필이 성공적으로 수정되었습니다"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 사용자 프로필 수정 실패: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="사용자 정보 수정 중 오류가 발생했습니다")
 
 # ========== 리뷰 API ==========
 @app.post("/api/reviews")
@@ -374,10 +416,31 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
                 "type": "user_review"
             })
         
-        # 2. 크롤링된 리뷰 가져오기 (product_id가 매칭된 것만)
-        crawled_reviews = db.query(CrawledReview).filter(
-            CrawledReview.product_id == product_id
-        ).limit(15).all()  # 최대 15개만
+        # 2. 크롤링된 리뷰 가져오기 (제품명으로 매칭)
+        # product_id 컬럼이 없으므로 제품명이나 다른 방식으로 매칭
+        crawled_reviews = []
+        
+        # 먼저 제품명으로 매칭 시도
+        if hasattr(CrawledReview, 'source_product_name'):
+            # source_product_name이 있는 경우
+            crawled_reviews = db.query(CrawledReview).filter(
+                CrawledReview.source_product_name.ilike(f"%{product.name}%")
+            ).limit(10).all()
+        
+        # 매칭된 리뷰가 적으면 랜덤으로 일부 추가
+        if len(crawled_reviews) < 5:
+            additional_reviews = db.query(CrawledReview).limit(10).all()
+            crawled_reviews.extend(additional_reviews)
+        
+        # 중복 제거
+        seen_ids = set()
+        unique_crawled_reviews = []
+        for review in crawled_reviews:
+            if review.id not in seen_ids:
+                unique_crawled_reviews.append(review)
+                seen_ids.add(review.id)
+        
+        crawled_reviews = unique_crawled_reviews[:15]  # 최대 15개만
         
         for review in crawled_reviews:
             # 사용자명 익명 처리
@@ -385,21 +448,33 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
             user_name = f"사용자{random.randint(1000, 9999)}"
             
             # 날짜 처리
-            if review.review_date and review.review_date.strip():
+            if hasattr(review, 'review_date') and review.review_date and review.review_date.strip():
                 review_date = review.review_date[:10] if len(review.review_date) > 10 else review.review_date
             else:
                 from datetime import datetime, timedelta
                 days_ago = random.randint(1, 90)
                 review_date = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
             
+            # 리뷰 내용 처리
+            comment = "좋은 제품입니다."
+            if hasattr(review, 'content') and review.content:
+                comment = review.content
+            elif hasattr(review, 'review_text') and review.review_text:
+                comment = review.review_text
+            
+            # 평점 처리
+            rating = 4.0
+            if hasattr(review, 'rating') and review.rating:
+                rating = float(review.rating)
+            
             reviews.append({
                 "id": f"crawled_{review.id}",
                 "userName": user_name,
-                "rating": float(review.rating) if review.rating else 4.0,
-                "comment": review.content or '좋은 제품입니다.',
+                "rating": rating,
+                "comment": comment,
                 "date": review_date,
-                "skinType": review.skin_type or '복합성',
-                "helpful": review.helpful_count or random.randint(0, 20),
+                "skinType": getattr(review, 'skin_type', None) or '복합성',
+                "helpful": getattr(review, 'helpful_count', None) or random.randint(0, 20),
                 "type": "crawled_review"
             })
         
@@ -414,7 +489,7 @@ def get_product_reviews(product_id: int, db: Session = Depends(get_db)):
         import random
         random.shuffle(reviews)
         
-        print(f"✅ 제품 {product_id} 리뷰 조회: 사용자 {len(user_reviews)}개 + 크롤링 {len(crawled_reviews)}개 = 총 {len(reviews)}개")
+        print(f"✅ 제품 {product_id} ({product.name}) 리뷰 조회: 사용자 {len(user_reviews)}개 + 크롤링 {len(crawled_reviews)}개 = 총 {len(reviews)}개")
         return reviews
         
     except HTTPException:
@@ -655,6 +730,97 @@ def create_product_api(product_data: dict, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"❌ 제품 생성 실패: {e}")
         raise HTTPException(status_code=500, detail="제품 생성 중 오류가 발생했습니다")
+
+@app.get("/api/products/{product_id}/shops")
+def get_product_shops_api(product_id: int, db: Session = Depends(get_db)):
+    """제품 쇼핑몰 판매정보 조회"""
+    try:
+        from core.models.db_models import ProductShop, Shop, Product
+        
+        # 제품이 존재하는지 먼저 확인
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"제품 ID {product_id}를 찾을 수 없습니다")
+        
+        # 제품의 쇼핑몰 판매정보 조회
+        product_shops_query = (
+            db.query(ProductShop, Shop)
+            .join(Shop, ProductShop.shop_id == Shop.id)
+            .filter(ProductShop.product_id == product_id)
+            .order_by(ProductShop.price.asc())  # 가격 순으로 정렬
+        )
+        
+        product_shops = product_shops_query.all()
+        
+        if not product_shops:
+            # 쇼핑몰 정보가 없으면 기본 쇼핑몰 정보 생성
+            print(f"⚠️ 제품 {product_id}에 쇼핑몰 정보가 없어 기본 정보를 생성합니다.")
+            
+            # 기본 쇼핑몰들 조회
+            shops = db.query(Shop).limit(4).all()
+            
+            if shops:
+                # 제품 기본 가격 기준으로 쇼핑몰 정보 생성
+                base_price = product.price if product.price else 30000
+                
+                for i, shop in enumerate(shops):
+                    shop_price = base_price + (i * 1000)  # 쇼핑몰별로 1000원씩 차이
+                    is_lowest = (i == 0)
+                    shipping_fee = 0 if shop_price >= 30000 or i == 0 else 2500
+                    
+                    product_shop = ProductShop(
+                        product_id=product_id,
+                        shop_id=shop.id,
+                        price=shop_price,
+                        shipping="무료배송" if shipping_fee == 0 else "유료배송",
+                        shipping_fee=shipping_fee,
+                        installment=f"{2+i}개월" if shop_price >= 20000 else None,
+                        is_free_shipping=(shipping_fee == 0),
+                        is_lowest_price=is_lowest,
+                        is_card_discount=(i % 2 == 1)
+                    )
+                    db.add(product_shop)
+                
+                db.commit()
+                
+                # 다시 조회
+                product_shops_query = (
+                    db.query(ProductShop, Shop)
+                    .join(Shop, ProductShop.shop_id == Shop.id)
+                    .filter(ProductShop.product_id == product_id)
+                    .order_by(ProductShop.price.asc())
+                )
+                product_shops = product_shops_query.all()
+        
+        # 응답 데이터 포맷팅
+        shops_data = []
+        for product_shop, shop in product_shops:
+            shops_data.append({
+                "id": shop.id,
+                "name": shop.name,
+                "price": product_shop.price,
+                "shipping": product_shop.shipping,
+                "shippingFee": product_shop.shipping_fee,
+                "installment": product_shop.installment,
+                "isFreeShipping": product_shop.is_free_shipping,
+                "isLowestPrice": product_shop.is_lowest_price,
+                "isCardDiscount": product_shop.is_card_discount,
+                "logo": shop.logo_url,
+                "url": shop.url
+            })
+        
+        print(f"✅ 제품 {product_id} 쇼핑몰 정보 조회: {len(shops_data)}개 쇼핑몰")
+        
+        return {
+            "success": True,
+            "data": shops_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 제품 쇼핑몰 정보 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"제품 쇼핑몰 정보 조회 중 오류가 발생했습니다: {str(e)}")
 
 # ========== 진료 요청서 API ==========
 @app.post("/api/medical/diagnosis-requests")
@@ -1247,12 +1413,37 @@ async def create_appointment_api(request: Request, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=f"예약 생성 중 오류가 발생했습니다: {str(e)}")
 
 @app.delete("/api/medical/appointments/{appointment_id}")
-def cancel_appointment_api(appointment_id: int, db: Session = Depends(get_db)):
-    """예약 취소"""
+def cancel_appointment_api(appointment_id: int, reason: str = "사용자 요청에 의한 취소", db: Session = Depends(get_db)):
+    """예약 취소 (환자 측)"""
     try:
-        appointment = cancel_appointment(db, appointment_id)
+        from core.models.medical_models import DoctorNotification
+        
+        print(f"🔄 환자 측 예약 취소 요청: appointment_id={appointment_id}, reason={reason}")
+        
+        # 기본값으로 취소 사유와 취소자 정보 전달
+        appointment = cancel_appointment(
+            db, 
+            appointment_id, 
+            cancellation_reason=reason, 
+            cancelled_by="user"
+        )
         if not appointment:
             raise HTTPException(status_code=404, detail="예약을 찾을 수 없습니다")
+        
+        # 의사에게 알림 생성
+        try:
+            doctor_notification = DoctorNotification(
+                appointment_id=appointment_id,
+                is_read=False,
+                cancellation_reason=reason,
+                cancelled_by="user"
+            )
+            db.add(doctor_notification)
+            db.commit()
+            print(f"✅ 의사 알림 생성 완료: appointment_id={appointment_id}, reason={reason}")
+        except Exception as notification_error:
+            print(f"⚠️ 의사 알림 생성 실패: {notification_error}")
+            # 알림 생성 실패해도 예약 취소는 유지
         
         return {
             "success": True,
@@ -1522,11 +1713,27 @@ def init_database():
         if not create_tables():
             raise HTTPException(status_code=500, detail="테이블 생성 실패")
         
+        # 2-1. birthdate 컬럼 추가 (테이블이 이미 생성된 경우를 위해)
+        print("📅 2-1단계: users 테이블에 birthdate 컬럼 추가 중...")
+        db = SessionLocal()
+        try:
+            # birthdate 컬럼이 없으면 추가
+            db.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS birthdate DATE"))
+            db.commit()
+            print("✅ birthdate 컬럼 추가 완료")
+        except Exception as e:
+            print(f"⚠️ birthdate 컬럼 추가 중 오류 (이미 존재할 수 있음): {e}")
+        finally:
+            db.close()
+        
         # 3. 기본 데이터 추가 (사용자, 쇼핑몰 등)
         print("👥 3단계: 기본 데이터 추가 중...")
         db = SessionLocal()
         try:
-            # 사용자 데이터
+            # 사용자 데이터 (나이에 맞는 생년월일 계산)
+            from datetime import date
+            current_year = date.today().year
+            
             users = [
                 User(
                     email="test@example.com", 
@@ -1535,7 +1742,8 @@ def init_database():
                     phone_number="010-1234-5678",
                     gender=GenderEnum.female,
                     age=25,
-                    skin_type="지성"
+                    skin_type="지성",
+                    birthdate=date(current_year - 24, 3, 15)  # 25세 → 1999년생
                 ),
                 User(
                     email="user2@example.com", 
@@ -1544,7 +1752,8 @@ def init_database():
                     phone_number="010-2345-6789",
                     gender=GenderEnum.male,
                     age=30,
-                    skin_type="건성"
+                    skin_type="건성",
+                    birthdate=date(current_year - 29, 7, 22)  # 30세 → 1994년생
                 ),
                 User(
                     email="user3@example.com", 
@@ -1553,7 +1762,8 @@ def init_database():
                     phone_number="010-3456-7890",
                     gender=GenderEnum.female,
                     age=28,
-                    skin_type="복합성"
+                    skin_type="복합성",
+                    birthdate=date(current_year - 27, 11, 8)  # 28세 → 1996년생
                 ),
                 User(
                     email="user4@example.com", 
@@ -1562,7 +1772,8 @@ def init_database():
                     phone_number="010-4567-8901",
                     gender=GenderEnum.female,
                     age=32,
-                    skin_type="민감성"
+                    skin_type="민감성",
+                    birthdate=date(current_year - 31, 5, 3)  # 32세 → 1992년생
                 )
             ]
             for user in users:

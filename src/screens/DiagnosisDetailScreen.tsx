@@ -16,69 +16,51 @@ import {
 import { type NavigationProp, useNavigation, type RouteProp, useRoute } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
+import { diagnosisService, type Diagnosis } from "../services/diagnosisService"
 
-// 진단 내역 타입 정의
-type Diagnosis = {
-  id: number
-  doctorId: number
-  doctorName: string
-  doctorImage: any
-  specialty: string
-  date: string
-  symptoms: string
-  diagnosisContent: string
-  treatment: string
-  prescriptions: string[]
-  followUpRequired: boolean
-  followUpDate?: string
+type DiagnosisDetailScreenRouteProp = RouteProp<{ params: { diagnosisId: number } }, "params">
+
+// 진단 상세 화면용 확장 타입 (추가 필드 포함)
+type DiagnosisDetail = Diagnosis & {
   images?: string[]
   additionalNotes?: string
 }
-
-type DiagnosisDetailScreenRouteProp = RouteProp<{ params: { diagnosisId: number } }, "params">
 
 const DiagnosisDetailScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
   const route = useRoute<DiagnosisDetailScreenRouteProp>()
   const { diagnosisId } = route.params
 
-  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null)
+  const [diagnosis, setDiagnosis] = useState<DiagnosisDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // 진단 상세 정보 가져오기 (API 호출 시뮬레이션)
+  // 진단 상세 정보 가져오기 (실제 API 사용)
   useEffect(() => {
-    setLoading(true)
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      // 실제로는 diagnosisId를 사용하여 API에서 특정 진단 정보를 가져옵니다
-      const mockDiagnosis: Diagnosis = {
-        id: diagnosisId,
-        doctorId: 1,
-        doctorName: "Dr. Kim",
-        doctorImage: require("../assets/doctor1.png"),
-        specialty: "피부과",
-        date: "2023-05-15",
-        symptoms:
-          "얼굴에 붉은 발진과 가려움증, 건조함이 있습니다. 특히 볼과 이마 부위에 증상이 심하며, 세안 후 더 심해지는 경향이 있습니다. 2주 전부터 새로운 화장품을 사용하기 시작했습니다.",
-        diagnosisContent:
-          "접촉성 피부염으로 진단됩니다. 특정 화장품이나 세안제에 포함된 성분에 대한 알레르기 반응으로 보입니다. 피부 장벽이 약해져 있어 자극에 더 민감하게 반응하고 있습니다.",
-        treatment:
-          "스테로이드 연고를 처방해 드립니다. 하루에 두 번, 아침과 저녁에 발진 부위에 얇게 바르세요. 또한 자극이 적은 세안제와 보습제를 사용하시기 바랍니다. 최근에 사용하기 시작한 화장품은 일단 중단하시고, 피부가 회복된 후 하나씩 테스트해보는 것이 좋겠습니다.",
-        prescriptions: [
-          "베타메타손 연고 0.05% - 하루 2회, 아침/저녁 발진 부위에 얇게 바름",
-          "세티리진 정 10mg - 가려움이 심할 때 하루 1회 복용",
-          "세라마이드 함유 보습제 - 하루 3회 이상 충분히 바름",
-        ],
-        followUpRequired: true,
-        followUpDate: "2023-05-29",
-        images: ["https://example.com/diagnosis-image1.jpg"],
-        additionalNotes:
-          "알레르기 반응이 심해지거나 호전되지 않으면 바로 내원하세요. 처방된 약물에 대한 부작용(피부 자극, 발적 증가 등)이 있으면 즉시 사용을 중단하고 연락주세요.",
+    const loadDiagnosisDetail = async () => {
+      try {
+        setLoading(true);
+        console.log('📋 진단 상세 정보 로드 중...', diagnosisId);
+        
+        // diagnosisService를 사용하여 실제 데이터 조회
+        const diagnosisData = await diagnosisService.getDiagnosisDetail(diagnosisId);
+        
+        if (diagnosisData) {
+          setDiagnosis(diagnosisData);
+          console.log('✅ 진단 상세 정보 로드 성공:', diagnosisData);
+        } else {
+          console.log('❌ 진단 정보를 찾을 수 없습니다:', diagnosisId);
+          setDiagnosis(null);
+        }
+      } catch (error) {
+        console.error('❌ 진단 상세 정보 로드 실패:', error);
+        setDiagnosis(null);
+      } finally {
+        setLoading(false);
       }
-      setDiagnosis(mockDiagnosis)
-      setLoading(false)
-    }, 1000)
-  }, [diagnosisId])
+    };
+
+    loadDiagnosisDetail();
+  }, [diagnosisId]);
 
   // 날짜 포맷 변환 (YYYY-MM-DD -> YYYY년 MM월 DD일)
   const formatDate = (dateString: string) => {

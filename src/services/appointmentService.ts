@@ -37,6 +37,8 @@ export interface ProfileAppointment {
   date: string;
   time: string;
   status: "pending" | "confirmed" | "completed" | "cancelled";
+  doctorImage?: any;
+  symptoms?: string;
 }
 
 // 시간 관련 유틸리티 함수들
@@ -269,36 +271,56 @@ export const appointmentService = {
     }
   },
 
+  // 취소 사유와 함께 예약 취소
+  cancelAppointmentWithReason: async (appointmentId: number, cancellationReason: string): Promise<boolean> => {
+    try {
+      console.log(`❌ 예약 취소 중... ID: ${appointmentId}, 사유: ${cancellationReason}`);
+      
+      // 취소 사유를 포함한 API 호출
+      await medicalApi.cancelAppointmentWithReason(appointmentId, cancellationReason);
+      return true;
+    } catch (error) {
+      console.error('❌ 예약 취소 실패:', error);
+      return false;
+    }
+  },
+
   // ProfileScreen용 예약 목록 조회 (화면에 맞는 형태로 변환)
   getUserAppointmentsForProfile: async (userId: number): Promise<ProfileAppointment[]> => {
     try {
       console.log(`📋 ProfileScreen용 예약 목록 조회 중... 사용자 ID: ${userId}`);
       
-      // 실제 API 호출
+      // 실제 API 호출 - 백엔드에서 바로 배열을 반환
       const appointments = await medicalApi.getAppointments(userId) as any[];
       
-      // ProfileAppointment 형태로 변환 (DB 상태 그대로 사용)
+      // ProfileAppointment 형태로 변환 (백엔드 응답 구조에 맞게)
       const profileAppointments: ProfileAppointment[] = appointments.map((appointment: any) => {
-        // DB 상태를 그대로 사용하되, 철자 통일
-        let dbStatus = appointment.status;
-        if (dbStatus === 'canceled') dbStatus = 'cancelled'; // 철자 통일
+        console.log(`📋 예약 데이터:`, appointment);
 
-        console.log(`📋 예약 상태: ${appointment.status} -> ${dbStatus}`);
+        // 의사 이미지 처리: 기본 이미지 사용
+        const doctorImage = require("../assets/doctor1.png");
+
+        // 시간 형식 변환 (16:00:00 -> 16:00)
+        const timeFormatted = appointment.appointment_time ? 
+          appointment.appointment_time.substring(0, 5) : "시간 정보 없음";
 
         return {
           id: appointment.id,
-          doctorName: appointment.doctor_name || appointment.doctorName || '의사명',
-          specialty: appointment.specialty || '전문분야',
-          date: appointment.date,
-          time: appointment.time,
-          status: dbStatus as "pending" | "confirmed" | "completed" | "cancelled"
+          doctorName: appointment.doctor?.name || '의사명 정보 없음',
+          specialty: appointment.doctor?.specialization || '전문분야 정보 없음', 
+          date: appointment.appointment_date || '날짜 정보 없음', // appointment_date 필드 사용
+          time: timeFormatted, // appointment_time 필드 사용하고 포맷팅
+          status: appointment.status as "pending" | "confirmed" | "completed" | "cancelled",
+          doctorImage: doctorImage,
+          symptoms: appointment.symptoms || '증상 정보 없음'
         };
       });
       
+      console.log(`📋 변환된 예약 목록:`, profileAppointments);
       return profileAppointments;
     } catch (error) {
       console.error('❌ ProfileScreen용 예약 목록 조회 실패:', error);
       return [];
     }
   }
-}; 
+};

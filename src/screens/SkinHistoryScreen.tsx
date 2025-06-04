@@ -56,6 +56,7 @@ type CosmeticRecommendationHistory = {
   date: string
   skinType: string
   concerns: string[]
+  explanation?: string
   recommendedProducts: {
     id: number
     name: string
@@ -126,9 +127,45 @@ const SkinHistoryScreen = () => {
         
         // 실제 저장된 추천 내역 조회
         const savedRecommendations = await productService.getRecommendationHistory(1); // 임시 사용자 ID
-        setRecommendationHistory(savedRecommendations)
         
-        console.log(`📋 화장품 추천 내역: ${savedRecommendations.length}개 로드됨`);
+        // 각 추천 내역의 제품들에 대해 실제 이미지 정보 업데이트 (ProfileScreen 방식 적용)
+        const updatedRecommendations: CosmeticRecommendationHistory[] = [];
+        
+        for (const recommendation of savedRecommendations) {
+          const updatedProducts = [];
+          
+          for (const product of recommendation.recommendedProducts) {
+            try {
+              console.log(`🔍 히스토리 제품 ${product.id} 실제 정보 조회 중...`);
+              const actualProduct = await productService.getProductById(product.id);
+              
+              if (actualProduct) {
+                console.log(`✅ 히스토리 제품 ${product.id} 실제 이미지:`, actualProduct.image);
+                updatedProducts.push({
+                  ...product,
+                  image: actualProduct.image, // 실제 제품 이미지 사용
+                  name: actualProduct.name,
+                  brand: actualProduct.brand,
+                  category: actualProduct.category,
+                });
+              } else {
+                console.warn(`⚠️ 히스토리 제품 ${product.id} 정보를 찾을 수 없습니다.`);
+                updatedProducts.push(product); // 원본 그대로 사용
+              }
+            } catch (error) {
+              console.warn(`⚠️ 히스토리 제품 ${product.id} 정보 조회 실패:`, error);
+              updatedProducts.push(product); // 원본 그대로 사용
+            }
+          }
+          
+          updatedRecommendations.push({
+            ...recommendation,
+            recommendedProducts: updatedProducts,
+          });
+        }
+        
+        setRecommendationHistory(updatedRecommendations);
+        console.log(`📋 화장품 추천 내역: ${updatedRecommendations.length}개 로드됨`);
       } catch (error) {
         console.error('화장품 추천 내역 로드 실패:', error)
         Alert.alert('오류', '화장품 추천 내역을 불러오는데 실패했습니다.')
@@ -200,8 +237,26 @@ const SkinHistoryScreen = () => {
 
   // 화장품 추천 상세 화면으로 이동
   const navigateToRecommendationDetail = (recommendationId: number) => {
-    // 실제로는 해당 추천 ID를 사용하여 상세 화면으로 이동
-    navigation.navigate("FindCosmeticsScreen")
+    // 해당 추천 내역 찾기
+    const selectedRecommendation = recommendationHistory.find(item => item.id === recommendationId);
+    
+    if (selectedRecommendation) {
+      console.log('🔍 선택된 추천 내역:', selectedRecommendation);
+      
+      // 추천 데이터를 FindCosmeticsScreen으로 전달하여 결과 화면 표시
+      navigation.navigate("FindCosmeticsScreen", {
+        showResults: true,
+        recommendationData: {
+          skinType: selectedRecommendation.skinType,
+          concerns: selectedRecommendation.concerns,
+          recommendedProducts: selectedRecommendation.recommendedProducts,
+          explanation: selectedRecommendation.explanation || "AI 분석 결과를 불러오는 중입니다...",
+          isHistoryView: true, // 내역 보기임을 표시
+        }
+      });
+    } else {
+      Alert.alert('오류', '추천 내역을 찾을 수 없습니다.');
+    }
   }
 
   // 새로운 피부 분석 시작
