@@ -593,9 +593,36 @@ export const getSkinOptions = async (): Promise<SkinOptions> => {
 }
 
 export async function getSkinAnalysisHistory(userId: number): Promise<any[]> {
-  // 실제 API 호출로 대체 필요
-  // 예시: return await medicalApi.getSkinAnalysisHistory(userId);
-  return [];
+  try {
+    console.log('📋 피부 분석 내역 조회 중... (productService에서 diagnosisService 호출)');
+    
+    // diagnosisService의 getSkinAnalysisHistory 함수 사용
+    const { diagnosisService } = await import('./diagnosisService');
+    const history = await diagnosisService.getSkinAnalysisHistory(userId);
+    
+    // SkinHistoryScreen에서 사용하는 형식에 맞게 변환
+    return history.map((analysis: any) => ({
+      id: analysis.id,
+      date: analysis.analysisDate,
+      skinType: analysis.skinType,
+      skinAge: analysis.skinAge || 25,
+      moisture: analysis.moisture || 50,
+      wrinkles: analysis.wrinkles || 30,
+      pigmentation: analysis.pigmentation || 20,
+      pores: analysis.pores || 40,
+      acne: analysis.acne || 10,
+      imageUri: analysis.imageUrl,
+      issues: analysis.concerns.map((concern: string) => ({
+        title: concern,
+        severity: 'medium' as const
+      })),
+      analysisResult: analysis.analysisResult,
+      recommendations: analysis.recommendations || []
+    }));
+  } catch (error) {
+    console.error('❌ 피부 분석 내역 조회 실패 (productService):', error);
+    return [];
+  }
 }
 
 // 추천 내역 저장
