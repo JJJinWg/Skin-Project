@@ -252,14 +252,14 @@ const LoginForm = () => {
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
-            <View style={styles.socialButtonsContainer}>
+            {/* <View style={styles.socialButtonsContainer}>
               <TouchableOpacity style={[styles.socialButton, { backgroundColor: "#4285F4" }]}>
                 <Text style={styles.socialButtonText}>Google</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.socialButton, { backgroundColor: "#000000" }]}>
                 <Text style={styles.socialButtonText}>Apple</Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
 
             {/* 회원가입 링크 */}
             <View style={styles.signupContainer}>
