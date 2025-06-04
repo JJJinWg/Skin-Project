@@ -105,6 +105,30 @@ const FindCosmeticsScreen = () => {
     }
   }, [route.params]);
 
+  // AI 분석 결과에서 전달된 데이터 처리
+  useEffect(() => {
+    if (route.params?.prefilledData) {
+      const { prefilledData } = route.params;
+      console.log('🔬 AI 분석 결과 데이터 수신:', prefilledData);
+      
+      // 폼 필드들 자동 채우기
+      if (prefilledData.skinType) {
+        setSelectedSkinType(prefilledData.skinType);
+      }
+      if (prefilledData.sensitivity) {
+        setSelectedSensitivity(prefilledData.sensitivity);
+      }
+      if (prefilledData.concerns && Array.isArray(prefilledData.concerns)) {
+        setSelectedConcerns(prefilledData.concerns);
+      }
+      if (prefilledData.additionalInfo) {
+        setAdditionalInfo(prefilledData.additionalInfo);
+      }
+      
+      console.log('✅ AI 분석 결과 데이터가 폼에 자동으로 적용되었습니다.');
+    }
+  }, [route.params?.prefilledData]);
+
   // 피부 고민 선택/해제 처리
   const toggleConcern = (concern: string) => {
     if (selectedConcerns.includes(concern)) {
@@ -434,25 +458,33 @@ const FindCosmeticsScreen = () => {
           {/* 피부 고민 선택 */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>피부 고민</Text>
-            <Text style={styles.sectionSubtitle}>주요 피부 고민을 최대 3개까지 선택해주세요.</Text>
-            <View style={styles.concernsContainer}>
-              {skinOptions.concerns.map((concern) => (
-                <TouchableOpacity
-                  key={concern}
-                  style={[styles.concernButton, selectedConcerns.includes(concern) && styles.selectedConcernButton]}
-                  onPress={() => toggleConcern(concern)}
-                >
-                  <Text
-                    style={[
-                      styles.concernButtonText,
-                      selectedConcerns.includes(concern) && styles.selectedConcernButtonText,
-                    ]}
+            <Text style={styles.sectionSubtitle}>
+              주요 피부 고민을 최대 3개까지 선택해주세요. (총 {skinOptions.concerns.length}개 옵션)
+            </Text>
+            <ScrollView 
+              style={styles.concernsScrollContainer}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              <View style={styles.concernsContainer}>
+                {skinOptions.concerns.map((concern) => (
+                  <TouchableOpacity
+                    key={concern}
+                    style={[styles.concernButton, selectedConcerns.includes(concern) && styles.selectedConcernButton]}
+                    onPress={() => toggleConcern(concern)}
                   >
-                    {concern}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.concernButtonText,
+                        selectedConcerns.includes(concern) && styles.selectedConcernButtonText,
+                      ]}
+                    >
+                      {concern}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
           {/* 추가 정보 입력 */}
@@ -613,22 +645,24 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   concernButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E9ECEF",
     backgroundColor: "#FFFFFF",
     marginRight: 8,
-    marginBottom: 8,
+    marginBottom: 10,
+    minWidth: 80,
   },
   selectedConcernButton: {
     borderColor: "#8FD3F4",
     backgroundColor: "rgba(143, 211, 244, 0.1)",
   },
   concernButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#495057",
+    textAlign: 'center',
   },
   selectedConcernButtonText: {
     color: "#212529",
@@ -833,6 +867,14 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  concernsScrollContainer: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: '#FAFAFA',
   },
 })
 
