@@ -46,6 +46,59 @@ export interface SkinAnalysisResult {
   concerns: string[];
   recommendations: string[];
   imageUrl: string;
+  skinDisease?: string;
+  skinState?: string;
+  needsMedicalAttention?: boolean;
+  confidence?: {
+    skinType?: number;
+    disease?: number;
+    state?: number;
+  };
+  detailedAnalysis?: any;
+}
+
+// AI 피부 분석 내역 저장용 타입 정의
+export interface SkinAnalysisHistory {
+  id: number;
+  userId: number;
+  imageUrl: string;
+  analysisDate: string;
+  skinType: string;
+  skinAge?: number;
+  moisture?: number;
+  wrinkles?: number;
+  pigmentation?: number;
+  pores?: number;
+  acne?: number;
+  concerns: string[];
+  recommendations: string[];
+  skinDisease?: string;
+  skinState?: string;
+  needsMedicalAttention?: boolean;
+  confidence?: {
+    skinType?: number;
+    disease?: number;
+    state?: number;
+  };
+  detailedAnalysis?: any;
+  analysisResult: SkinAnalysisResult;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 피부 분석 저장 요청 타입
+export interface SaveSkinAnalysisRequest {
+  userId: number;
+  imageUrl: string;
+  analysisResult: SkinAnalysisResult;
+  additionalData?: {
+    skinAge?: number;
+    moisture?: number;
+    wrinkles?: number;
+    pigmentation?: number;
+    pores?: number;
+    acne?: number;
+  };
 }
 
 export const diagnosisService = {
@@ -185,6 +238,179 @@ export const diagnosisService = {
     }
   },
 
+  // AI 피부 분석 결과 저장
+  async saveSkinAnalysisResult(request: SaveSkinAnalysisRequest): Promise<{ success: boolean; analysisId?: number; message: string }> {
+    try {
+      console.log('💾 AI 피부 분석 결과 저장 중...', request);
+      
+      const saveData = {
+        user_id: request.userId,
+        image_url: request.imageUrl,
+        skin_type: request.analysisResult.skinType,
+        concerns: request.analysisResult.concerns,
+        recommendations: request.analysisResult.recommendations,
+        skin_disease: request.analysisResult.skinDisease,
+        skin_state: request.analysisResult.skinState,
+        needs_medical_attention: request.analysisResult.needsMedicalAttention,
+        confidence: request.analysisResult.confidence,
+        detailed_analysis: request.analysisResult.detailedAnalysis,
+        skin_age: request.additionalData?.skinAge,
+        moisture: request.additionalData?.moisture,
+        wrinkles: request.additionalData?.wrinkles,
+        pigmentation: request.additionalData?.pigmentation,
+        pores: request.additionalData?.pores,
+        acne: request.additionalData?.acne,
+        analysis_date: new Date().toISOString(),
+      };
+      
+      // 실제 백엔드 API 호출
+      const response: any = await medicalApi.saveSkinAnalysis(saveData);
+      
+      return {
+        success: true,
+        analysisId: response.id || response.data?.id,
+        message: 'AI 피부 분석 결과가 성공적으로 저장되었습니다.'
+      };
+    } catch (error) {
+      console.error('❌ AI 피부 분석 결과 저장 실패:', error);
+      return {
+        success: false,
+        message: 'AI 피부 분석 결과 저장에 실패했습니다.'
+      };
+    }
+  },
+
+  // 사용자의 AI 피부 분석 내역 조회
+  async getSkinAnalysisHistory(userId: number): Promise<SkinAnalysisHistory[]> {
+    try {
+      console.log('📋 AI 피부 분석 내역 조회 중...', userId);
+      
+      const response: any = await medicalApi.getSkinAnalysisHistory(userId);
+      console.log('📋 백엔드 응답:', response);
+      
+      // 백엔드 응답 구조: { success: true, data: [...] }
+      const analysisData = response?.data || [];
+      
+      // API 응답을 SkinAnalysisHistory 타입에 맞게 변환
+      const formattedHistory: SkinAnalysisHistory[] = analysisData.map((analysis: any) => ({
+        id: analysis.id,
+        userId: analysis.user_id || analysis.userId,
+        imageUrl: analysis.image_url || analysis.imageUrl,
+        analysisDate: analysis.analysis_date || analysis.analysisDate || analysis.createdAt,
+        skinType: analysis.skin_type || analysis.skinType,
+        skinAge: analysis.skin_age || analysis.skinAge,
+        moisture: analysis.moisture,
+        wrinkles: analysis.wrinkles,
+        pigmentation: analysis.pigmentation,
+        pores: analysis.pores,
+        acne: analysis.acne,
+        concerns: analysis.concerns || [],
+        recommendations: analysis.recommendations || [],
+        skinDisease: analysis.skin_disease || analysis.skinDisease,
+        skinState: analysis.skin_state || analysis.skinState,
+        needsMedicalAttention: analysis.needs_medical_attention || analysis.needsMedicalAttention,
+        confidence: analysis.confidence,
+        detailedAnalysis: analysis.detailed_analysis || analysis.detailedAnalysis,
+        analysisResult: {
+          skinType: analysis.skin_type || analysis.skinType,
+          concerns: analysis.concerns || [],
+          recommendations: analysis.recommendations || [],
+          imageUrl: analysis.image_url || analysis.imageUrl,
+          skinDisease: analysis.skin_disease || analysis.skinDisease,
+          skinState: analysis.skin_state || analysis.skinState,
+          needsMedicalAttention: analysis.needs_medical_attention || analysis.needsMedicalAttention,
+          confidence: analysis.confidence,
+          detailedAnalysis: analysis.detailed_analysis || analysis.detailedAnalysis,
+        },
+        createdAt: analysis.created_at || analysis.createdAt || analysis.analysisDate,
+        updatedAt: analysis.updated_at || analysis.updatedAt || analysis.analysisDate,
+      }));
+      
+      console.log('📋 변환된 피부 분석 내역:', formattedHistory);
+      return formattedHistory;
+    } catch (error) {
+      console.error('❌ AI 피부 분석 내역 조회 실패:', error);
+      // 오류 시 빈 배열 반환
+      return [];
+    }
+  },
+
+  // 특정 AI 피부 분석 결과 상세 조회
+  async getSkinAnalysisDetail(analysisId: number): Promise<SkinAnalysisHistory | null> {
+    try {
+      console.log('🔍 AI 피부 분석 상세 조회 중...', analysisId);
+      
+      const response: any = await medicalApi.getSkinAnalysisDetail(analysisId);
+      
+      if (!response || !response.data) {
+        console.log('❌ 피부 분석 결과를 찾을 수 없습니다:', analysisId);
+        return null;
+      }
+      
+      const analysis = response.data;
+      
+      const formattedAnalysis: SkinAnalysisHistory = {
+        id: analysis.id,
+        userId: analysis.user_id || analysis.userId,
+        imageUrl: analysis.image_url || analysis.imageUrl,
+        analysisDate: analysis.analysis_date || analysis.analysisDate || analysis.createdAt,
+        skinType: analysis.skin_type || analysis.skinType,
+        skinAge: analysis.skin_age || analysis.skinAge,
+        moisture: analysis.moisture,
+        wrinkles: analysis.wrinkles,
+        pigmentation: analysis.pigmentation,
+        pores: analysis.pores,
+        acne: analysis.acne,
+        concerns: analysis.concerns || [],
+        recommendations: analysis.recommendations || [],
+        skinDisease: analysis.skin_disease || analysis.skinDisease,
+        skinState: analysis.skin_state || analysis.skinState,
+        needsMedicalAttention: analysis.needs_medical_attention || analysis.needsMedicalAttention,
+        confidence: analysis.confidence,
+        detailedAnalysis: analysis.detailed_analysis || analysis.detailedAnalysis,
+        analysisResult: {
+          skinType: analysis.skin_type || analysis.skinType,
+          concerns: analysis.concerns || [],
+          recommendations: analysis.recommendations || [],
+          imageUrl: analysis.image_url || analysis.imageUrl,
+          skinDisease: analysis.skin_disease || analysis.skinDisease,
+          skinState: analysis.skin_state || analysis.skinState,
+          needsMedicalAttention: analysis.needs_medical_attention || analysis.needsMedicalAttention,
+          confidence: analysis.confidence,
+          detailedAnalysis: analysis.detailed_analysis || analysis.detailedAnalysis,
+        },
+        createdAt: analysis.created_at || analysis.createdAt || analysis.analysisDate,
+        updatedAt: analysis.updated_at || analysis.updatedAt || analysis.analysisDate,
+      };
+      
+      console.log('✅ AI 피부 분석 상세 조회 성공:', formattedAnalysis);
+      return formattedAnalysis;
+    } catch (error) {
+      console.error('❌ AI 피부 분석 상세 조회 실패:', error);
+      return null;
+    }
+  },
+
+  // AI 피부 분석 결과 삭제
+  async deleteSkinAnalysisResult(analysisId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🗑️ AI 피부 분석 결과 삭제 중...', analysisId);
+      
+      await medicalApi.deleteSkinAnalysis(analysisId);
+      
+      return {
+        success: true,
+        message: 'AI 피부 분석 결과가 성공적으로 삭제되었습니다.'
+      };
+    } catch (error) {
+      console.error('❌ AI 피부 분석 결과 삭제 실패:', error);
+      return {
+        success: false,
+        message: 'AI 피부 분석 결과 삭제에 실패했습니다.'
+      };
+    }
+  },
+
   // AI 피부 분석
   async analyzeSkin(imageUri: string): Promise<SkinAnalysisResult | null> {
     try {
@@ -196,20 +422,72 @@ export const diagnosisService = {
         uri: imageUri,
         type: 'image/jpeg',
         name: 'skin_analysis.jpg',
+      } as any);
+      
+      // 실제 AI 분석 API 호출
+      const response = await fetch('http://10.0.2.2:8000/api/ai/analyze-skin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
       });
       
-      // 실제 API 호출
-      const response: any = await medicalApi.analyzeSkin(formData);
-      const result = response || response.data;
+      console.log('🔬 AI 분석 응답 상태:', response.status);
       
-      if (!result) return null;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ AI 분석 실패:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
       
-      return {
-        skinType: result.skinType || '알 수 없음',
-        concerns: result.concerns || [],
-        recommendations: result.recommendations || [],
+      const result = await response.json();
+      console.log('✅ AI 분석 성공:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'AI 분석에 실패했습니다');
+      }
+      
+      const analysisData = result.data;
+      
+      // 기존 SkinAnalysisResult 인터페이스에 맞게 변환
+      const analysisResult: SkinAnalysisResult = {
+        skinType: analysisData.skinType || '알 수 없음',
+        concerns: analysisData.concerns || [],
+        recommendations: analysisData.recommendations || [],
         imageUrl: imageUri,
+        // 추가 정보들
+        skinDisease: analysisData.skinDisease,
+        skinState: analysisData.skinState,
+        needsMedicalAttention: analysisData.needsMedicalAttention,
+        confidence: analysisData.confidence,
+        detailedAnalysis: analysisData.detailed_analysis,
       };
+
+      // 분석 결과를 자동으로 저장
+      const saveRequest: SaveSkinAnalysisRequest = {
+        userId: 1, // TODO: 실제 사용자 ID로 변경
+        imageUrl: imageUri,
+        analysisResult: analysisResult,
+        additionalData: {
+          skinAge: analysisData.skinAge,
+          moisture: analysisData.moisture,
+          wrinkles: analysisData.wrinkles,
+          pigmentation: analysisData.pigmentation,
+          pores: analysisData.pores,
+          acne: analysisData.acne,
+        }
+      };
+
+      // 분석 결과 저장
+      const saveResult = await this.saveSkinAnalysisResult(saveRequest);
+      if (saveResult.success) {
+        console.log('✅ AI 피부 분석 결과 저장 완료');
+      } else {
+        console.warn('⚠️ AI 피부 분석 결과 저장 실패:', saveResult.message);
+      }
+
+      return analysisResult;
     } catch (error) {
       console.error('❌ AI 피부 분석 실패:', error);
       return null;

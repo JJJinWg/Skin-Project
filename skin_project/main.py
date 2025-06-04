@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from fastapi import FastAPI, Depends, HTTPException, status, Body, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Body, Request, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -32,6 +32,18 @@ from medical_crud import (
     get_medical_records, create_medical_record,
     get_doctor_reviews, create_doctor_review,
     get_available_times
+)
+
+# AI 모델 서비스 import
+from ai_model_service import skin_analysis_service
+
+# AI 피부 분석 CRUD import
+from skin_analysis_crud import (
+    create_skin_analysis_result,
+    get_user_skin_analysis_history,
+    get_skin_analysis_by_id,
+    delete_skin_analysis_result,
+    format_analysis_for_api
 )
 
 # 추천 시스템 import (임시 주석 처리)
@@ -1713,8 +1725,52 @@ def init_database():
         if not create_tables():
             raise HTTPException(status_code=500, detail="테이블 생성 실패")
         
-        # 2-1. birthdate 컬럼 추가 (테이블이 이미 생성된 경우를 위해)
-        print("📅 2-1단계: users 테이블에 birthdate 컬럼 추가 중...")
+        # 2-1. AI 피부 분석 테이블 생성
+        print("🔬 2-1단계: AI 피부 분석 테이블 생성 중...")
+        try:
+            from create_skin_analysis_tables import create_skin_analysis_tables, create_indexes
+            
+            # AI 피부 분석 테이블들 생성 (프로그래밍 방식으로)
+            from core.models.db_models import (
+                SkinAnalysisResult, 
+                SkinAnalysisConcern, 
+                SkinAnalysisRecommendation, 
+                SkinAnalysisImage
+            )
+            
+            # 특정 테이블들만 생성 (기존 테이블은 건드리지 않음)
+            tables_to_create = [
+                SkinAnalysisResult.__table__,
+                SkinAnalysisConcern.__table__,
+                SkinAnalysisRecommendation.__table__,
+                SkinAnalysisImage.__table__
+            ]
+            
+            for table in tables_to_create:
+                print(f"✅ AI 테이블 생성: {table.name}")
+                table.create(engine, checkfirst=True)
+            
+            # AI 피부 분석 인덱스들 생성
+            with engine.connect() as conn:
+                indexes = [
+                    "CREATE INDEX IF NOT EXISTS idx_user_recent_analysis ON skin_analysis_results(user_id, analysis_date DESC);",
+                    "CREATE INDEX IF NOT EXISTS idx_medical_attention_cases ON skin_analysis_results(needs_medical_attention, analysis_date DESC);",
+                    "CREATE INDEX IF NOT EXISTS idx_skin_type_stats ON skin_analysis_results(skin_type, analysis_date);",
+                    "CREATE INDEX IF NOT EXISTS idx_concern_search ON skin_analysis_concerns(concern, severity);",
+                    "CREATE INDEX IF NOT EXISTS idx_recommendation_type ON skin_analysis_recommendations(recommendation_type, priority);"
+                ]
+                
+                for index_sql in indexes:
+                    print(f"📌 AI 인덱스 생성: {index_sql}")
+                    conn.execute(text(index_sql))
+                    conn.commit()
+            
+            print("✅ AI 피부 분석 테이블 및 인덱스 생성 완료")
+        except Exception as e:
+            print(f"⚠️ AI 피부 분석 테이블 생성 중 오류 (계속 진행): {e}")
+        
+        # 2-2. birthdate 컬럼 추가 (테이블이 이미 생성된 경우를 위해)
+        print("📅 2-2단계: users 테이블에 birthdate 컬럼 추가 중...")
         db = SessionLocal()
         try:
             # birthdate 컬럼이 없으면 추가
@@ -1867,7 +1923,7 @@ def init_database():
                     Doctor(
                         hospital_id=2,
                         name="이영희",
-                        specialization="성형외과",
+                        specialization="피부과",
                         experience_years=12,
                         education="연세대학교 의과대학 졸업\n연세대학교병원 성형외과 전공의\n대한성형외과학회 정회원",
                         description="성형외과 전문의로 자연스러운 미용 시술을 전문으로 합니다.",
@@ -2546,63 +2602,71 @@ def init_database():
         # import_response에 리뷰 수 추가
         import_response['summary']['리뷰_수'] = total_reviews
 
-        # 6. 진료 요청서 샘플 데이터 추가
+        # 6. 진료 요청서 샘플 데이터 추가 (의료진 데이터 추가 후)
         print("📋 6단계: 진료 요청서 샘플 데이터 추가 중...")
-        db = SessionLocal()
+        
         try:
+            from datetime import datetime, timedelta
+            db = SessionLocal()
+            
+            # 기존 진료 요청서 데이터 삭제
+            db.execute(text("DELETE FROM diagnosis_requests"))
+            db.commit()
+            
+            # 샘플 진료 요청서 데이터
             diagnosis_requests = [
                 DiagnosisRequest(
                     user_id=1,
-                    symptoms="얼굴에 여드름이 많이 났어요. 특히 이마와 볼 부위에 염증성 여드름이 계속 생깁니다.",
-                    duration="2주째",
+                    symptoms="피부에 발진이 생겼어요. 가려움증도 있습니다.",
+                    duration="며칠",
                     severity="moderate",
-                    previous_treatment="약국에서 여드름 연고를 발라봤지만 효과가 없었습니다.",
+                    previous_treatment="특별한 치료 없음",
                     allergies="없음",
-                    medications="현재 복용 중인 약물 없음",
-                    medical_history="고등학교 때 여드름으로 피부과 치료받은 적 있음",
-                    additional_notes="생리 전에 더 심해지는 것 같습니다.",
+                    medications="없음",
+                    medical_history="없음",
+                    additional_notes="볼과 이마 부분에 집중되어 있고, 간지러워서 자꾸 긁게 됩니다.",
                     images=[],
                     status="pending"
                 ),
                 DiagnosisRequest(
                     user_id=2,
-                    symptoms="피부가 건조하고 각질이 많이 일어납니다. 세안 후 당김이 심해요.",
-                    duration="1개월 이상",
-                    severity="mild",
-                    previous_treatment="보습제를 여러 개 써봤지만 개선되지 않았습니다.",
+                    symptoms="여드름이 심해졌어요. 염증도 있는 것 같습니다.",
+                    duration="2주째",
+                    severity="severe",
+                    previous_treatment="시중 여드름 연고 사용",
                     allergies="없음",
-                    medications="오메가3 복용 중",
-                    medical_history="없음",
-                    additional_notes="환절기에 더 심해지는 경향이 있습니다.",
+                    medications="없음",
+                    medical_history="고등학교 때 여드름 치료 경험",
+                    additional_notes="최근 스트레스를 많이 받아서 그런지 여드름이 악화되었습니다. 턱과 볼 주변에 화농성 여드름이 생겼어요.",
                     images=[],
                     status="reviewed",
-                    reviewed_by_doctor_id=2,
-                    review_notes="건성 피부로 진단. 적절한 보습 케어 필요.",
-                    reviewed_at=datetime.now() - timedelta(days=2)
+                    reviewed_by_doctor_id=1,
+                    review_notes="염증성 여드름으로 진단. 전문 치료 필요",
+                    reviewed_at=datetime.now() - timedelta(hours=2)
                 ),
                 DiagnosisRequest(
                     user_id=3,
-                    symptoms="아토피가 재발한 것 같습니다. 팔꿈치와 무릎 뒤쪽이 가렵고 빨갛게 되었어요.",
-                    duration="1주일째",
-                    severity="severe",
-                    previous_treatment="이전에 처방받은 스테로이드 연고를 발랐습니다.",
-                    allergies="집먼지 진드기, 동물털",
-                    medications="항히스타민제 복용 중",
-                    medical_history="어릴 때부터 아토피 피부염 있음. 작년에 치료받아서 호전된 상태였음.",
-                    additional_notes="최근 스트레스를 많이 받아서 재발한 것 같습니다.",
+                    symptoms="건조하고 각질이 심해요. 화장이 들뜨는 증상도 있습니다.",
+                    duration="1개월",
+                    severity="mild",
+                    previous_treatment="시중 보습제 사용",
+                    allergies="없음",
+                    medications="비타민 보충제",
+                    medical_history="없음",
+                    additional_notes="겨울이 되면서 피부가 너무 건조해졌습니다. 세안 후에는 당기는 느낌이 심하고, 화장을 해도 각질 때문에 들뜹니다.",
                     images=[],
-                    status="completed"
+                    status="pending"
                 ),
                 DiagnosisRequest(
                     user_id=4,
-                    symptoms="얼굴 전체적으로 기미와 잡티가 늘어나고 있습니다. 특히 볼과 이마 부위가 심해요.",
-                    duration="6개월째",
-                    severity="moderate",
-                    previous_treatment="미백 화장품을 사용해봤지만 효과가 제한적이었습니다.",
-                    allergies="없음",
-                    medications="비타민C 복용 중",
-                    medical_history="출산 후 기미가 생기기 시작함",
-                    additional_notes="레이저 치료에 대해 상담받고 싶습니다.",
+                    symptoms="알레르기 반응 같은 증상이 있어요. 붓기도 있습니다.",
+                    duration="3일",
+                    severity="severe",
+                    previous_treatment="냉찜질, 항히스타민제 복용",
+                    allergies="화장품 알레르기 의심",
+                    medications="항히스타민제 복용 중",
+                    medical_history="아토피 피부염 과거력",
+                    additional_notes="새로운 화장품을 사용한 후부터 얼굴이 빨갛게 되고 부어올랐습니다. 접촉성 피부염이 의심됩니다.",
                     images=[],
                     status="pending"
                 )
@@ -2652,17 +2716,63 @@ def init_database():
         finally:
             db.close()
 
+        # 7. AI 피부 분석 샘플 데이터 추가
+        print("🔬 7단계: AI 피부 분석 샘플 데이터 추가 중...")
+        
+        try:
+            from skin_analysis_crud import create_skin_analysis_result
+            from datetime import datetime, timedelta
+            
+            db = SessionLocal()
+            
+            # 샘플 AI 피부 분석 데이터 추가
+            sample_analysis = create_skin_analysis_result(
+                db=db,
+                user_id=1,
+                image_url="file://sample_skin_image.jpg",
+                skin_type="oily",  # 영어로 저장 (프론트엔드에서 한국어로 변환)
+                concerns=["acne", "pores"],  # 영어로 저장
+                recommendations=["순한 세안제 사용 권장", "모공 관리 제품 사용", "유분기 적은 보습제 선택"],
+                skin_disease=None,
+                skin_state="lesion",  # 영어로 저장 (병변 상태)
+                needs_medical_attention=True,
+                confidence={
+                    "skinType": 0.95,
+                    "disease": 0.80,
+                    "state": 0.87
+                },
+                detailed_analysis={
+                    "model_version": "v1.0",
+                    "processing_time": 2.3,
+                    "regions_analyzed": ["T-zone", "cheeks", "jawline"]
+                },
+                analysis_date=datetime.now() - timedelta(days=1)  # 어제 분석된 것으로 설정
+            )
+            
+            db.close()
+            print("✅ AI 피부 분석 샘플 데이터 1개 추가 완료")
+            
+        except Exception as e:
+            print(f"⚠️ AI 피부 분석 샘플 데이터 추가 중 오류 (무시): {e}")
+                
+        except Exception as e:
+            print(f"❌ 진료 요청서 데이터 추가 실패: {e}")
+        finally:
+            db.close()
+
         return {
             "success": True,
             "message": "🎉 데이터베이스가 실제 크롤링 데이터로 완전히 초기화되었습니다!",
             "steps": [
                 "1️⃣ 기존 데이터 완전 삭제",
                 "2️⃣ 모든 테이블 생성",
+                "2️⃣-1 AI 피부 분석 테이블 생성 (skin_analysis_results, skin_analysis_concerns, skin_analysis_recommendations, skin_analysis_images)",
                 "3️⃣ 기본 데이터 추가 (사용자, 쇼핑몰, 병원, 의사)",
                 "3️⃣-1 의료진 샘플 데이터 추가 (예약, 진료기록, 의사리뷰, 스케줄)",
                 f"4️⃣ 실제 크롤링 제품 {import_response['summary']['총_제품']}개 추가",
                 f"5️⃣ 실제 크롤링 리뷰 {import_response['summary']['리뷰_수']}개 추가",
-                "6️⃣ 진료 요청서 샘플 데이터 4개 추가 및 예약 연결"
+                "6️⃣ 진료 요청서 샘플 데이터 4개 추가 및 예약 연결",
+                "7️⃣ AI 피부 분석 샘플 데이터 1개 추가"
             ],
             "summary": {
                 "제품_수": import_response['summary']['총_제품'],
@@ -2676,6 +2786,7 @@ def init_database():
                 f"✅ {import_response['summary']['리뷰_수']}개의 실제 사용자 리뷰!",
                 "✅ 완전한 쇼핑몰 판매정보!",
                 "✅ 진료 요청서 시스템 완비!",
+                "✅ AI 피부 분석 시스템 완비!",
                 "✅ 프로덕션 레디!"
             ]
         }
@@ -3609,3 +3720,256 @@ def mark_appointment_notification_read(appointment_id: int, db: Session = Depend
     except Exception as e:
         print(f"❌ 예약 알림 읽음 처리 실패: {e}")
         raise HTTPException(status_code=500, detail="알림 읽음 처리 중 오류가 발생했습니다")
+
+# ========== AI 피부 분석 API ==========
+@app.post("/api/ai/analyze-skin")
+async def analyze_skin_image(image: UploadFile = File(...)):
+    """AI를 사용한 종합 피부 분석"""
+    try:
+        print(f"🔬 AI 피부 분석 요청 받음: {image.filename}")
+        
+        # 이미지 파일 검증
+        if not image.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="이미지 파일만 업로드 가능합니다")
+        
+        # 파일 크기 검증 (10MB 제한)
+        image_data = await image.read()
+        if len(image_data) > 10 * 1024 * 1024:  # 10MB
+            raise HTTPException(status_code=400, detail="이미지 파일 크기는 10MB 이하여야 합니다")
+        
+        print(f"📁 이미지 크기: {len(image_data)} bytes")
+        
+        # AI 모델 로딩 (처음 호출 시)
+        if not skin_analysis_service.models_loaded:
+            print("🤖 AI 모델 로딩 중...")
+            skin_analysis_service.load_models()
+        
+        # AI 분석 수행
+        print("🔬 AI 분석 시작...")
+        analysis_result = await skin_analysis_service.analyze_skin_comprehensive(image_data)
+        
+        if not analysis_result.get("success"):
+            raise HTTPException(
+                status_code=500, 
+                detail=analysis_result.get("error", "AI 분석에 실패했습니다")
+            )
+        
+        # 프론트엔드 호환성을 위한 응답 형식 변환
+        frontend_response = {
+            "success": True,
+            "data": {
+                "skinType": analysis_result["analysis_summary"]["type"],
+                "skinDisease": analysis_result["analysis_summary"]["disease"],
+                "skinState": analysis_result["analysis_summary"]["state"],
+                "concerns": [
+                    analysis_result["analysis_summary"]["disease"],
+                    analysis_result["analysis_summary"]["state"]
+                ],
+                "recommendations": analysis_result["recommendations"],
+                "needsMedicalAttention": analysis_result["analysis_summary"]["needs_medical_attention"],
+                "confidence": {
+                    "skinType": analysis_result["skin_type"].get("confidence", 0),
+                    "disease": analysis_result["skin_disease"].get("confidence", 0), 
+                    "state": analysis_result["skin_state"].get("confidence", 0)
+                },
+                "detailed_analysis": {
+                    "skin_type": analysis_result["skin_type"],
+                    "skin_disease": analysis_result["skin_disease"],
+                    "skin_state": analysis_result["skin_state"]
+                }
+            }
+        }
+        
+        print(f"✅ AI 분석 완료: {analysis_result['analysis_summary']}")
+        return frontend_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ AI 피부 분석 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"AI 분석 중 오류가 발생했습니다: {str(e)}")
+
+@app.get("/api/ai/models/status")
+def get_ai_models_status():
+    """AI 모델 로딩 상태 확인"""
+    try:
+        return {
+            "success": True,
+            "data": {
+                "models_loaded": skin_analysis_service.models_loaded,
+                "available_models": {
+                    "skin_disease": skin_analysis_service.skin_disease_model is not None,
+                    "skin_state": skin_analysis_service.skin_state_model is not None,
+                    "skin_type": skin_analysis_service.skin_type_model is not None
+                },
+                "model_paths": {
+                    "disease_model": skin_analysis_service.disease_model_path,
+                    "state_model": skin_analysis_service.state_model_path,
+                    "type_model": skin_analysis_service.type_model_path
+                }
+            }
+        }
+    except Exception as e:
+        print(f"❌ AI 모델 상태 확인 실패: {e}")
+        raise HTTPException(status_code=500, detail="AI 모델 상태 확인 중 오류가 발생했습니다")
+
+@app.post("/api/ai/models/reload")
+def reload_ai_models():
+    """AI 모델 재로딩"""
+    try:
+        print("🔄 AI 모델 재로딩 시작...")
+        skin_analysis_service.load_models()
+        
+        return {
+            "success": True,
+            "message": "AI 모델이 재로딩되었습니다",
+            "data": {
+                "models_loaded": skin_analysis_service.models_loaded
+            }
+        }
+    except Exception as e:
+        print(f"❌ AI 모델 재로딩 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"AI 모델 재로딩 중 오류가 발생했습니다: {str(e)}")
+
+# 시작 시 AI 모델 로딩
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 AI 모델 로딩"""
+    try:
+        print("🚀 서버 시작 - AI 모델 로딩 중...")
+        skin_analysis_service.load_models()
+        if skin_analysis_service.models_loaded:
+            print("✅ AI 모델 로딩 완료!")
+        else:
+            print("⚠️ AI 모델 로딩에 실패했습니다. 서비스는 계속 실행됩니다.")
+    except Exception as e:
+        print(f"❌ 시작 시 AI 모델 로딩 실패: {e}")
+        print("⚠️ AI 분석 기능을 사용할 수 없습니다.")
+
+# ========== AI 피부 분석 내역 저장/조회 API ==========
+@app.post("/api/skin-analysis/save")
+async def save_skin_analysis_result(request: Request, db: Session = Depends(get_db)):
+    """AI 피부 분석 결과 저장"""
+    try:
+        data = await request.json()
+        print(f"💾 AI 피부 분석 결과 저장 요청: {data}")
+        
+        # 필수 필드 검증
+        required_fields = ['user_id', 'image_url', 'skin_type', 'concerns', 'recommendations']
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"필수 필드가 누락되었습니다: {field}")
+        
+        # 데이터베이스에 저장
+        analysis = create_skin_analysis_result(
+            db=db,
+            user_id=data['user_id'],
+            image_url=data['image_url'],
+            skin_type=data['skin_type'],
+            concerns=data['concerns'],
+            recommendations=data['recommendations'],
+            skin_disease=data.get('skin_disease'),
+            skin_state=data.get('skin_state'),
+            needs_medical_attention=data.get('needs_medical_attention', False),
+            confidence=data.get('confidence'),
+            detailed_analysis=data.get('detailed_analysis'),
+            skin_age=data.get('skin_age'),
+            moisture_score=data.get('moisture'),
+            wrinkles_score=data.get('wrinkles'),
+            pigmentation_score=data.get('pigmentation'),
+            pores_score=data.get('pores'),
+            acne_score=data.get('acne'),
+            analysis_date=datetime.fromisoformat(data['analysis_date'].replace('Z', '+00:00')) if data.get('analysis_date') else None
+        )
+        
+        print(f"✅ AI 피부 분석 결과 저장 완료: ID {analysis.id}")
+        
+        return {
+            "success": True,
+            "data": {
+                "id": analysis.id,
+                "message": "AI 피부 분석 결과가 저장되었습니다."
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ AI 피부 분석 결과 저장 실패: {e}")
+        raise HTTPException(status_code=500, detail="AI 피부 분석 결과 저장 중 오류가 발생했습니다.")
+
+@app.get("/api/skin-analysis/history/{user_id}")
+def get_skin_analysis_history_api(user_id: int, skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    """사용자의 AI 피부 분석 내역 조회"""
+    try:
+        print(f"📋 사용자 {user_id}의 AI 피부 분석 내역 조회 (skip={skip}, limit={limit})")
+        
+        # 데이터베이스에서 분석 내역 조회
+        analyses = get_user_skin_analysis_history(db, user_id, skip, limit)
+        
+        # API 응답 형식으로 변환
+        formatted_analyses = [format_analysis_for_api(analysis) for analysis in analyses]
+        
+        print(f"✅ AI 피부 분석 내역 조회 완료: {len(formatted_analyses)}개")
+        
+        return {
+            "success": True,
+            "data": formatted_analyses
+        }
+        
+    except Exception as e:
+        print(f"❌ AI 피부 분석 내역 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="AI 피부 분석 내역 조회 중 오류가 발생했습니다.")
+
+@app.get("/api/skin-analysis/{analysis_id}")
+def get_skin_analysis_detail_api(analysis_id: int, db: Session = Depends(get_db)):
+    """특정 AI 피부 분석 결과 상세 조회"""
+    try:
+        print(f"🔍 AI 피부 분석 상세 조회: ID {analysis_id}")
+        
+        # 데이터베이스에서 분석 결과 조회
+        analysis = get_skin_analysis_by_id(db, analysis_id)
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="AI 피부 분석 결과를 찾을 수 없습니다.")
+        
+        # API 응답 형식으로 변환
+        formatted_analysis = format_analysis_for_api(analysis)
+        
+        print(f"✅ AI 피부 분석 상세 조회 완료: ID {analysis_id}")
+        
+        return {
+            "success": True,
+            "data": formatted_analysis
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ AI 피부 분석 상세 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="AI 피부 분석 상세 조회 중 오류가 발생했습니다.")
+
+@app.delete("/api/skin-analysis/{analysis_id}")
+def delete_skin_analysis_api(analysis_id: int, user_id: Optional[int] = None, db: Session = Depends(get_db)):
+    """AI 피부 분석 결과 삭제"""
+    try:
+        print(f"🗑️ AI 피부 분석 결과 삭제: ID {analysis_id}")
+        
+        # 데이터베이스에서 분석 결과 삭제
+        success = delete_skin_analysis_result(db, analysis_id, user_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="삭제할 AI 피부 분석 결과를 찾을 수 없습니다.")
+        
+        print(f"✅ AI 피부 분석 결과 삭제 완료: ID {analysis_id}")
+        
+        return {
+            "success": True,
+            "message": "AI 피부 분석 결과가 삭제되었습니다."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ AI 피부 분석 결과 삭제 실패: {e}")
+        raise HTTPException(status_code=500, detail="AI 피부 분석 결과 삭제 중 오류가 발생했습니다.")

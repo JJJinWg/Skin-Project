@@ -171,7 +171,7 @@ const HomeScreen = () => {
               data={doctors}
               horizontal
               keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
+              scrollEnabled={true}
               nestedScrollEnabled={true}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.doctorCard}>
@@ -286,7 +286,7 @@ const HomeScreen = () => {
                     <Text style={styles.productName}>{item.name}</Text>
                     <View style={styles.ratingContainer}>
                       <Text style={styles.productRating}>⭐ {item.rating}</Text>
-                      <Text style={styles.reviewCount}>({item.reviews})</Text>
+                      <Text style={styles.reviewCount}>리뷰 {item.reviewCount}개</Text>
                     </View>
                   </View>
                 </TouchableOpacity>

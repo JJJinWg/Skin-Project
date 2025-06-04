@@ -213,6 +213,12 @@ export const medicalApi = {
   saveRecommendationHistory: (data: any) => apiClient.post('/api/recommendations/save', data),
   getRecommendationHistory: (userId: number) => apiClient.get(`/api/recommendations/history/${userId}`),
   deleteRecommendationHistory: (historyId: number) => apiClient.delete(`/api/recommendations/${historyId}`),
+
+  // AI 피부 분석 관련 API
+  saveSkinAnalysis: (data: any) => apiClient.post('/api/skin-analysis/save', data),
+  getSkinAnalysisHistory: (userId: number) => apiClient.get(`/api/skin-analysis/history/${userId}`),
+  getSkinAnalysisDetail: (analysisId: number) => apiClient.get(`/api/skin-analysis/${analysisId}`),
+  deleteSkinAnalysis: (analysisId: number) => apiClient.delete(`/api/skin-analysis/${analysisId}`),
 };
 
 // 기타 API
