@@ -599,10 +599,10 @@ export const getSkinOptions = async (): Promise<SkinOptions> => {
     
     try {
       // 백엔드 API 시도
-      const response = await medicalApi.getSkinOptions() as any;
-      
+    const response = await medicalApi.getSkinOptions() as any;
+    
       // 백엔드 응답이 있으면 백엔드 데이터와 기본 데이터 병합
-      if (response.success && response.data) {
+    if (response.success && response.data) {
         const backendSkinTypes = response.data.skinTypes || [];
         const backendConcerns = response.data.concerns || [];
         
@@ -619,10 +619,10 @@ export const getSkinOptions = async (): Promise<SkinOptions> => {
         
         const cleanConcerns = Array.from(new Set([...defaultConcerns, ...backendConcerns]));
         
-        return {
+      return {
           skinTypes: cleanSkinTypes,
           concerns: cleanConcerns
-        };
+      };
       }
     } catch (apiError) {
       console.log('💡 백엔드 API를 사용할 수 없어 기본 옵션을 사용합니다.');
@@ -673,7 +673,7 @@ export async function getSkinAnalysisHistory(userId: number): Promise<any[]> {
     }));
   } catch (error) {
     console.error('❌ 피부 분석 내역 조회 실패 (productService):', error);
-    return [];
+  return [];
   }
 }
 
@@ -735,18 +735,18 @@ export const getRecommendationHistory = async (userId: number): Promise<Cosmetic
         console.log('🔍 개별 추천 내역 항목:', item);
         
         return {
-          id: item.id,
-          date: item.date,
-          skinType: item.skinType,
-          concerns: item.concerns,
+        id: item.id,
+        date: item.date,
+        skinType: item.skinType,
+        concerns: item.concerns,
           explanation: item.explanation,
-          recommendedProducts: item.recommendedProducts.map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            category: product.category,
-            image: getProductImage(null, product.id) // 기본 이미지 사용
-          }))
+        recommendedProducts: item.recommendedProducts.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          image: getProductImage(null, product.id) // 기본 이미지 사용
+        }))
         };
       });
     }

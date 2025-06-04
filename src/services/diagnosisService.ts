@@ -424,28 +424,16 @@ export const diagnosisService = {
         name: 'skin_analysis.jpg',
       } as any);
       
-      // 실제 AI 분석 API 호출
-      const response = await fetch('http://10.0.2.2:8000/api/ai/analyze-skin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
-      });
+      // 실제 AI 분석 API 호출 - apiClient를 통해 중앙화된 URL 사용
+      const { medicalApi } = await import('./apiClient');
+      const result: any = await medicalApi.analyzeSkin(formData);
       
-      console.log('🔬 AI 분석 응답 상태:', response.status);
+      console.log('🔬 AI 분석 응답 상태:', result.status);
       
-      if (!response.ok) {
-        const errorText = await response.text();
+      if (!result.ok) {
+        const errorText = await result.text();
         console.error('❌ AI 분석 실패:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-      
-      const result = await response.json();
-      console.log('✅ AI 분석 성공:', result);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'AI 분석에 실패했습니다');
+        throw new Error(`HTTP ${result.status}: ${errorText}`);
       }
       
       const analysisData = result.data;

@@ -1,4 +1,5 @@
 // 리뷰 관련 서비스 - 실제 API 연동
+import { medicalApi } from './apiClient';
 
 // Review 타입 정의 및 export
 export type Review = {
@@ -14,16 +15,10 @@ export type Review = {
   helpful: number
 }
 
-const API_BASE_URL = 'http://10.0.2.2:8000';
-
 // 제품 목록 조회
 export const getProducts = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/products`);
-    if (!response.ok) {
-      throw new Error('제품 목록을 불러올 수 없습니다.');
-    }
-    return await response.json();
+    return await medicalApi.getProducts();
   } catch (error) {
     console.error('제품 목록 로딩 실패:', error);
     throw error;
@@ -38,19 +33,7 @@ export const createReview = async (reviewData: {
   images?: string[];
 }): Promise<{ success: boolean; reviewId?: number; message: string }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/reviews`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(reviewData),
-    });
-    
-    if (!response.ok) {
-      throw new Error('리뷰 등록에 실패했습니다.');
-    }
-    
-    const result = await response.json();
+    const result: any = await medicalApi.createReview(reviewData);
     
     return {
       success: true,
@@ -72,12 +55,7 @@ export const getUserReviews = async (): Promise<Review[]> => {
     console.log('📝 사용자 리뷰 목록 조회 중...');
     
     // 실제 API 호출 (사용자 ID는 실제로는 인증에서 가져와야 함)
-    const response = await fetch(`${API_BASE_URL}/api/reviews/user/1`);
-    if (!response.ok) {
-      throw new Error('리뷰 목록을 불러올 수 없습니다.');
-    }
-    
-    const reviewsData = await response.json();
+    const reviewsData: any = await medicalApi.getUserReviews(1);
     
     // API 응답을 Review 타입에 맞게 변환
     const formattedReviews: Review[] = reviewsData.map((review: any) => ({
@@ -117,13 +95,7 @@ export const getUserReviews = async (): Promise<Review[]> => {
 // 리뷰 삭제
 export const deleteReview = async (reviewId: number): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/reviews/${reviewId}`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error('리뷰 삭제에 실패했습니다.');
-    }
+    await medicalApi.deleteReview(reviewId);
     
     return {
       success: true,
@@ -141,16 +113,7 @@ export const deleteReview = async (reviewId: number): Promise<{ success: boolean
 // 리뷰 수정
 export const updateReview = async (reviewId: number, data: { rating: number; content: string; images?: string[] }) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/reviews/${reviewId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      throw new Error('리뷰 수정에 실패했습니다.');
-    }
+    await medicalApi.updateReview(reviewId, data);
     return { success: true };
   } catch (error) {
     console.error('리뷰 수정 실패:', error);
