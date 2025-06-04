@@ -107,14 +107,13 @@ class MedicalRecord(Base):
 class DoctorReview(Base):
     __tablename__ = "doctor_reviews"
     __table_args__ = (
-        UniqueConstraint('appointment_id', name='unique_appointment_review'),
         CheckConstraint('rating >= 1 AND rating <= 5', name='check_rating_range'),
     )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="CASCADE"))
-    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"))
+    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=True)
     rating = Column(Integer, nullable=False)  # 1-5
     review_text = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
