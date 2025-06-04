@@ -89,7 +89,7 @@ const RegisterUser: React.FC = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>회원가입</Text>
-        <Text style={styles.subtitle}>피부 진단 및 화장품 추천을 위해 정보를 입력하세요.</Text>
+        <Text style={styles.subtitle}>회원가입 정보를 입력해주세요.</Text>
 
         {/* 이름 */}
         <View style={styles.inputContainer}>

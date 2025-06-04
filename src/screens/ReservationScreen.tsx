@@ -43,9 +43,7 @@ const ReservationScreen = () => {
   const specialties = [
     { id: "all", name: "전체" },
     { id: "dermatology", name: "피부과" },
-    { id: "allergy", name: "알레르기" },
-    { id: "cosmetic", name: "성형외과" },
-    { id: "internal", name: "내과" },
+  
   ]
 
   // 의사 데이터 가져오기 (실제 API에서만 가져옴)
