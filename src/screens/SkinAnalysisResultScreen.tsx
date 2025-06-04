@@ -15,6 +15,7 @@ import {
 import { type NavigationProp, useNavigation, type RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../types/navigation';
 import LinearGradient from 'react-native-linear-gradient';
+import { productService } from '../services/productService';
 
 type SkinAnalysisResultScreenProps = {
   route: RouteProp<RootStackParamList, 'SkinAnalysisResultScreen'>;
@@ -71,6 +72,55 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
     } else {
       Alert.alert('알림', '현재 피부 상태가 양호하여 즉시 진료가 필요하지 않습니다.');
     }
+  };
+
+  // AI 화장품 추천 받기
+  const handleCosmeticRecommendation = () => {
+    Alert.alert(
+      'AI 화장품 추천',
+      '현재 피부 분석 결과를 바탕으로 맞춤형 화장품을 추천받으시겠습니까?',
+      [
+        { text: '취소', style: 'cancel' },
+        { 
+          text: '추천받기', 
+          onPress: () => {
+            // 피부 민감도 설정 (기본값: 보통)
+            let sensitivity = '보통';
+            if (analysisResult?.skinType === '민감성') {
+              sensitivity = '높음';
+            } else if (analysisResult?.skinType === '건성') {
+              sensitivity = '보통';
+            } else if (analysisResult?.skinType === '지성') {
+              sensitivity = '낮음';
+            }
+
+            // AI 분석 결과를 피부 고민으로 매핑
+            const mappedConcerns = productService.mapAiResultToConcerns(analysisResult);
+            console.log('🔬 AI 분석 결과 매핑:', {
+              skinDisease: analysisResult?.skinDisease,
+              skinState: analysisResult?.skinState,
+              mappedConcerns: mappedConcerns
+            });
+
+            // 추가 정보: AI 추천사항을 모두 포함
+            const additionalInfo = analysisResult?.recommendations && Array.isArray(analysisResult.recommendations) 
+              ? analysisResult.recommendations.join('\n• ')
+              : '피부 건강을 위한 전문적인 관리가 필요합니다.';
+
+            // 화장품 추천 화면으로 이동하며 분석 결과 전달
+            navigation.navigate('FindCosmeticsScreen', {
+              prefilledData: {
+                skinType: analysisResult?.skinType || '정상',
+                sensitivity: sensitivity,
+                concerns: mappedConcerns, // AI 분석 결과에서 매핑된 피부 고민들
+                additionalInfo: `• ${additionalInfo}`,
+                fromAnalysis: true, // 분석 결과에서 온 것임을 표시
+              }
+            });
+          }
+        }
+      ]
+    );
   };
 
   // 신뢰도에 따른 색상 결정
@@ -192,6 +242,21 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
                 </LinearGradient>
               </TouchableOpacity>
 
+              {/* AI 화장품 추천 받기 버튼 */}
+              <TouchableOpacity
+                style={styles.cosmeticRecommendationButton}
+                onPress={handleCosmeticRecommendation}
+              >
+                <LinearGradient
+                  colors={['#84FAB0', '#8FD3F4']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cosmeticRecommendationButtonGradient}
+                >
+                  <Text style={styles.cosmeticRecommendationButtonText}>AI 화장품 추천 받기</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
               {/* 확인 버튼 (홈으로 이동) */}
               <TouchableOpacity
                 style={styles.confirmButton}
@@ -221,6 +286,21 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
           ) : (
             // 피부 상태가 정상인 경우
             <>
+              {/* AI 화장품 추천 받기 버튼 */}
+              <TouchableOpacity
+                style={styles.cosmeticRecommendationButton}
+                onPress={handleCosmeticRecommendation}
+              >
+                <LinearGradient
+                  colors={['#84FAB0', '#8FD3F4']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.cosmeticRecommendationButtonGradient}
+                >
+                  <Text style={styles.cosmeticRecommendationButtonText}>AI 화장품 추천 받기</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
               {/* 확인 버튼 (홈으로 이동) */}
               <TouchableOpacity
                 style={styles.confirmButton}
@@ -432,6 +512,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   diagnosisRequestButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cosmeticRecommendationButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 15,
+  },
+  cosmeticRecommendationButtonGradient: {
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  cosmeticRecommendationButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',

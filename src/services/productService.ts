@@ -570,25 +570,77 @@ export interface SkinOptions {
 
 // 피부 타입과 고민 옵션 조회
 export const getSkinOptions = async (): Promise<SkinOptions> => {
+  // 기본 피부 타입 옵션들
+  const defaultSkinTypes = [
+    '건성',
+    '지성', 
+    '복합성(정상)',
+    '민감성'
+  ];
+
+  // 핵심 피부 고민 옵션들 (피부 타입과 중복 제거)
+  const defaultConcerns = [
+    '여드름',
+    '모공',
+    '주름',
+    '기미/색소침착',
+    '홍조',
+    '블랙헤드',
+    '각질',
+    '탄력 저하',
+    '다크서클',
+    '여드름 흉터',
+    '광노화',
+    '염증'
+  ];
+
   try {
     console.log('🧴 피부 옵션 조회 중...');
     
-    // API 호출
-    const response = await medicalApi.getSkinOptions() as any;
-    
-    // 백엔드 응답 구조에 맞게 데이터 추출
-    if (response.success && response.data) {
-      return {
-        skinTypes: response.data.skinTypes || [],
-        concerns: response.data.concerns || []
-      };
+    try {
+      // 백엔드 API 시도
+      const response = await medicalApi.getSkinOptions() as any;
+      
+      // 백엔드 응답이 있으면 백엔드 데이터와 기본 데이터 병합
+      if (response.success && response.data) {
+        const backendSkinTypes = response.data.skinTypes || [];
+        const backendConcerns = response.data.concerns || [];
+        
+        // 중복 및 유사한 옵션 제거
+        const cleanSkinTypes = Array.from(new Set([...defaultSkinTypes, ...backendSkinTypes]))
+          .filter((type, index, array) => {
+            // 유사한 옵션들 제거 (예: "복합성"과 "복합성(정상)")
+            const lowerType = type.toLowerCase().replace(/[()]/g, '');
+            return !array.slice(0, index).some(prevType => 
+              prevType.toLowerCase().replace(/[()]/g, '').includes(lowerType) ||
+              lowerType.includes(prevType.toLowerCase().replace(/[()]/g, ''))
+            );
+          });
+        
+        const cleanConcerns = Array.from(new Set([...defaultConcerns, ...backendConcerns]));
+        
+        return {
+          skinTypes: cleanSkinTypes,
+          concerns: cleanConcerns
+        };
+      }
+    } catch (apiError) {
+      console.log('💡 백엔드 API를 사용할 수 없어 기본 옵션을 사용합니다.');
     }
     
-    // 기본값 반환
-    return { skinTypes: [], concerns: [] };
+    // 백엔드 API가 실패하거나 없으면 기본값 반환
+    return { 
+      skinTypes: defaultSkinTypes, 
+      concerns: defaultConcerns 
+    };
   } catch (error) {
     console.error('❌ 피부 옵션 조회 실패:', error);
-    return { skinTypes: [], concerns: [] };
+    
+    // 에러 발생시 최소한의 기본 옵션 반환
+    return {
+      skinTypes: defaultSkinTypes,
+      concerns: defaultConcerns
+    };
   }
 }
 
@@ -719,6 +771,100 @@ export const deleteRecommendationHistory = async (historyId: number): Promise<bo
   }
 };
 
+// AI 분석 결과를 피부 고민 옵션으로 매핑하는 함수
+export const mapAiResultToConcerns = (analysisResult: any): string[] => {
+  const mappedConcerns: string[] = [];
+  
+  // skinDisease 매핑
+  const diseaseMapping: { [key: string]: string[] } = {
+    // 영어 키워드
+    'acne': ['여드름'],
+    'acne_vulgaris': ['여드름'],
+    'comedone': ['블랙헤드'],
+    'blackhead': ['블랙헤드'],
+    'wrinkle': ['주름'],
+    'wrinkles': ['주름'],
+    'age_spot': ['기미/색소침착'],
+    'pigmentation': ['기미/색소침착'],
+    'melasma': ['기미/색소침착'],
+    'hyperpigmentation': ['기미/색소침착'],
+    'rosacea': ['홍조'],
+    'redness': ['홍조'],
+    'inflammation': ['염증'],
+    'dermatitis': ['염증'],
+    'dryness': ['각질'],
+    'roughness': ['각질'],
+    'pore': ['모공'],
+    'enlarged_pore': ['모공'],
+    'scar': ['여드름 흉터'],
+    'acne_scar': ['여드름 흉터'],
+    'photoaging': ['광노화'],
+    'sun_damage': ['광노화'],
+    'dark_circle': ['다크서클'],
+    'sagging': ['탄력 저하'],
+    
+    // 한국어 키워드
+    '여드름': ['여드름'],
+    '블랙헤드': ['블랙헤드'],
+    '주름': ['주름'],
+    '기미': ['기미/색소침착'],
+    '색소침착': ['기미/색소침착'],
+    '홍조': ['홍조'],
+    '염증': ['염증'],
+    '모공': ['모공'],
+    '흉터': ['여드름 흉터'],
+    '광노화': ['광노화'],
+    '다크서클': ['다크서클'],
+    '탄력': ['탄력 저하'],
+    '각질': ['각질']
+  };
+
+  // skinState 매핑  
+  const stateMapping: { [key: string]: string[] } = {
+    'oily': ['모공'], // 지성 피부는 모공 문제와 연관
+    'dry': ['각질'], // 건성 피부는 각질 문제와 연관
+    'rough': ['각질'],
+    'inflamed': ['염증'],
+    'irritated': ['염증'],
+    'pigmented': ['기미/색소침착'],
+    'aged': ['주름', '탄력 저하'],
+    'wrinkled': ['주름'],
+    'enlarged_pores': ['모공']
+  };
+
+  // 영어와 한국어 모두 처리
+  const processMapping = (value: string, mapping: { [key: string]: string[] }) => {
+    if (!value || value === 'undefined') return;
+    
+    const lowerValue = value.toLowerCase();
+    
+    // 직접 매핑 확인
+    if (mapping[lowerValue]) {
+      mappedConcerns.push(...mapping[lowerValue]);
+      return;
+    }
+    
+    // 부분 매치 확인
+    Object.keys(mapping).forEach(key => {
+      if (lowerValue.includes(key) || key.includes(lowerValue)) {
+        mappedConcerns.push(...mapping[key]);
+      }
+    });
+  };
+
+  // 분석 결과 매핑
+  if (analysisResult?.skinDisease) {
+    processMapping(analysisResult.skinDisease, diseaseMapping);
+  }
+  
+  if (analysisResult?.skinState) {
+    processMapping(analysisResult.skinState, stateMapping);
+  }
+
+  // 중복 제거 및 최대 3개까지만 반환
+  return Array.from(new Set(mappedConcerns)).slice(0, 3);
+};
+
 export const productService = {
   getProducts,
   getProductById,
@@ -736,4 +882,5 @@ export const productService = {
   saveRecommendationHistory,
   getRecommendationHistory,
   deleteRecommendationHistory,
+  mapAiResultToConcerns,
 }

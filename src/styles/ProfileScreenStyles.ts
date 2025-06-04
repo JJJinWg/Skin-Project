@@ -401,6 +401,12 @@ export const profileStyles = StyleSheet.create({
     color: "#6C757D",
     marginBottom: 20,
   },
+  noReviewsSubtext: {
+    fontSize: 14,
+    color: "#ADB5BD",
+    textAlign: "center",
+    marginBottom: 20,
+  },
   writeReviewButton: {
     borderRadius: 12,
     overflow: "hidden",

@@ -176,23 +176,31 @@ const ProfileScreen = () => {
           
           formattedReviews.push({
             id: review.id,
-            productId: review.productId,
-            productName: review.productName,
+            productId: review.productId || 0,
+            productName: review.productName || '제품명 없음',
             productImage: productImage,
-            rating: review.rating,
-            content: review.content,
-            date: review.date,
+            rating: isNaN(Number(review.rating)) ? 0 : Number(review.rating),
+            content: review.content || '',
+            date: review.date || new Date().toISOString().split('T')[0],
             images: review.images || [],
-            likes: review.likes || 0,
-            helpful: review.helpful || 0,
+            likes: isNaN(Number(review.likes)) ? 0 : Number(review.likes),
+            helpful: isNaN(Number(review.helpful)) ? 0 : Number(review.helpful),
           });
         }
         
         setReviews(formattedReviews);
       } catch (error) {
-        console.error('리뷰 내역 로드 실패:', error);
-        Alert.alert('오류', '리뷰 내역을 불러오는데 실패했습니다.');
-        setReviews([]);
+        console.log('📝 리뷰 내역 조회:', error);
+        // 404 에러나 데이터가 없는 경우는 정상적인 상황으로 처리
+        if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+          console.log('📝 아직 작성한 리뷰가 없습니다.');
+          setReviews([]);
+        } else {
+          console.error('리뷰 내역 로드 실패:', error);
+          // 네트워크 오류 등 실제 문제가 있는 경우에만 에러 표시
+          Alert.alert('오류', '리뷰 내역을 불러오는데 실패했습니다.');
+          setReviews([]);
+        }
       } finally {
         setReviewsLoading(false);
       }
@@ -681,7 +689,9 @@ const ProfileScreen = () => {
                         <Text style={styles.productName}>{item.productName}</Text>
                         <View style={styles.ratingContainer}>
                           {renderStars(item.rating)}
-                          <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                          <Text style={styles.ratingText}>
+                            {isNaN(item.rating) ? '0.0' : item.rating.toFixed(1)}
+                          </Text>
                         </View>
                         <Text style={styles.reviewDate}>{formatDate(item.date)}</Text>
                       </View>
@@ -695,8 +705,12 @@ const ProfileScreen = () => {
                       </View>
                     )}
                     <View style={styles.reviewStats}>
-                      <Text style={styles.reviewStatsText}>👍 {item.likes} 명이 좋아합니다</Text>
-                      <Text style={styles.reviewStatsText}>🙌 {item.helpful} 명이 도움됐습니다</Text>
+                      <Text style={styles.reviewStatsText}>
+                        👍 {isNaN(item.likes) ? 0 : item.likes} 명이 좋아합니다
+                      </Text>
+                      <Text style={styles.reviewStatsText}>
+                        🙌 {isNaN(item.helpful) ? 0 : item.helpful} 명이 도움됐습니다
+                      </Text>
                     </View>
                     <View style={styles.reviewActions}>
                       <TouchableOpacity style={styles.reviewActionButton} onPress={() => handleEditReview(item)}>
@@ -716,7 +730,10 @@ const ProfileScreen = () => {
               />
             ) : (
               <View style={styles.noReviewsContainer}>
-                <Text style={styles.noReviewsText}>작성한 리뷰가 없습니다.</Text>
+                <Text style={styles.noReviewsText}>아직 작성한 리뷰가 없어요</Text>
+                <Text style={styles.noReviewsSubtext}>
+                  제품을 사용해보시고 후기를 남겨주세요!
+                </Text>
                 <TouchableOpacity
                   style={styles.writeReviewButton}
                   onPress={() => navigation.navigate("ProductReviewScreen")}
