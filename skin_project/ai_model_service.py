@@ -95,11 +95,20 @@ class SkinAnalysisService:
         self.skin_type_model = None
         self.models_loaded = False
         
-        # 모델 파일 경로
-        self.models_path = "AI tool"
+        # 모델 파일 경로 - 절대 경로로 변경
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.models_path = os.path.join(self.base_path, "AI tool")
         self.disease_model_path = os.path.join(self.models_path, "SkinDisease.pt")
         self.state_model_path = os.path.join(self.models_path, "SkinState.pt")
         self.type_model_path = os.path.join(self.models_path, "skintype.h5")
+        
+        # 모델 파일 존재 여부 확인
+        logger.info(f"🔍 모델 파일 경로 확인:")
+        logger.info(f"   Base path: {self.base_path}")
+        logger.info(f"   Models path: {self.models_path}")
+        logger.info(f"   Disease model: {self.disease_model_path} - {'✅존재' if os.path.exists(self.disease_model_path) else '❌없음'}")
+        logger.info(f"   State model: {self.state_model_path} - {'✅존재' if os.path.exists(self.state_model_path) else '❌없음'}")
+        logger.info(f"   Type model: {self.type_model_path} - {'✅존재' if os.path.exists(self.type_model_path) else '❌없음'}")
         
         # 피부 타입 라벨
         self.skin_types = [
@@ -121,6 +130,9 @@ class SkinAnalysisService:
         try:
             logger.info("AI 모델 로딩 시작...")
             
+            loaded_models = 0
+            total_models = 3
+            
             # PyTorch 모델 로드 (피부 질환)
             if os.path.exists(self.disease_model_path):
                 logger.info("피부 질환 모델 로딩 중...")
@@ -129,9 +141,13 @@ class SkinAnalysisService:
                     logger.info(f"✅ 피부 질환 모델 로드 성공 - 클래스: {self.skin_disease_model.names}")
                     # 실제 클래스 정보로 업데이트
                     self.skin_diseases = list(self.skin_disease_model.names.values())
+                    loaded_models += 1
                 except Exception as e:
                     logger.error(f"❌ 피부 질환 모델 로드 실패: {e}")
                     self.skin_disease_model = None
+            else:
+                logger.error(f"❌ 피부 질환 모델 파일을 찾을 수 없습니다: {self.disease_model_path}")
+                self.skin_disease_model = None
                     
             # PyTorch 모델 로드 (피부 상태)  
             if os.path.exists(self.state_model_path):
@@ -141,9 +157,13 @@ class SkinAnalysisService:
                     logger.info(f"✅ 피부 상태 모델 로드 성공 - 클래스: {self.skin_state_model.names}")
                     # 실제 클래스 정보로 업데이트
                     self.skin_states = list(self.skin_state_model.names.values())
+                    loaded_models += 1
                 except Exception as e:
                     logger.error(f"❌ 피부 상태 모델 로드 실패: {e}")
                     self.skin_state_model = None
+            else:
+                logger.error(f"❌ 피부 상태 모델 파일을 찾을 수 없습니다: {self.state_model_path}")
+                self.skin_state_model = None
                     
             # Keras 모델 로드 (피부 타입) - 분류 모델
             if os.path.exists(self.type_model_path):
@@ -173,6 +193,7 @@ class SkinAnalysisService:
                     )
                     logger.info("✅ 피부 타입 모델 로드 성공 (방법 1)")
                     success = True
+                    loaded_models += 1
                 except Exception as e1:
                     logger.error(f"방법 1 실패: {e1}")
                 
@@ -187,6 +208,7 @@ class SkinAnalysisService:
                         )
                         logger.info("✅ 피부 타입 모델 로드 성공 (방법 2)")
                         success = True
+                        loaded_models += 1
                     except Exception as e2:
                         logger.error(f"방법 2 실패: {e2}")
                 
@@ -200,33 +222,27 @@ class SkinAnalysisService:
                         )
                         logger.info("✅ 피부 타입 모델 로드 성공 (방법 3)")
                         success = True
+                        loaded_models += 1
                     except Exception as e3:
                         logger.error(f"방법 3 실패: {e3}")
-                
-                # 방법 4: 강제 weights 로드 (최후 수단)
-                if not success:
-                    try:
-                        logger.info("방법 4: 간단한 모델 생성 + weights 로드 시도...")
-                        # 간단한 분류 모델 생성
-                        inputs = keras.Input(shape=(224, 224, 3))
-                        x = keras.layers.Conv2D(32, 3, activation='relu')(inputs)
-                        x = keras.layers.GlobalAveragePooling2D()(x)
-                        x = keras.layers.Dense(128, activation='relu')(x)
-                        outputs = keras.layers.Dense(len(self.skin_types), activation='softmax')(x)
-                        
-                        self.skin_type_model = keras.Model(inputs, outputs)
-                        logger.info("⚠️ 피부 타입 모델을 기본 구조로 생성 (weights 미로드)")
-                        success = True
-                    except Exception as e4:
-                        logger.error(f"방법 4 실패: {e4}")
-                        self.skin_type_model = None
                 
                 if not success:
                     logger.error("❌ 피부 타입 모델 로드 최종 실패")
                     self.skin_type_model = None
+            else:
+                logger.error(f"❌ 피부 타입 모델 파일을 찾을 수 없습니다: {self.type_model_path}")
+                self.skin_type_model = None
             
-            self.models_loaded = True
-            logger.info("🎯 모든 AI 모델 로딩 완료!")
+            # 실제 로딩된 모델 수 확인
+            if loaded_models == total_models:
+                self.models_loaded = True
+                logger.info(f"🎯 모든 AI 모델 로딩 완료! ({loaded_models}/{total_models})")
+            else:
+                self.models_loaded = False
+                logger.warning(f"⚠️ 일부 모델만 로드됨: {loaded_models}/{total_models}")
+                logger.warning(f"   피부 질환 모델: {'✅' if self.skin_disease_model else '❌'}")
+                logger.warning(f"   피부 상태 모델: {'✅' if self.skin_state_model else '❌'}")
+                logger.warning(f"   피부 타입 모델: {'✅' if self.skin_type_model else '❌'}")
             
         except Exception as e:
             logger.error(f"❌ AI 모델 로딩 중 오류 발생: {e}")

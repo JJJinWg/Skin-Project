@@ -43,7 +43,7 @@ const ReservationScreen = () => {
   const specialties = [
     { id: "all", name: "전체" },
     { id: "dermatology", name: "피부과" },
-  
+
   ]
 
   // 의사 데이터 가져오기 (실제 API에서만 가져옴)
@@ -262,37 +262,42 @@ const ReservationScreen = () => {
           data={filteredDoctors}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.doctorCard}
-              onPress={() =>
-                navigation.navigate("AppointmentScreen", {
-                  doctorId: item.id,
-                  doctorName: item.name,
-                  specialty: item.specialty,
-                })
-              }
-            >
-              {renderDoctorImage(item)}
-              <View style={styles.doctorInfo}>
-                <View style={styles.doctorNameRow}>
-                  <Text style={styles.doctorName}>{item.name}</Text>
-                  {item.available && (
-                    <View style={styles.availableBadge}>
-                      <Text style={styles.availableBadgeText}>예약가능</Text>
-                    </View>
-                  )}
+            <View style={styles.doctorCard}>
+              {/* 의사 프로필 구역 - 클릭하면 상세 페이지로 이동 */}
+              <TouchableOpacity
+                style={styles.doctorProfileArea}
+                onPress={() =>
+                  navigation.navigate("DoctorDetailScreen", {
+                    doctorId: item.id,
+                    doctorName: item.name,
+                    specialty: item.specialty,
+                  })
+                }
+              >
+                {renderDoctorImage(item)}
+                <View style={styles.doctorInfo}>
+                  <View style={styles.doctorNameRow}>
+                    <Text style={styles.doctorName}>{item.name}</Text>
+                    {item.available && (
+                      <View style={styles.availableBadge}>
+                        <Text style={styles.availableBadgeText}>예약가능</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
+                  <View style={styles.ratingContainer}>
+                    {renderStars(item.rating)}
+                    <Text style={styles.ratingText}>{item.rating}</Text>
+                    <Text style={styles.reviewCount}>({item.reviews})</Text>
+                  </View>
+                  <View style={styles.nextAvailableContainer}>
+                    <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
+                    <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
+                  </View>
                 </View>
-                <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
-                <View style={styles.ratingContainer}>
-                  {renderStars(item.rating)}
-                  <Text style={styles.ratingText}>{item.rating}</Text>
-                  <Text style={styles.reviewCount}>({item.reviews})</Text>
-                </View>
-                <View style={styles.nextAvailableContainer}>
-                  <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
-                  <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
+              
+              {/* 예약하기 버튼 - 별도 클릭 이벤트 */}
               <LinearGradient
                 colors={["#FF9A9E", "#FAD0C4"]}
                 start={{ x: 0, y: 0 }}
@@ -312,7 +317,7 @@ const ReservationScreen = () => {
                   <Text style={styles.bookButtonText}>예약하기</Text>
                 </TouchableOpacity>
               </LinearGradient>
-            </TouchableOpacity>
+            </View>
           )}
           contentContainerStyle={styles.doctorList}
           showsVerticalScrollIndicator={false}
@@ -447,15 +452,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  doctorProfileArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
   doctorImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginBottom: 15,
-    alignSelf: "center",
+    marginRight: 15,
   },
   doctorInfo: {
-    marginBottom: 15,
+    flex: 1,
   },
   doctorNameRow: {
     flexDirection: "row",
