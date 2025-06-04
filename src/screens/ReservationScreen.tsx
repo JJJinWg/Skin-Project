@@ -28,7 +28,6 @@ type Doctor = {
   reviews: number
   available: boolean
   image: any
-  nextAvailable?: string
 }
 
 const ReservationScreen = () => {
@@ -55,21 +54,8 @@ const ReservationScreen = () => {
         console.log('📋 예약 화면 의사 목록 로딩 중...')
         const doctorsData = await appointmentService.getReservationDoctors()
         
-        // 각 의사별로 가장 가까운 예약 가능 시간 조회
-        const today = new Date()
-        const todayString = today.toISOString().split('T')[0]
-        const nextAvailablePromises = doctorsData.map(async (doctor: any) => {
-          try {
-            const times = await appointmentService.getAvailableTimeSlots(doctor.id, todayString)
-            return times && times.length > 0 ? times[0] : '예약 문의'
-          } catch {
-            return '예약 문의'
-          }
-        })
-        const nextAvailables = await Promise.all(nextAvailablePromises)
-        
         // API 데이터를 화면에 맞게 변환
-        const transformedDoctors = doctorsData.map((doctor: any, idx: number) => ({
+        const transformedDoctors = doctorsData.map((doctor: any) => ({
           id: doctor.id,
           name: doctor.name,
           specialty: doctor.specialization || doctor.specialty,
@@ -77,7 +63,6 @@ const ReservationScreen = () => {
           rating: doctor.rating || 0,
           reviews: doctor.review_count || 0,
           available: doctor.available !== false,
-          nextAvailable: nextAvailables[idx],
           image: require("../assets/doctor1.png"), // 모든 의사에게 같은 기본 이미지
         }))
         
@@ -159,7 +144,6 @@ const ReservationScreen = () => {
           rating: doctor.rating || 0,
           reviews: doctor.review_count || 0,
           available: doctor.available !== false,
-          nextAvailable: doctor.next_available || "예약 문의",
           image: require("../assets/doctor1.png"), // 모든 의사에게 같은 기본 이미지
         }))
         
@@ -289,10 +273,6 @@ const ReservationScreen = () => {
                     {renderStars(item.rating)}
                     <Text style={styles.ratingText}>{item.rating}</Text>
                     <Text style={styles.reviewCount}>({item.reviews})</Text>
-                  </View>
-                  <View style={styles.nextAvailableContainer}>
-                    <Text style={styles.nextAvailableLabel}>다음 예약 가능:</Text>
-                    <Text style={styles.nextAvailableTime}>{item.nextAvailable}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -518,20 +498,6 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 12,
     color: "#6C757D",
-  },
-  nextAvailableContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  nextAvailableLabel: {
-    fontSize: 12,
-    color: "#6C757D",
-    marginRight: 5,
-  },
-  nextAvailableTime: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#212529",
   },
   bookButtonGradient: {
     borderRadius: 12,
