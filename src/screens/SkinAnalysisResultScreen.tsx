@@ -25,6 +25,101 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { imageUri, analysisResult } = route.params;
 
+  // 영어 상태를 한국어로 매핑하는 함수 (SkinHistoryScreen과 동일)
+  const translateSkinType = (englishType: string): string => {
+    const typeMap: { [key: string]: string } = {
+      'oily': '지성',
+      'dry': '건성', 
+      'combination': '복합성',
+      'sensitive': '민감성',
+      'normal': '정상',
+      'lesion': '병변', // 질환이 있는 경우
+      'mixed': '복합성',
+      'dehydrated': '수분부족',
+      // 기타 상태들도 추가 가능
+    };
+    return typeMap[englishType.toLowerCase()] || englishType;
+  };
+
+  const translateConcern = (englishConcern: string): string => {
+    const concernMap: { [key: string]: string } = {
+      'acne': '여드름',
+      'pores': '모공',
+      'lesion': '병변',
+      'wrinkles': '주름',
+      'pigmentation': '색소침착',
+      'dryness': '건조함',
+      'oiliness': '유분',
+      'sensitivity': '민감성',
+      'redness': '홍조',
+      'blackheads': '블랙헤드',
+      'whiteheads': '화이트헤드',
+      'wrinkle': '주름',
+      'inflammation': '염증',
+      'roughness': '거칠음',
+      // 추가 고민사항들...
+    };
+    return concernMap[englishConcern.toLowerCase()] || englishConcern;
+  };
+
+  // 피부 상태를 한국어로 번역하는 함수 추가
+  const translateSkinState = (englishState: string): string => {
+    const stateMap: { [key: string]: string } = {
+      'lesion': '병변',
+      'wrinkle': '주름',
+      'lip_dryness': '입술 건조',
+      'chin_sagging': '턱 처짐',
+      'normal': '정상',
+      'healthy': '건강함',
+      'problematic': '문제있음',
+      'good': '양호',
+      'fair': '보통',
+      'poor': '나쁨',
+      'excellent': '우수',
+    };
+    return stateMap[englishState.toLowerCase()] || englishState;
+  };
+
+  // 피부 질환을 한국어로 번역하는 함수 추가
+  const translateSkinDisease = (englishDisease: string): string => {
+    const diseaseMap: { [key: string]: string } = {
+      'acne': '여드름',
+      'dermatitis': '피부염',
+      'eczema': '습진',
+      'psoriasis': '건선',
+      'rosacea': '주사',
+      'melasma': '기미',
+      'hyperpigmentation': '과색소침착',
+      'age spots': '노인성 반점',
+      'sun damage': '광노화',
+      'seborrheic dermatitis': '지루성 피부염',
+      'contact dermatitis': '접촉성 피부염',
+      'keratosis': '각화증',
+      'folliculitis': '모낭염',
+      'cellulitis': '봉와직염',
+      'hives': '두드러기',
+      'warts': '사마귀',
+      'moles': '점',
+      'skin cancer': '피부암',
+      'basal cell carcinoma': '기저세포암',
+      'melanoma': '흑색종',
+      'squamous cell carcinoma': '편평세포암',
+      'normal': '정상',
+      'healthy': '건강함',
+      'no disease detected': '질환 없음',
+      'inflammatory': '염증성',
+      'lesion': '병변',
+      'benign': '양성',
+      'malignant': '악성',
+    };
+    return diseaseMap[englishDisease.toLowerCase()] || englishDisease;
+  };
+
+  // 분석 결과를 한국어로 번역 (SkinHistoryScreen과 동일한 로직)
+  const translatedSkinType = translateSkinType(analysisResult?.skinType || '');
+  const translatedSkinDisease = translateSkinDisease(analysisResult?.skinDisease || '');
+  const translatedSkinState = translateSkinState(analysisResult?.skinState || '');
+
   // 진료 요청서 작성하기
   const handleCreateDiagnosisRequest = () => {
     if (analysisResult?.needsMedicalAttention) {
@@ -36,28 +131,28 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
           { 
             text: '작성하기', 
             onPress: () => {
-              // 증상 설명 생성 (undefined 값 제거)
+              // 증상 설명 생성 (번역된 값 사용)
               const symptomParts = [];
-              if (analysisResult.skinDisease && analysisResult.skinDisease !== 'undefined') {
-                symptomParts.push(`피부 질환: ${analysisResult.skinDisease}`);
+              if (translatedSkinDisease && translatedSkinDisease !== '알 수 없음') {
+                symptomParts.push(`피부 질환: ${translatedSkinDisease}`);
               }
-              if (analysisResult.skinState && analysisResult.skinState !== 'undefined') {
-                symptomParts.push(`피부 상태: ${analysisResult.skinState}`);
+              if (translatedSkinState && translatedSkinState !== '알 수 없음') {
+                symptomParts.push(`피부 상태: ${translatedSkinState}`);
               }
               
               const symptomsText = symptomParts.length > 0 
                 ? symptomParts.join(', ') 
                 : 'AI 분석을 통해 피부 문제가 감지되어 전문의 상담이 필요합니다.';
 
-              // 분석 결과를 진료 요청서 화면으로 전달
+              // 분석 결과를 진료 요청서 화면으로 전달 (번역된 값 사용)
               navigation.navigate('DiagnosisRequestScreen', {
                 prefilledData: {
                   symptoms: symptomsText,
-                  skinType: analysisResult.skinType,
+                  skinType: translatedSkinType,
                   aiAnalysisResult: {
-                    skinType: analysisResult.skinType,
-                    skinDisease: analysisResult.skinDisease,
-                    skinState: analysisResult.skinState,
+                    skinType: translatedSkinType,
+                    skinDisease: translatedSkinDisease,
+                    skinState: translatedSkinState,
                     needsMedicalAttention: analysisResult.needsMedicalAttention,
                     confidence: analysisResult.confidence,
                     detailedAnalysis: analysisResult.detailedAnalysis,
@@ -86,19 +181,24 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
           onPress: () => {
             // 피부 민감도 설정 (기본값: 보통)
             let sensitivity = '보통';
-            if (analysisResult?.skinType === '민감성') {
+            if (translatedSkinType === '민감성') {
               sensitivity = '높음';
-            } else if (analysisResult?.skinType === '건성') {
+            } else if (translatedSkinType === '건성') {
               sensitivity = '보통';
-            } else if (analysisResult?.skinType === '지성') {
+            } else if (translatedSkinType === '지성') {
               sensitivity = '낮음';
             }
 
-            // AI 분석 결과를 피부 고민으로 매핑
-            const mappedConcerns = productService.mapAiResultToConcerns(analysisResult);
+            // AI 분석 결과를 피부 고민으로 매핑 (번역된 값 사용)
+            const mappedConcerns = productService.mapAiResultToConcerns({
+              ...analysisResult,
+              skinType: translatedSkinType,
+              skinDisease: translatedSkinDisease,
+              skinState: translatedSkinState
+            });
             console.log('🔬 AI 분석 결과 매핑:', {
-              skinDisease: analysisResult?.skinDisease,
-              skinState: analysisResult?.skinState,
+              skinDisease: translatedSkinDisease,
+              skinState: translatedSkinState,
               mappedConcerns: mappedConcerns
             });
 
@@ -107,10 +207,10 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
               ? analysisResult.recommendations.join('\n• ')
               : '피부 건강을 위한 전문적인 관리가 필요합니다.';
 
-            // 화장품 추천 화면으로 이동하며 분석 결과 전달
+            // 화장품 추천 화면으로 이동하며 번역된 분석 결과 전달
             navigation.navigate('FindCosmeticsScreen', {
               prefilledData: {
-                skinType: analysisResult?.skinType || '정상',
+                skinType: translatedSkinType || '정상',
                 sensitivity: sensitivity,
                 concerns: mappedConcerns, // AI 분석 결과에서 매핑된 피부 고민들
                 additionalInfo: `• ${additionalInfo}`,
@@ -153,7 +253,7 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
           
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>피부 타입:</Text>
-            <Text style={styles.resultValue}>{analysisResult?.skinType}</Text>
+            <Text style={styles.resultValue}>{translatedSkinType}</Text>
             {analysisResult?.confidence?.skinType && (
               <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(analysisResult.confidence.skinType) }]}>
                 <Text style={styles.confidenceText}>
@@ -165,7 +265,7 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
 
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>피부 질환:</Text>
-            <Text style={styles.resultValue}>{analysisResult?.skinDisease}</Text>
+            <Text style={styles.resultValue}>{translatedSkinDisease}</Text>
             {analysisResult?.confidence?.disease && (
               <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(analysisResult.confidence.disease) }]}>
                 <Text style={styles.confidenceText}>
@@ -177,7 +277,7 @@ const SkinAnalysisResultScreen = ({ route }: SkinAnalysisResultScreenProps) => {
 
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>피부 상태:</Text>
-            <Text style={styles.resultValue}>{analysisResult?.skinState}</Text>
+            <Text style={styles.resultValue}>{translatedSkinState}</Text>
             {analysisResult?.confidence?.state && (
               <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(analysisResult.confidence.state) }]}>
                 <Text style={styles.confidenceText}>
