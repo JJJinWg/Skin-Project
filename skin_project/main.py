@@ -1225,9 +1225,9 @@ def import_crawled_reviews(db: Session = Depends(get_db)):
         
         # CSV 파일들 경로
         csv_files = [
-            ("../crawler/data/reviews_bulk_toner.csv", "토너"),
-            ("../crawler/data/reviews_bulk_cream.csv", "크림"), 
-            ("../crawler/data/reviews_bulk_ampoule.csv", "앰플")
+            ("./crawler/data/reviews_bulk_toner.csv", "토너"),
+            ("./crawler/data/reviews_bulk_cream.csv", "크림"), 
+            ("./crawler/data/reviews_bulk_ampoule.csv", "앰플")
         ]
         
         total_stats = {"created": 0, "duplicates": 0, "total": 0}
@@ -1771,9 +1771,9 @@ def init_database():
             
             # 2. 크롤링된 제품 데이터 CSV 파일들
             csv_files = [
-                ("../crawler/data/product_list_toner.csv", "토너"),
-                ("../crawler/data/product_list_cream.csv", "크림"), 
-                ("../crawler/data/product_list_ampoule.csv", "앰플")
+                ("./crawler/data/product_list_toner.csv", "토너"),
+                ("./crawler/data/product_list_cream.csv", "크림"), 
+                ("./crawler/data/product_list_ampoule.csv", "앰플")
             ]
             
             total_imported = 0
@@ -1932,9 +1932,9 @@ def init_database():
             from crud import bulk_create_crawled_reviews
             
             csv_files_reviews = [
-                ("../crawler/data/reviews_bulk_toner.csv", "토너"),
-                ("../crawler/data/reviews_bulk_cream.csv", "크림"), 
-                ("../crawler/data/reviews_bulk_ampoule.csv", "앰플")
+                ("./crawler/data/reviews_bulk_toner.csv", "토너"),
+                ("./crawler/data/reviews_bulk_cream.csv", "크림"), 
+                ("./crawler/data/reviews_bulk_ampoule.csv", "앰플")
             ]
             
             total_reviews = 0
@@ -2137,9 +2137,9 @@ def import_crawled_products(db: Session = Depends(get_db)):
         
         # 2. 크롤링된 제품 데이터 CSV 파일들
         csv_files = [
-            ("../crawler/data/product_list_toner.csv", "토너"),
-            ("../crawler/data/product_list_cream.csv", "크림"), 
-            ("../crawler/data/product_list_ampoule.csv", "앰플")
+            ("./crawler/data/product_list_toner.csv", "토너"),
+            ("./crawler/data/product_list_cream.csv", "크림"), 
+            ("./crawler/data/product_list_ampoule.csv", "앰플")
         ]
         
         total_imported = 0
