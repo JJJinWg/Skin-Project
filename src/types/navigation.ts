@@ -40,6 +40,13 @@ export type RootStackParamList = {
       explanation: string;
       isHistoryView?: boolean;
     };
+    prefilledData?: {
+      skinType?: string;
+      sensitivity?: string;
+      concerns?: string[];
+      additionalInfo?: string;
+      fromAnalysis?: boolean;
+    };
   } | undefined;
   ProductReviewScreen: undefined;
   ProductDetailScreen: { id: number };
