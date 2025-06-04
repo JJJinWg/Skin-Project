@@ -216,12 +216,12 @@ const FindCosmeticsScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress}>
+        <TouchableOpacity >
           <Text style={styles.backButtonText}>
-            뒤로
+            
           </Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{showResults ? "         맞춤 화장품 추천" : "          화장품 추천받기"}</Text>
+        <Text style={styles.headerTitle}>{showResults ? "       맞춤 화장품 추천" : "          화장품 추천받기"}</Text>
         <View style={styles.placeholder} />
       </View>
 
