@@ -142,9 +142,7 @@ ${initialAnalysisResult.recommendations.map((rec) => `- ${rec}`).join("\n")}
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress}>
-          <Text style={styles.backButton}>←</Text>
-        </TouchableOpacity>
+        
         <Text style={styles.headerTitle}>AI 피부 분석 결과</Text>
         <TouchableOpacity onPress={handleShare}>
           <Text style={styles.shareButton}>공유</Text>
