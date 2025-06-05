@@ -49,10 +49,6 @@ const DiagnosisRequestScreen = ({ route }: DiagnosisRequestScreenProps) => {
 
   const [loading, setLoading] = useState(false);
 
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -233,9 +229,7 @@ const DiagnosisRequestScreen = ({ route }: DiagnosisRequestScreenProps) => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
         <Text style={styles.headerTitle}>진료 요청서 작성</Text>
         <View style={styles.placeholder} />
       </View>
@@ -447,25 +441,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F3F5',
   },
-  backButton: {
+  placeholder: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#212529',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#212529',
-  },
-  placeholder: {
-    width: 40,
   },
   container: {
     flex: 1,

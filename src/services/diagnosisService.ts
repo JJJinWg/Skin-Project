@@ -424,32 +424,28 @@ export const diagnosisService = {
         name: 'skin_analysis.jpg',
       } as any);
       
-      // 실제 AI 분석 API 호출 - apiClient를 통해 중앙화된 URL 사용
+      // medicalApi를 통해 AI 분석 API 호출
       const { medicalApi } = await import('./apiClient');
-      const result: any = await medicalApi.analyzeSkin(formData);
+      const analysisData: any = await medicalApi.analyzeSkin(formData);
       
-      console.log('🔬 AI 분석 응답 상태:', result.status);
+      console.log('🔬 AI 분석 응답:', analysisData);
       
-      if (!result.ok) {
-        const errorText = await result.text();
-        console.error('❌ AI 분석 실패:', errorText);
-        throw new Error(`HTTP ${result.status}: ${errorText}`);
+      if (!analysisData.success || !analysisData.data) {
+        throw new Error('AI 분석 응답 형식이 올바르지 않습니다');
       }
       
-      const analysisData = result.data;
-      
-      // 기존 SkinAnalysisResult 인터페이스에 맞게 변환
+      // 백엔드 응답을 SkinAnalysisResult 인터페이스에 맞게 변환
       const analysisResult: SkinAnalysisResult = {
-        skinType: analysisData.skinType || '알 수 없음',
-        concerns: analysisData.concerns || [],
-        recommendations: analysisData.recommendations || [],
+        skinType: analysisData.data.skinType || '알 수 없음',
+        concerns: analysisData.data.concerns || [],
+        recommendations: analysisData.data.recommendations || [],
         imageUrl: imageUri,
         // 추가 정보들
-        skinDisease: analysisData.skinDisease,
-        skinState: analysisData.skinState,
-        needsMedicalAttention: analysisData.needsMedicalAttention,
-        confidence: analysisData.confidence,
-        detailedAnalysis: analysisData.detailed_analysis,
+        skinDisease: analysisData.data.skinDisease,
+        skinState: analysisData.data.skinState,
+        needsMedicalAttention: analysisData.data.needsMedicalAttention,
+        confidence: analysisData.data.confidence,
+        detailedAnalysis: analysisData.data.detailed_analysis,
       };
 
       // 분석 결과를 자동으로 저장
@@ -458,12 +454,12 @@ export const diagnosisService = {
         imageUrl: imageUri,
         analysisResult: analysisResult,
         additionalData: {
-          skinAge: analysisData.skinAge,
-          moisture: analysisData.moisture,
-          wrinkles: analysisData.wrinkles,
-          pigmentation: analysisData.pigmentation,
-          pores: analysisData.pores,
-          acne: analysisData.acne,
+          skinAge: analysisData.data.skinAge,
+          moisture: analysisData.data.moisture,
+          wrinkles: analysisData.data.wrinkles,
+          pigmentation: analysisData.data.pigmentation,
+          pores: analysisData.data.pores,
+          acne: analysisData.data.acne,
         }
       };
 
