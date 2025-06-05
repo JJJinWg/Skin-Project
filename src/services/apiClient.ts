@@ -185,7 +185,7 @@ export const medicalApi = {
   // 진단 내역 관련 API
   getUserDiagnoses: (userId: number) => apiClient.get(`/api/medical/diagnoses/user/${userId}`),
   getDiagnosisDetail: (diagnosisId: number) => apiClient.get(`/api/medical/diagnoses/${diagnosisId}`),
-  analyzeSkin: (formData: FormData) => apiClient.post('/api/medical/skin-analysis', formData),
+  analyzeSkin: (formData: FormData) => apiClient.post('/api/ai/analyze-skin', formData),
 
   // 리뷰 관련 API
   createReview: (data: any) => apiClient.post('/api/reviews', data),
