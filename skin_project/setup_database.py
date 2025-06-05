@@ -161,10 +161,10 @@ def add_sample_data():
             Doctor(
                 hospital_id=2,
                 name="이영희",
-                specialization="성형외과",
+                specialization="피부과",
                 experience_years=12,
-                education="연세대학교 의과대학 졸업\n연세대학교병원 성형외과 전공의\n대한성형외과학회 정회원",
-                description="성형외과 전문의로 자연스러운 미용 시술을 전문으로 합니다.",
+                education="연세대학교 의과대학 졸업\n연세대학교병원 피부과 전공의\n대한피부과학회 정회원",
+                description="피부과 전문의로 여드름과 기미 치료를 전문으로 합니다.",
                 profile_image_url="https://example.com/doctor2.jpg",
                 consultation_fee=60000,
                 available_days=["mon", "tue", "wed", "thu", "fri"],
@@ -317,7 +317,7 @@ def add_sample_data():
                 status='pending',
                 symptoms='얼굴 여드름 치료 상담',
                 notes='처음 방문',
-                consultation_type='일반진료'
+                consultation_type='피부상담'
             ),
             Appointment(
                 user_id=2,
@@ -328,8 +328,8 @@ def add_sample_data():
                 appointment_time=time(15, 30),
                 status='pending',
                 symptoms='피부 미용 상담',
-                notes='보톡스 문의',
-                consultation_type='시술상담'
+                notes='기미 레이저 치료 문의',
+                consultation_type='피부상담'
             ),
             Appointment(
                 user_id=3,
@@ -341,7 +341,7 @@ def add_sample_data():
                 status='pending',
                 symptoms='아토피 상담',
                 notes='재발 확인',
-                consultation_type='일반진료'
+                consultation_type='피부상담'
             ),
             # confirmed 상태 예약들 (확정)
             Appointment(
@@ -366,7 +366,7 @@ def add_sample_data():
                 status='confirmed',
                 symptoms='피부 분석 요청',
                 notes='피부 타입 확인',
-                consultation_type='피부분석'
+                consultation_type='피부상담'
             ),
             # completed 상태 예약들 (완료)
             Appointment(
@@ -389,9 +389,9 @@ def add_sample_data():
                 appointment_date=date(2024, 3, 10),
                 appointment_time=time(11, 0),
                 status='completed',
-                symptoms='보톡스 시술',
-                notes='시술 완료',
-                consultation_type='시술상담'
+                symptoms='기미 치료 상담',
+                notes='상담 완료',
+                consultation_type='피부상담'
             )
         ]
         

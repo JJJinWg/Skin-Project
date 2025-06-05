@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { getProducts, Product, getCategories, Category, productService } from '../services/productService';
+import { medicalApi } from '../services/apiClient';
 
 const { width } = Dimensions.get('window');
 
@@ -112,12 +113,11 @@ const ProductReviewScreen = () => {
             console.log(`✅ 제품 ${product.id} 최종 이미지:`, productImage);
             
             // 각 제품의 리뷰 조회
-            const reviewResponse = await fetch(`http://10.0.2.2:8000/api/reviews/product/${product.id}`);
-            const reviews = await reviewResponse.json();
+            const allReviews: any = await medicalApi.getProductReviews(product.id);
             
             // 리뷰가 있는 경우
-            if (Array.isArray(reviews) && reviews.length > 0) {
-              const latestReview = reviews[0]; // 첫 번째 리뷰를 최신으로 간주
+            if (Array.isArray(allReviews) && allReviews.length > 0) {
+              const latestReview = allReviews[0]; // 첫 번째 리뷰를 최신으로 간주
               
               reviewData.push({
                 id: product.id,
@@ -125,7 +125,7 @@ const ProductReviewScreen = () => {
                 brand: product.brand,
                 category: product.category,
                 rating: product.rating,
-                reviewCount: reviews.length,
+                reviewCount: allReviews.length,
                 image: productImage,
                 latestReview: {
                   user: latestReview.userName || '익명 사용자',
@@ -228,31 +228,7 @@ const ProductReviewScreen = () => {
     try {
       console.log(`📡 제품 ${productId} 리뷰 요청 시작...`);
       
-      // 10초 타임아웃 설정
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`http://10.0.2.2:8000/api/reviews/product/${productId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      console.log(`📡 제품 ${productId} 응답 상태:`, response.status);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log(`📋 제품 ${productId}에 대한 리뷰가 없습니다.`);
-          return [];
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      }
-
-      const allReviews = await response.json();
+      const allReviews: any = await medicalApi.getProductReviews(productId);
       console.log(`✅ 제품 ${productId} 리뷰 로드 성공:`, allReviews.length, '개');
       
       if (Array.isArray(allReviews)) {

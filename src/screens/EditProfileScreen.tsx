@@ -135,11 +135,11 @@ const EditProfileScreen = () => {
               navigation.navigate("ProfileScreen", { 
                 updatedUserInfo: {
                   id: userInfo.id,
-                  name,
-                  email,
-                  phone,
-                  birthdate,
-                  profileImage,
+          name,
+          email,
+          phone,
+          birthdate,
+          profileImage,
                 }
               });
             }

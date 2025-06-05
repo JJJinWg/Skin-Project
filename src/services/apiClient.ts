@@ -5,12 +5,22 @@ import { Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (__DEV__) {
     // 개발 환경: React Native에서는 localhost 대신 실제 IP 주소 사용
-    // Android 에뮬레이터: 10.0.2.2:8000
-    // iOS 시뮬레이터: localhost:8000
     
     if (Platform.OS === 'android') {
-      // Android 에뮬레이터에서는 10.0.2.2가 호스트 머신의 localhost를 가리킴
-      return process.env.REACT_APP_API_URL || 'http://10.0.2.2:8000';
+      // TODO: 실제 기기 테스트 시 아래 주석을 해제하고 PC의 실제 IP를 입력하세요
+      // 예: 'http://192.168.1.100:8000' (Windows에서 ipconfig로 확인)
+      
+      // 환경변수가 설정되어 있으면 우선 사용
+      if (process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
+      }
+      
+      // ADB reverse를 사용하는 경우: adb reverse tcp:8000 tcp:8000
+      // 그러면 실제 기기에서도 localhost:8000 사용 가능
+      // return 'http://localhost:8000';
+      
+      // 에뮬레이터 전용 주소 (ADB reverse 미사용 시)
+      return 'http://10.0.2.2:8000';
     } else {
       // iOS 시뮬레이터에서는 localhost 사용 가능
       return process.env.REACT_APP_API_URL || 'http://localhost:8000';

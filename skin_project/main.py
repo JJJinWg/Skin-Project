@@ -1926,7 +1926,7 @@ def init_database():
                         specialization="피부과",
                         experience_years=12,
                         education="연세대학교 의과대학 졸업\n연세대학교병원 성형외과 전공의\n대한성형외과학회 정회원",
-                        description="성형외과 전문의로 자연스러운 미용 시술을 전문으로 합니다.",
+                        description="피부과 전문의로 여드름과 기미 치료를 전문으로 합니다.",
                         profile_image_url="https://example.com/doctor2.jpg",
                         consultation_fee=60000,
                         available_days=["mon", "tue", "wed", "thu", "fri"],
@@ -2090,9 +2090,9 @@ def init_database():
                     appointment_date=date(2025, 3, 18),
                     appointment_time=time(15, 30),
                     status='completed',
-                    symptoms='보톡스 시술 상담',
-                    notes='보톡스 문의',
-                    consultation_type='시술상담',
+                    symptoms='기미 치료 상담',
+                    notes='기미 치료',
+                    consultation_type='피부상담',
                     diagnosis_request_id=2
                 ),
                 Appointment(
@@ -2191,13 +2191,13 @@ def init_database():
                 # 다른 사용자의 진료 기록
                 MedicalRecord(
                     appointment_id=6,  # user_id=1의 completed 예약
-                    diagnosis="미간 주름 개선",
+                    diagnosis="기미 (Melasma)",
                     severity="mild",
-                    treatment="보톡스 주사 시술",
-                    prescription="보톡스 20units 미간 부위 주사",
-                    precautions="시술 후 4시간 동안 눕지 말 것, 24시간 내 운동 금지, 마사지 금지",
+                    treatment="IPL 레이저 치료 상담 및 관리법 안내",
+                    prescription="하이드로퀴논 크림 2% 취침 전 적용, 자외선 차단제 SPF50+ 필수",
+                    precautions="치료 후 자외선 노출 금지, 강한 세안 금지, 보습제 충분히 사용",
                     next_visit_date=date(2024, 4, 18),
-                    notes="시술 후 2-3일 훨과 시작, 2주 후 결과 확인"
+                    notes="레이저 치료 전 피부 상태 확인 완료. 2주 후 치료 시작 예정"
                 ),
                 MedicalRecord(
                     appointment_id=7,  # user_id=3의 completed 예약  
