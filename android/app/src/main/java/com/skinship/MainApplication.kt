@@ -1,4 +1,4 @@
-package com.myapp
+package com.skinship
 
 import android.app.Application
 import com.facebook.react.PackageList
