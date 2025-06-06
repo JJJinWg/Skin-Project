@@ -16,7 +16,7 @@ class AppointmentStatus(str, Enum):
 class ConsultationType(str, Enum):
     general = "일반진료"
     skin_analysis = "피부분석"
-    procedure_consultation = "시술상담"
+    procedure_consultation = "피부상담"
     follow_up = "재진"
 
 # 사용자 정보 스키마 (User 정보를 위한 간단한 스키마)

@@ -7,19 +7,17 @@ const getApiBaseUrl = () => {
     // 개발 환경: React Native에서는 localhost 대신 실제 IP 주소 사용
     
     if (Platform.OS === 'android') {
-      // TODO: 실제 기기 테스트 시 아래 주석을 해제하고 PC의 실제 IP를 입력하세요
-      // 예: 'http://192.168.1.100:8000' (Windows에서 ipconfig로 확인)
-      
       // 환경변수가 설정되어 있으면 우선 사용
       if (process.env.REACT_APP_API_URL) {
         return process.env.REACT_APP_API_URL;
       }
       
-      // ADB reverse를 사용하는 경우: adb reverse tcp:8000 tcp:8000
+      // Port forwarding 사용 시: adb port-forward 8000 8000
+      // 또는 ADB reverse 사용 시: adb reverse tcp:8000 tcp:8000
       // 그러면 실제 기기에서도 localhost:8000 사용 가능
       // return 'http://localhost:8000';
       
-      // 에뮬레이터 전용 주소 (ADB reverse 미사용 시)
+      // 에뮬레이터 전용 주소 (port forwarding 미사용 시)
       return 'http://10.0.2.2:8000';
     } else {
       // iOS 시뮬레이터에서는 localhost 사용 가능
@@ -52,8 +50,13 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // FormData인 경우 Content-Type을 설정하지 않음 (브라우저가 자동으로 multipart/form-data로 설정)
+    const isFormData = options.body instanceof FormData;
+    
     const config: RequestInit = {
-      headers: {
+      headers: isFormData ? {
+        ...options.headers,
+      } : {
         'Content-Type': 'application/json',
         ...options.headers,
       },
@@ -62,6 +65,9 @@ class ApiClient {
 
     try {
       console.log(`🌐 API 요청: ${config.method || 'GET'} ${url}`);
+      if (isFormData) {
+        console.log('📎 FormData 전송');
+      }
       
       // 30초 타임아웃 설정 (AI 추천을 위해)
       const controller = new AbortController();
@@ -102,7 +108,7 @@ class ApiClient {
   async post<T>(endpoint: string, data: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     });
   }
 
