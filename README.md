@@ -70,6 +70,14 @@ npm run android      # 앱 빌드 & 실행
 npm run android:full # 포트 설정 + 앱 빌드 & 실행
 ```
 
+### ✅ 5. 포트 기본 설정
+- 안드로이드의 경우
+- 에뮬레이터에서 Ctrl + M(또는 Cmd + M on Mac) → Dev Settings → Debug server host & port for device 선택
+- 10.0.2.2:8082 입력
+- (에뮬레이터라면 10.0.2.2:8082 이지만, 단말기의 경우 localhost:8082)
+- iOS의 경우
+- 시뮬레이터에서 Cmd + D → Dev Settings → Debug server host & port for device에서 동일하게 설정
+
 ---
 
 ## 🛠 GitHub 협업 가이드: 기능 개발부터 병합까지 (꼭 읽어주세요!)

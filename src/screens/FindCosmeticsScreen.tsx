@@ -253,16 +253,21 @@ const FindCosmeticsScreen = () => {
         // 내역 보기에서 뒤로가기 시 이전 화면으로
         navigation.goBack()
       } else {
-        // 일반 결과 화면에서 뒤로가기 시 입력 화면으로
-        setShowResults(false)
-        setRecommendedCosmetics([])
-        setSelectedCategory("전체")
-        setAiExplanation("")
+        // 일반 결과 화면에서 뒤로가기 시 홈 화면으로 (작성 화면으로 가지 않음)
+        navigation.navigate('Home')
       }
     } else {
       // 입력 화면에서 뒤로가기 시 이전 화면으로
       navigation.goBack()
     }
+  }
+
+  // 확인 버튼 클릭 처리 (홈 화면으로 이동)
+  const handleConfirm = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    })
   }
 
   // 별점 렌더링 함수
@@ -395,6 +400,18 @@ const FindCosmeticsScreen = () => {
             <Text style={styles.sectionTitle}>추천 화장품</Text>
             {renderFilteredCosmetics()}
           </View>
+
+          {/* 확인 버튼 */}
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
+            <LinearGradient
+              colors={["#84FAB0", "#8FD3F4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.confirmButtonGradient}
+            >
+              <Text style={styles.confirmButtonText}>확인</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {/* 하단 여백 */}
           <View style={styles.bottomSpacer} />
@@ -875,6 +892,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     backgroundColor: '#FAFAFA',
+  },
+  confirmButton: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  confirmButtonGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 })
 

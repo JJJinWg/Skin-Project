@@ -2027,7 +2027,7 @@ def init_database():
                     status='pending',
                     symptoms='피부 톤 개선 상담',
                     notes='레이저 치료 문의',
-                    consultation_type='시술상담',
+                    consultation_type='피부상담',
                     diagnosis_request_id=1
                 ),
                 Appointment(
@@ -2052,7 +2052,7 @@ def init_database():
                     status='cancelled',
                     symptoms='피부 미용 상담',
                     notes='환자 측에서 개인 사정으로 취소',
-                    consultation_type='시술상담',
+                    consultation_type='피부상담',
                     cancellation_reason='개인 사정으로 일정 변경',
                     cancelled_by='user'
                 ),
@@ -2078,7 +2078,7 @@ def init_database():
                     status='cancelled',
                     symptoms='기미 치료 상담',
                     notes='환자 측 갑작스런 해외 출장',
-                    consultation_type='시술상담',
+                    consultation_type='피부상담',
                     cancellation_reason='갑작스런 해외 출장으로 인한 취소',
                     cancelled_by='user'
                 ),
@@ -2116,7 +2116,7 @@ def init_database():
                     status='pending',
                     symptoms='기미 레이저 치료',
                     notes='IPL 레이저 상담',
-                    consultation_type='시술상담',
+                    consultation_type='피부상담',
                     diagnosis_request_id=4
                 ),
                 # 추가 예약들 (더 많은 데이터)

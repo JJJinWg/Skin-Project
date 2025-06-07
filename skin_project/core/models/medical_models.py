@@ -70,7 +70,7 @@ class Appointment(Base):
     status = Column(String(20), default='pending')  # pending, confirmed, completed, cancelled
     symptoms = Column(Text)  # 증상 설명
     notes = Column(Text)  # 추가 메모
-    consultation_type = Column(String(50))  # 일반진료, 피부분석, 시술상담 등
+    consultation_type = Column(String(50))  # 일반진료, 피부분석, 피부상담 등
     # 취소 관련 필드들 추가
     cancellation_reason = Column(Text)  # 취소 사유
     cancelled_by = Column(String(20))  # 'user' or 'doctor'
