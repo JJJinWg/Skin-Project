@@ -14,6 +14,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GOOGLE_PLACES_API_KEY } from '@env';
 
 interface Pharmacy {
   place_id: string;
@@ -45,7 +46,7 @@ const PharmacyMapScreen = () => {
   };
 
   const fetchNearbyPharmacies = async (lat: number, lng: number) => {
-    const apiKey = 'AIzaSyA56Pzyczr7ZJyDOh_0Gk54EfdPiyxL5eU'; // ← 반드시 본인의 키로 교체
+    const apiKey = GOOGLE_PLACES_API_KEY;
     const radius = 2000;
     const type = 'pharmacy';
 
@@ -58,7 +59,7 @@ const PharmacyMapScreen = () => {
             radius,
             type,
             key: apiKey,
-            language: 'ko', // 한글화
+            language: 'ko',
           },
         },
       );
@@ -84,7 +85,9 @@ const PharmacyMapScreen = () => {
   useEffect(() => {
     const fetchLocation = async () => {
       const granted = await requestLocationPermission();
-      if (!granted) return;
+      if (!granted) {
+        return; // 중괄호 추가로 eslint(curly) 오류 해결
+      }
 
       Geolocation.getCurrentPosition(
         (pos) => {
