@@ -297,11 +297,21 @@ const PharmacyMapScreen = () => {
       webViewRef.current.injectJavaScript(`
         try {
           // 기존 마커 제거
-          markers.forEach(marker => marker.setMap(null));
-          markers = [];
+          if (window.markers && window.markers.length) {
+            window.markers.forEach(marker => {
+              if (marker && marker.setMap) {
+                marker.setMap(null);
+                if (marker.infowindow) {
+                  marker.infowindow.close();
+                }
+              }
+            });
+          }
+          window.markers = [];
 
           // 새 마커 추가
-          ${JSON.stringify(markersData)}.forEach(data => {
+          const markersData = ${JSON.stringify(markersData)};
+          markersData.forEach(data => {
             const marker = new google.maps.Marker({
               position: { lat: data.lat, lng: data.lng },
               map: map,
@@ -313,8 +323,7 @@ const PharmacyMapScreen = () => {
                 fillColor: '#4285F4',
                 fillOpacity: 0.8,
                 strokeColor: '#FFFFFF',
-                strokeWeight: 2,
-                strokeOpacity: 1,
+                strokeWeight: 2
               }
             });
 
@@ -326,7 +335,11 @@ const PharmacyMapScreen = () => {
             });
 
             marker.addListener('click', () => {
-              markers.forEach(m => m.infowindow?.close());
+              window.markers.forEach(m => {
+                if (m.infowindow) {
+                  m.infowindow.close();
+                }
+              });
               infowindow.open(map, marker);
               window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'MARKER_CLICKED',
@@ -335,19 +348,30 @@ const PharmacyMapScreen = () => {
             });
 
             marker.infowindow = infowindow;
-            markers.push(marker);
+            window.markers.push(marker);
           });
 
-          if (markers.length > 0) {
+          if (window.markers.length > 0) {
             const bounds = new google.maps.LatLngBounds();
-            markers.forEach(marker => bounds.extend(marker.getPosition()));
+            window.markers.forEach(marker => {
+              if (marker && marker.getPosition) {
+                bounds.extend(marker.getPosition());
+              }
+            });
             map.fitBounds(bounds);
-            if (map.getZoom() > 15) map.setZoom(15);
+            if (map.getZoom() > 15) {
+              map.setZoom(15);
+            }
           }
+
+          true;
         } catch (error) {
           console.error('Error updating markers:', error);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'ERROR',
+            message: 'Error updating markers: ' + error.message
+          }));
         }
-        true;
       `);
     }
   };
@@ -386,6 +410,10 @@ const PharmacyMapScreen = () => {
         case 'MAP_LOADED':
           console.log('Map loaded successfully');
           setIsLoading(false);
+          // 지도 로드 완료 시 즉시 약국 검색 실행
+          if (currentLocation) {
+            fetchNearbyPharmacies(currentLocation);
+          }
           break;
         case 'MARKER_CLICKED':
           if (message.data) {
@@ -464,6 +492,9 @@ const PharmacyMapScreen = () => {
                   strokeWeight: 2,
                 }
               });
+
+              // 전역 markers 배열 초기화
+              window.markers = [];
 
               window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'MAP_LOADED',
