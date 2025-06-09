@@ -32,7 +32,6 @@ interface ShopInfo {
   isFreeShipping: boolean;
   isLowestPrice?: boolean;
   isCardDiscount?: boolean;
-  link?: string;
 }
 
 const ProductDetailScreen = () => {
@@ -43,7 +42,6 @@ const ProductDetailScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [includeShipping, setIncludeShipping] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [priceLoading, setPriceLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [shops, setShops] = useState<ShopInfo[]>([]);
 
@@ -57,7 +55,6 @@ const ProductDetailScreen = () => {
     const loadProduct = async () => {
       try {
         setLoading(true);
-        setPriceLoading(true);
         const productData = await productService.getProductById(id);
         if (productData) {
           setProduct(productData);
@@ -69,7 +66,6 @@ const ProductDetailScreen = () => {
         console.error('제품 정보 로드 실패:', error);
       } finally {
         setLoading(false);
-        setPriceLoading(false);
       }
     };
 
@@ -114,45 +110,30 @@ const ProductDetailScreen = () => {
       style={styles.shopItem}
       onPress={() => {
         // 실제로는 해당 쇼핑몰 상품 페이지로 이동
-        if (item.link) {
-          Linking.openURL(item.link);
-        }
+        Linking.openURL('https://www.example.com');
       }}
     >
       <View style={styles.shopHeader}>
-        <Image
-          source={item.logo}
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 12,
-            backgroundColor: '#fff',
-            borderWidth: 1,
-            borderColor: '#eee',
-            marginRight: 16,
-          }}
-          resizeMode="contain"
-        />
-        <View style={{ flex: 1, flexDirection: 'column', justifyContent: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.shopName}>{item.name}</Text>
-            {item.installment ? <Text style={styles.installmentText}>{item.installment}</Text> : null}
-            {item.isLowestPrice && (
-              <View style={styles.lowestPriceBadge}>
-                <Text style={styles.lowestPriceText}>최저가</Text>
-              </View>
-            )}
-            {item.isCardDiscount && (
-              <View style={styles.cardDiscountBadge}>
-                <Text style={styles.cardDiscountText}>카드할인</Text>
-              </View>
-            )}
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.shopPrice}>{formatPrice(item.price)}원</Text>
-            <Text style={styles.shippingText}>{item.shipping}</Text>
-          </View>
+        <Image source={item.logo} style={styles.shopLogo} />
+        <View style={styles.shopInfo}>
+          <Text style={styles.shopName}>{item.name}</Text>
+          {item.installment ? <Text style={styles.installmentText}>{item.installment}</Text> : null}
         </View>
+        {item.isLowestPrice && (
+          <View style={styles.lowestPriceBadge}>
+            <Text style={styles.lowestPriceText}>최저가</Text>
+          </View>
+        )}
+        {item.isCardDiscount && (
+          <View style={styles.cardDiscountBadge}>
+            <Text style={styles.cardDiscountText}>카드할인</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.priceRow}>
+        <Text style={styles.shopPrice}>{formatPrice(item.price)}원</Text>
+        <Text style={styles.shippingText}>{item.shipping}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -241,25 +222,21 @@ const ProductDetailScreen = () => {
         {/* 쇼핑몰 목록 */}
         <View style={styles.shopsContainer}>
           <Text style={styles.shopsTitle}>쇼핑몰별 가격</Text>
-          {priceLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>가격 정보를 불러오는 중...</Text>
-            </View>
-          ) : shops.length > 0 ? (
-            <FlatList
-              data={shops}
-              renderItem={renderShopItem}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.shopSeparator} />}
-            />
+          {shops.length > 0 ? (
+          <FlatList
+            data={shops}
+            renderItem={renderShopItem}
+            keyExtractor={(item) => item.id.toString()}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.shopSeparator} />}
+          />
           ) : (
             <View style={styles.noShopsContainer}>
               <Text style={styles.noShopsText}>
-                🔍 가격 정보를 찾을 수 없습니다.
+                🔧 쇼핑몰 가격 정보를 불러올 수 없습니다.
               </Text>
               <Text style={styles.noShopsSubText}>
-                다른 검색어로 다시 시도해주세요.
+                백엔드 API 개발이 완료되면 실제 가격 비교 서비스를 이용하실 수 있습니다.
               </Text>
             </View>
           )}
