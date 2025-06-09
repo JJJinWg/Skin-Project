@@ -58,7 +58,7 @@ const isEmulator = Platform.select({
 const isEmulatorLocation = (lat: number, lng: number) => {
   const latDiff = Math.abs(lat - GOOGLE_HQ_LOCATION.latitude);
   const lngDiff = Math.abs(lng - GOOGLE_HQ_LOCATION.longitude);
-  return latDiff < 1 && lngDiff < 1; // 1도 이내의 차이는 에뮬레이터로 간주
+  return latDiff < 1 && lngDiff < 1; // 위치 1도 이내의 차이는 에뮬레이터로 간주
 };
 
 // Google Maps API 관련 타입 정의
@@ -171,8 +171,8 @@ const PharmacyMapScreen = () => {
       console.log('에뮬레이터 감지, 기본 위치 사용');
       setCurrentLocation(DEFAULT_LOCATION);
       setIsLoading(false);
-      return;
-    }
+        return;
+      }
 
     // 실제 기기인 경우 현재 위치 가져오기
     getCurrentLocation();
@@ -434,15 +434,15 @@ const PharmacyMapScreen = () => {
 
           function initMap() {
             try {
-              const currentLocation = {
-                lat: ${currentLocation.latitude},
-                lng: ${currentLocation.longitude}
-              };
-              
+            const currentLocation = {
+              lat: ${currentLocation.latitude},
+              lng: ${currentLocation.longitude}
+            };
+            
               console.log('Initializing map with location:', currentLocation);
               
               map = new google.maps.Map(document.getElementById('map'), {
-                center: currentLocation,
+              center: currentLocation,
                 zoom: 15,
                 mapTypeControl: false,
                 fullscreenControl: false,
@@ -452,8 +452,8 @@ const PharmacyMapScreen = () => {
 
               // 현재 위치 마커 (빨간색)
               const currentLocationMarker = new google.maps.Marker({
-                position: currentLocation,
-                map: map,
+              position: currentLocation,
+              map: map,
                 title: '현재 위치',
                 icon: {
                   path: google.maps.SymbolPath.CIRCLE,
@@ -609,12 +609,12 @@ const PharmacyMapScreen = () => {
       </View>
 
       <View style={styles.mapContainer}>
-        <WebView
+      <WebView
           ref={webViewRef}
-          source={{ html: mapHTML }}
-          style={styles.map}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
+        source={{ html: mapHTML }}
+        style={styles.map}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
           geolocationEnabled={true}
           androidLayerType="hardware"
           onError={(syntheticEvent) => {
@@ -626,8 +626,8 @@ const PharmacyMapScreen = () => {
           onLoadEnd={() => {
             console.log('WebView loaded');
           }}
-        />
-      </View>
+      />
+    </View>
 
       {filteredPharmacies.length > 0 ? (
         <FlatList
@@ -709,8 +709,8 @@ const PharmacyMapScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#fff',
   },
   header: {
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').height * 0.4,
     backgroundColor: '#eaeaea',
   },
-  map: { 
+  map: {
     flex: 1,
   },
   pharmacyList: {
