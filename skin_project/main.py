@@ -3973,6 +3973,3 @@ def delete_skin_analysis_api(analysis_id: int, user_id: Optional[int] = None, db
     except Exception as e:
         print(f"❌ AI 피부 분석 결과 삭제 실패: {e}")
         raise HTTPException(status_code=500, detail="AI 피부 분석 결과 삭제 중 오류가 발생했습니다.")
-
-from naver_proxy import router as naver_router
-app.include_router(naver_router)
