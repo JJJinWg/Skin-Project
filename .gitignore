@@ -101,7 +101,7 @@ metro-cache/
 # Expo (혹시 쓰게 될 경우 대비)
 .expo/
 .expo-shared/
-
+.venv/
 venv/
 __pycache__/
 *.pyc
