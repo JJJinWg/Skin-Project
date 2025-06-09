@@ -1,482 +1,564 @@
-// 약국 지도 화면
+import React, { useEffect, useState, useRef } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  Text, 
+  Platform, 
+  PermissionsAndroid, 
+  Alert, 
+  TouchableOpacity, 
+  TextInput, 
+  FlatList,
+  Dimensions,
+  ActivityIndicator
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import Geolocation, { GeolocationError } from '@react-native-community/geolocation';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DeviceInfo from 'react-native-device-info';
 
-import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, StatusBar, Linking, ActivityIndicator, Alert } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
-import Ionicons from "react-native-vector-icons/Ionicons"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
-import { useNavigation } from "@react-navigation/native"
-import type { StackNavigationProp } from "@react-navigation/stack"
-import type { RootStackParamList } from "../types/navigation"
-import { medicalApi } from "../services/apiClient"
+const GOOGLE_MAPS_API_KEY = 'AIzaSyA56Pzyczr7ZJyDOh_0Gk54EfdPiyxL5eU';
 
-type PharmacyNavigationProp = StackNavigationProp<RootStackParamList, "PharmacyMapScreen">
+// 아산 탕정면 기본 위치
+const DEFAULT_LOCATION = {
+  latitude: 36.7947,  // 아산 탕정면 위도
+  longitude: 127.0872 // 아산 탕정면 경도
+};
 
-// 약국 타입 정의
-interface Pharmacy {
-  id: string
-  name: string
-  address: string
-  distance: string
-  isOpen: boolean
-  openTime: string
-  phone: string
-  rating: number
+interface Location {
+  latitude: number;
+  longitude: number;
 }
 
-// 필터 옵션
-type FilterOption = "전체" | "영업중" | "거리순" | "평점순"
+interface Position {
+  coords: {
+    latitude: number;
+    longitude: number;
+  };
+}
 
-// API 응답 타입 정의
-interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  success?: boolean;
+interface Pharmacy {
+  place_id: string;
+  name: string;
+  vicinity: string;
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    }
+  };
 }
 
 const PharmacyMapScreen = () => {
-  const navigation = useNavigation<PharmacyNavigationProp>()
-  const [searchText, setSearchText] = useState("")
-  const [selectedFilter, setSelectedFilter] = useState<FilterOption>("전체")
-  const [pharmacies, setPharmacies] = useState<Pharmacy[]>([])
-  const [allPharmacies, setAllPharmacies] = useState<Pharmacy[]>([])
-  const [mapExpanded, setMapExpanded] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
+  const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
+  const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null);
+  const [isEmulator, setIsEmulator] = useState(false);
+  const webViewRef = useRef<WebView>(null);
 
-  // 약국 데이터 로드
   useEffect(() => {
-    loadPharmacies()
-  }, [])
+    const checkEmulator = async () => {
+      try {
+        const isEmu = await DeviceInfo.isEmulator();
+        console.log('Is emulator:', isEmu);
+        setIsEmulator(isEmu);
+        requestAndGetLocation();
+      } catch (err) {
+        console.error('Error checking emulator:', err);
+        requestAndGetLocation();
+      }
+    };
+    checkEmulator();
+  }, []);
 
-  const loadPharmacies = async () => {
-    try {
-      setLoading(true)
-      
-      // API 호출
-      const response = await medicalApi.getPharmacies() as ApiResponse<any[]>;
-      const pharmaciesData = response.data;
-      
-      // API 응답을 Pharmacy 타입에 맞게 변환
-      const transformedPharmacies = pharmaciesData.map((pharmacy: any) => ({
-        id: pharmacy.id,
-        name: pharmacy.name,
-        address: pharmacy.address,
-        distance: pharmacy.distance,
-        isOpen: pharmacy.isOpen,
-        openTime: pharmacy.openTime,
-        phone: pharmacy.phone,
-        rating: pharmacy.rating,
-      }));
-      
-      setAllPharmacies(transformedPharmacies);
-      setPharmacies(transformedPharmacies);
-    } catch (error) {
-      console.error('약국 데이터 로드 실패:', error);
-      Alert.alert('오류', '약국 정보를 불러오는데 실패했습니다.');
-    } finally {
-      setLoading(false);
+  const requestAndGetLocation = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '위치 권한',
+            message: '주변 약국을 찾기 위해 위치 권한이 필요합니다.',
+            buttonNeutral: '나중에',
+            buttonNegative: '거부',
+            buttonPositive: '허용',
+          }
+        );
+        
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Permission denied');
+          Alert.alert('권한 필요', '위치 정보 사용을 위해 권한이 필요합니다.');
+          setError('위치 권한이 거부되었습니다.');
+          setIsLoading(false);
+          return;
+        }
+        getCurrentLocation();
+      } catch (err) {
+        console.warn('Permission request error:', err);
+        Alert.alert('오류', '권한 요청 중 문제가 발생했습니다.');
+        setError('위치 권한 요청 중 오류가 발생했습니다.');
+        setIsLoading(false);
+      }
+    } else {
+      Geolocation.requestAuthorization();
+      getCurrentLocation();
     }
-  }
+  };
 
-  // 필터 적용 함수
-  const applyFilter = (filter: FilterOption) => {
-    setSelectedFilter(filter)
-    let filteredData = [...allPharmacies]
-
-    if (filter === "영업중") {
-      filteredData = filteredData.filter((pharmacy) => pharmacy.isOpen)
-    } else if (filter === "거리순") {
-      filteredData.sort(
-        (a, b) => Number.parseFloat(a.distance.replace("km", "")) - Number.parseFloat(b.distance.replace("km", "")),
-      )
-    } else if (filter === "평점순") {
-      filteredData.sort((a, b) => b.rating - a.rating)
+  const getCurrentLocation = () => {
+    console.log('Getting current location... Is Emulator:', isEmulator);
+    if (isEmulator) {
+      console.log('Using default location for emulator');
+      setCurrentLocation(DEFAULT_LOCATION);
+      setError(null);
+      setIsLoading(false);
+      return;
     }
 
-    setPharmacies(filteredData)
+    Geolocation.getCurrentPosition(
+      (position: Position) => {
+        console.log('Location success:', position);
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setError(null);
+        setIsLoading(false);
+      },
+      (err: GeolocationError) => {
+        console.log('Location error:', err);
+        if (isEmulator) {
+          console.log('Error occurred but running on emulator, using default location');
+          setCurrentLocation(DEFAULT_LOCATION);
+          setError(null);
+          setIsLoading(false);
+          return;
+        }
+        let errorMessage = '위치를 가져오는데 실패했습니다.';
+        switch (err.code) {
+          case 1:
+            errorMessage = '위치 권한이 거부되었습니다.';
+            break;
+          case 2:
+            errorMessage = '위치를 확인할 수 없습니다. GPS가 켜져있는지 확인해주세요.';
+            break;
+          case 3:
+            errorMessage = '위치 정보를 가져오는데 시간이 초과되었습니다.';
+            break;
+        }
+        setError(errorMessage);
+        setIsLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 1000,
+      }
+    );
+  };
+
+  useEffect(() => {
+    console.log('PharmacyMapScreen mounted');
+    requestAndGetLocation();
+  }, []);
+
+  const handlePharmacyPress = (pharmacy: Pharmacy) => {
+    setSelectedPharmacy(pharmacy);
+    webViewRef.current?.injectJavaScript(`
+      if (map) {
+        map.setCenter({
+          lat: ${pharmacy.geometry.location.lat},
+          lng: ${pharmacy.geometry.location.lng}
+        });
+        map.setZoom(17);
+      }
+      true;
+    `);
+  };
+
+  const handleSendPrescription = () => {
+    Alert.alert('처방전 전송 완료', '약국으로 처방전이 전송되었습니다.');
+    setSelectedPharmacy(null);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3478f6" />
+        <Text style={styles.loadingText}>위치 정보를 불러오는 중...</Text>
+      </View>
+    );
   }
 
-  // 검색 함수
-  const handleSearch = (text: string) => {
-    setSearchText(text)
-    if (text.trim() === "") {
-      applyFilter(selectedFilter)
-      return
-    }
-
-    const filtered = allPharmacies.filter(
-      (pharmacy) =>
-        pharmacy.name.toLowerCase().includes(text.toLowerCase()) ||
-        pharmacy.address.toLowerCase().includes(text.toLowerCase()),
-    )
-    setPharmacies(filtered)
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>오류 발생</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={requestAndGetLocation}
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
-  // 전화 걸기 함수
-  const handleCall = (phoneNumber: string) => {
-    Linking.openURL(`tel:${phoneNumber}`)
+  if (!currentLocation) {
+    return (
+      <View style={styles.container}>
+        <Text>위치를 찾을 수 없습니다.</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={requestAndGetLocation}
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
-  // 지도 확대/축소 토글
-  const toggleMapExpansion = () => {
-    setMapExpanded(!mapExpanded)
-  }
+  const mapHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <style>
+          html, body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            width: 100%; 
+          }
+          #map { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+          }
+        </style>
+        <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places"></script>
+        <script>
+          let map;
+          let service;
+          let markers = [];
 
-  // 현재 위치로 이동 (실제로는 API 연동 필요)
-  const moveToCurrentLocation = () => {
-    // 실제 구현에서는 위치 정보를 가져와 지도를 현재 위치로 이동
-    console.log("현재 위치로 이동")
-  }
+          function initMap() {
+            try {
+              console.log('Initializing map...');
+              const currentLocation = {
+                lat: ${currentLocation?.latitude || DEFAULT_LOCATION.latitude},
+                lng: ${currentLocation?.longitude || DEFAULT_LOCATION.longitude}
+              };
+              
+              map = new google.maps.Map(document.getElementById('map'), {
+                center: currentLocation,
+                zoom: 15,
+                mapTypeControl: false,
+                fullscreenControl: false,
+                streetViewControl: false
+              });
+
+              // 현재 위치 마커 (파란색)
+              new google.maps.Marker({
+                position: currentLocation,
+                map: map,
+                title: '현재 위치',
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 10,
+                  fillColor: '#4285F4',
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                }
+              });
+
+              // 주변 약국 검색
+              const request = {
+                location: currentLocation,
+                radius: 2000,
+                type: ['pharmacy']
+              };
+
+              service = new google.maps.places.PlacesService(map);
+              service.nearbySearch(request, (results, status) => {
+                console.log('Places search status:', status);
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                  console.log('Found places:', results.length);
+                  window.ReactNativeWebView.postMessage(JSON.stringify(results));
+                  results.forEach(place => {
+                    if (place.geometry && place.geometry.location) {
+                      const marker = new google.maps.Marker({
+                        position: place.geometry.location,
+                        map: map,
+                        title: place.name,
+                        icon: {
+                          path: google.maps.SymbolPath.CIRCLE,
+                          scale: 10,
+                          fillColor: '#EA4335',
+                          fillOpacity: 1,
+                          strokeColor: '#ffffff',
+                          strokeWeight: 2,
+                        }
+                      });
+                      markers.push(marker);
+                    }
+                  });
+                } else {
+                  console.error('Places search failed:', status);
+                }
+              });
+
+              window.map = map;
+            } catch (error) {
+              console.error('Error in initMap:', error);
+            }
+          }
+
+          window.onerror = function(msg, url, line) {
+            console.error('JavaScript error:', msg, 'at', url, ':', line);
+            return false;
+          };
+        </script>
+      </head>
+      <body onload="initMap()">
+        <div id="map"></div>
+      </body>
+    </html>
+  `;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
-      {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>근처 약국 찾기</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      {/* 검색 바 */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="약국명 또는 주소 검색"
-          value={searchText}
-          onChangeText={handleSearch}
-          placeholderTextColor="#888"
-        />
-        {searchText.length > 0 && (
-          <TouchableOpacity onPress={() => handleSearch("")}>
-            <Ionicons name="close-circle" size={20} color="#888" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* 지도 영역 (나중에 실제 지도로 대체) */}
-      <View style={[styles.mapContainer, mapExpanded && styles.expandedMap]}>
-        <View style={styles.dummyMap}>
-          <Text style={styles.dummyMapText}>지도 영역</Text>
-          <Text style={styles.dummyMapSubText}>(구글 맵 또는 카카오맵 API로 대체될 영역)</Text>
-        </View>
-
-        {/* 지도 컨트롤 버튼들 */}
-        <View style={styles.mapControls}>
-          <TouchableOpacity style={styles.mapControlButton} onPress={moveToCurrentLocation}>
-            <MaterialIcons name="my-location" size={22} color="#333" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.mapControlButton} onPress={toggleMapExpansion}>
-            <MaterialIcons name={mapExpanded ? "fullscreen-exit" : "fullscreen"} size={22} color="#333" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* 필터 옵션 */}
-      <View style={styles.filterContainer}>
-        {(["전체", "영업중", "거리순", "평점순"] as FilterOption[]).map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[styles.filterButton, selectedFilter === filter && styles.selectedFilterButton]}
-            onPress={() => applyFilter(filter)}
-          >
-            <Text style={[styles.filterText, selectedFilter === filter && styles.selectedFilterText]}>{filter}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* 약국 목록 */}
-      <View style={[styles.listContainer, mapExpanded && styles.collapsedList]}>
-        <Text style={styles.resultText}>{pharmacies.length}개의 약국이 검색되었습니다</Text>
-
-        {loading ? (
-          <ActivityIndicator size="large" color="#5C6BC0" />
-        ) : (
-          <FlatList
-            data={pharmacies}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <View style={styles.pharmacyCard}>
-                <View style={styles.pharmacyHeader}>
-                  <View>
-                    <Text style={styles.pharmacyName}>{item.name}</Text>
-                    <View style={styles.ratingContainer}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <FontAwesome
-                          key={star}
-                          name={star <= Math.floor(item.rating) ? "star" : star <= item.rating ? "star-half-o" : "star-o"}
-                          size={14}
-                          color="#FFD700"
-                          style={{ marginRight: 2 }}
-                        />
-                      ))}
-                      <Text style={styles.ratingText}>{item.rating}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.distanceContainer}>
-                    <Text style={styles.distanceText}>{item.distance}</Text>
-                    <View style={[styles.statusBadge, item.isOpen ? styles.openBadge : styles.closedBadge]}>
-                      <Text style={[styles.statusText, item.isOpen ? styles.openText : styles.closedText]}>
-                        {item.isOpen ? "영업중" : "영업종료"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <Text style={styles.pharmacyAddress}>{item.address}</Text>
-                <Text style={styles.pharmacyHours}>영업시간: {item.openTime}</Text>
-
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(item.phone)}>
-                    <Ionicons name="call" size={16} color="#5C6BC0" />
-                    <Text style={styles.actionButtonText}>전화</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="navigate" size={16} color="#5C6BC0" />
-                    <Text style={styles.actionButtonText}>길찾기</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="information-circle" size={16} color="#5C6BC0" />
-                    <Text style={styles.actionButtonText}>상세정보</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+        <Text style={styles.title}>약국 찾기</Text>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="약국명 또는 주소 검색"
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholderTextColor="#666"
           />
-        )}
+          {searchText.length > 0 && (
+            <TouchableOpacity 
+              style={styles.clearButton}
+              onPress={() => setSearchText('')}
+            >
+              <Text>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
+
+      <View style={styles.mapContainer}>
+        <WebView
+          ref={webViewRef}
+          source={{ html: mapHTML }}
+          style={styles.map}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          geolocationEnabled={true}
+          androidLayerType="hardware"
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error:', nativeEvent);
+          }}
+          onMessage={(event) => {
+            const pharmacyData = JSON.parse(event.nativeEvent.data);
+            setPharmacies(pharmacyData);
+          }}
+        />
+      </View>
+
+      {pharmacies.length > 0 ? (
+        <FlatList
+          data={pharmacies}
+          keyExtractor={(item) => item.place_id}
+          style={styles.pharmacyList}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={[
+                styles.pharmacyItem,
+                selectedPharmacy?.place_id === item.place_id && styles.selectedItem
+              ]} 
+              onPress={() => handlePharmacyPress(item)}
+            >
+              <Text style={styles.pharmacyName}>{item.name}</Text>
+              <Text style={styles.pharmacyVicinity}>{item.vicinity}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <View style={styles.noResultContainer}>
+          <Text style={styles.noResult}>주변 약국을 검색중입니다...</Text>
+        </View>
+      )}
+
+      {selectedPharmacy && (
+        <View style={styles.selectedPharmacy}>
+          <Text style={styles.selectedPharmacyName}>{selectedPharmacy.name}</Text>
+          <Text style={styles.selectedPharmacyVicinity}>{selectedPharmacy.vicinity}</Text>
+          <TouchableOpacity 
+            style={styles.sendButton} 
+            onPress={handleSendPrescription}
+          >
+            <Text style={styles.sendButtonText}>처방전 보내기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    padding: 16,
+    backgroundColor: '#fff',
   },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  placeholder: {
-    width: 24,
+  title: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    marginBottom: 12,
+    color: '#333',
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    height: 46,
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
+  searchBar: {
     flex: 1,
-    height: "100%",
-    fontSize: 15,
-    color: "#333",
+    height: 44,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  clearButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
   },
   mapContainer: {
-    height: 200,
-    margin: 16,
-    marginTop: 0,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#e1e2e3",
+    height: Dimensions.get('window').height * 0.4,
+    backgroundColor: '#eaeaea',
   },
-  expandedMap: {
-    height: 400,
-  },
-  dummyMap: {
+  map: { 
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#e1e2e3",
   },
-  dummyMapText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#555",
-  },
-  dummyMapSubText: {
-    fontSize: 12,
-    color: "#777",
-    marginTop: 4,
-  },
-  mapControls: {
-    position: "absolute",
-    right: 10,
-    bottom: 10,
-  },
-  mapControlButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: "white",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  filterContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
-    minWidth: 70,
-    alignItems: "center",
-  },
-  selectedFilterButton: {
-    backgroundColor: "#5C6BC0",
-  },
-  filterText: {
-    fontSize: 14,
-    color: "#555",
-  },
-  selectedFilterText: {
-    color: "white",
-    fontWeight: "500",
-  },
-  listContainer: {
+  pharmacyList: {
     flex: 1,
-    paddingHorizontal: 16,
+    backgroundColor: '#fff',
   },
-  collapsedList: {
-    maxHeight: "30%",
-  },
-  resultText: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  pharmacyCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
+  pharmacyItem: {
     padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
-  pharmacyHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+  selectedItem: {
+    backgroundColor: '#f0f7ff',
+  },
+  pharmacyName: { 
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+    color: '#333',
+  },
+  pharmacyVicinity: { 
+    fontSize: 14,
+    color: '#666',
+  },
+  noResultContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noResult: { 
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  selectedPharmacy: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  selectedPharmacyName: { 
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
+  },
+  selectedPharmacyVicinity: { 
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  sendButton: {
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
     marginBottom: 8,
   },
-  pharmacyName: {
+  errorText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  retryButton: {
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
-  ratingText: {
-    fontSize: 13,
-    color: "#666",
-    marginLeft: 4,
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  distanceContainer: {
-    alignItems: "flex-end",
-  },
-  distanceText: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  openBadge: {
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
-  },
-  closedBadge: {
-    backgroundColor: "rgba(239, 83, 80, 0.1)",
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  openText: {
-    color: "#4CAF50",
-  },
-  closedText: {
-    color: "#EF5350",
-  },
-  pharmacyAddress: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 4,
-  },
-  pharmacyHours: {
-    fontSize: 13,
-    color: "#777",
-    marginBottom: 12,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-    paddingTop: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    color: "#5C6BC0",
-    marginLeft: 4,
-  },
-})
+});
 
-export default PharmacyMapScreen
+export default PharmacyMapScreen;
