@@ -1,6 +1,7 @@
 // 제품 관련 서비스
 
 import { medicalApi } from './apiClient'
+import apiClient from './apiClient'
 
 // Product 타입 정의
 export interface Product {
@@ -50,6 +51,8 @@ export interface ShopInfo {
   isFreeShipping: boolean;
   isLowestPrice?: boolean;
   isCardDiscount?: boolean;
+  image?: string; // 썸네일 이미지 URL
+  link?: string;  // 쇼핑몰 상세 페이지 URL
 }
 
 // API 응답 타입 정의
@@ -431,49 +434,56 @@ const shopLogoMap: { [key: string]: any } = {
 };
 const defaultShopLogo = require('../assets/shop_11st.png');
 
-// 제품의 쇼핑몰 정보 조회
+// 네이버 검색 API로 제품 가격 정보 조회 (백엔드 프록시 사용)
+const getNaverProductPrices = async (productName: string): Promise<ShopInfo[]> => {
+  try {
+    const data = await apiClient.get(`/api/naver/lowest-price?query=${encodeURIComponent(productName)}`) as any;
+    return data.items.map((item: any, index: number) => ({
+      id: index + 1,
+      name: item.mallName,
+      logo: { uri: item.image }, // 썸네일 이미지를 로고로 사용
+      price: parseInt(item.lprice),
+      shipping: '무료배송',
+      shippingFee: 0,
+      isFreeShipping: true,
+      isLowestPrice: false,
+      isCardDiscount: false,
+      image: item.image,
+      link: item.link
+    }));
+  } catch (error) {
+    console.error('❌ 네이버 프록시 API 호출 실패:', error);
+    return [];
+  }
+};
+
+// 제품의 쇼핑몰 정보 조회 함수 수정
 export const getProductShops = async (productId: number): Promise<ShopInfo[]> => {
   try {
     console.log('🛍️ 제품 쇼핑몰 정보 조회 중...', productId);
     
-    // API 호출
-    const response = await medicalApi.getProductShops(productId) as any;
-    
-    console.log('🔍 백엔드 응답:', response);
-    
-    // 백엔드 응답 구조 확인: { success: true, data: [...] }
-    let shops = [];
-    if (response && response.success && Array.isArray(response.data)) {
-      shops = response.data;
-    } else if (Array.isArray(response)) {
-      // 만약 직접 배열로 응답하는 경우
-      shops = response;
-    } else {
-      console.warn('⚠️ 예상과 다른 응답 구조:', response);
-      return [];
+    // 1. 먼저 제품 정보를 가져옵니다
+    const product = await getProductById(productId);
+    if (!product) {
+      throw new Error('제품 정보를 찾을 수 없습니다.');
     }
+
+    // 2. 네이버 검색 API로 가격 정보를 가져옵니다
+    const naverPrices = await getNaverProductPrices(product.name);
     
-    console.log('🔍 파싱된 쇼핑몰 데이터:', shops);
+    // 3. 최저가 표시를 위해 가격 정렬
+    const sortedPrices = naverPrices.sort((a, b) => a.price - b.price);
     
-    // API 응답을 ShopInfo 인터페이스에 맞게 변환
-    return shops.map((shop: any) => ({
-      id: shop.id,
-      name: shop.name,
-      logo: shopLogoMap[shop.name?.toLowerCase()] || defaultShopLogo,
-      price: shop.price || 0,
-      shipping: shop.shipping || '무료배송',
-      shippingFee: shop.shippingFee || 0,
-      installment: shop.installment,
-      isFreeShipping: shop.isFreeShipping || true,
-      isLowestPrice: shop.isLowestPrice || false,
-      isCardDiscount: shop.isCardDiscount || false
+    // 4. 최저가 표시 업데이트
+    return sortedPrices.map((shop, index) => ({
+      ...shop,
+      isLowestPrice: index === 0 // 첫 번째 항목이 최저가
     }));
   } catch (error) {
     console.error('❌ 제품 쇼핑몰 정보 조회 실패:', error);
-    console.error('💡 백엔드에 /api/products/{id}/shops 엔드포인트가 구현되지 않았습니다.');
     return [];
   }
-}
+};
 
 // 화장품 추천 요청 타입 정의 (백엔드 스키마에 맞게 수정)
 export interface CosmeticRecommendationRequest {
