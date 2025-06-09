@@ -37,7 +37,6 @@ const StackNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        id={undefined}
         screenOptions={{
           headerShown: false, // 모든 화면에서 헤더 숨김
         }}
