@@ -1,13 +1,6 @@
 module.exports = {
-  presets: ['module:metro-react-native-babel-preset'],
+  presets: ['module:@react-native/babel-preset'],
   plugins: [
-    ['module:react-native-dotenv', {
-      moduleName: '@env',
-      path: '.env',
-      blocklist: null,
-      allowlist: null,
-      safe: false,
-      allowUndefined: true
-    }]
-  ]
+    'react-native-reanimated/plugin', // 반드시 마지막에 추가해야 합니다.
+  ],
 };
