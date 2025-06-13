@@ -1,5 +1,5 @@
 // 가격 비교 상품 상세 화면
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -47,10 +47,11 @@ const ProductDetailScreen = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [shops, setShops] = useState<ShopInfo[]>([]);
 
-  // 상품 이미지 (API에서 가져온 제품 정보 기반)
-  const productImages = product ? [product.image] : [
-    { uri: 'https://via.placeholder.com/150?text=Product+Image' }
-  ];
+  // 상품 이미지 배열 처리 개선
+  const productImages = useMemo(() => {
+    if (!product?.image) return [{ uri: 'https://via.placeholder.com/150?text=Product+Image' }];
+    return Array.isArray(product.image) ? product.image : [product.image];
+  }, [product?.image]);
 
   // 제품 정보 로드
   useEffect(() => {
@@ -62,8 +63,13 @@ const ProductDetailScreen = () => {
         if (productData) {
           setProduct(productData);
           // 쇼핑몰 정보 로드
-          const shopData = await productService.getProductShops(id);
-          setShops(shopData);
+          try {
+            const shopData = await productService.getProductShops(id);
+            setShops(shopData || []);
+          } catch (shopError) {
+            console.error('쇼핑몰 정보 로드 실패:', shopError);
+            setShops([]);
+          }
         }
       } catch (error) {
         console.error('제품 정보 로드 실패:', error);
@@ -76,21 +82,17 @@ const ProductDetailScreen = () => {
     loadProduct();
   }, [id]);
 
-  // 최저가 계산
+  // 최저가 계산 개선
   const getLowestPrice = () => {
     if (!shops || shops.length === 0) {
       console.warn('⚠️ 쇼핑몰 가격 정보가 없어 제품 기본 가격을 사용합니다.');
-      return product?.price || 0; // shops가 없으면 제품 가격 사용
+      return product?.price || 0;
     }
     
-    if (includeShipping) {
-      return shops.reduce((min, shop) => {
-        const totalPrice = shop.price + shop.shippingFee;
-        return totalPrice < min ? totalPrice : min;
-      }, shops[0].price + shops[0].shippingFee);
-    } else {
-      return shops.reduce((min, shop) => (shop.price < min ? shop.price : min), shops[0].price);
-    }
+    return shops.reduce((min, shop) => {
+      const totalPrice = includeShipping ? (shop.price + (shop.shippingFee || 0)) : shop.price;
+      return totalPrice < min ? totalPrice : min;
+    }, includeShipping ? (shops[0].price + (shops[0].shippingFee || 0)) : shops[0].price);
   };
 
   // 최저가 포맷팅
@@ -173,8 +175,11 @@ const ProductDetailScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} >
-          
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>상품 가격비교</Text>
         <TouchableOpacity style={styles.shareButton}>
@@ -241,11 +246,20 @@ const ProductDetailScreen = () => {
         {/* 쇼핑몰 목록 */}
         <View style={styles.shopsContainer}>
           <Text style={styles.shopsTitle}>쇼핑몰별 가격</Text>
+          <View style={styles.shippingToggleContainer}>
+            <Text style={styles.shippingToggleLabel}>배송비 포함</Text>
+            <Switch
+              value={includeShipping}
+              onValueChange={setIncludeShipping}
+              trackColor={{ false: '#E9ECEF', true: '#4263EB' }}
+              thumbColor={includeShipping ? '#FFFFFF' : '#FFFFFF'}
+            />
+          </View>
           {priceLoading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>가격 정보를 불러오는 중...</Text>
             </View>
-          ) : shops.length > 0 ? (
+          ) : shops && shops.length > 0 ? (
             <FlatList
               data={shops}
               renderItem={renderShopItem}
