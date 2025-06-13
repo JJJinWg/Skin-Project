@@ -12,8 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Linking,
-  NativeModules,
-  ScrollView
+  NativeModules
 } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import Geolocation, { GeolocationError } from '@react-native-community/geolocation';
@@ -93,7 +92,6 @@ interface Pharmacy {
   rating?: number;
   opening_hours?: string[];
   distance?: number;
-  isOpen?: boolean;
 }
 
 interface WebViewMessage {
@@ -109,74 +107,15 @@ const PharmacyMapScreen = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null);
-  const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false);
   const webViewRef = useRef<WebView>(null);
 
   // 검색 반경 상수 정의 (미터 단위)
   const SEARCH_RADIUS = 3000; // 3km
 
-  // 위치 권한 확인
-  const checkLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "위치 권한 필요",
-            message: "주변 약국을 찾기 위해 위치 권한이 필요합니다.",
-            buttonNeutral: "나중에 묻기",
-            buttonNegative: "거부",
-            buttonPositive: "허용"
-          }
-        );
-        
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('위치 권한 허용됨');
-          setHasLocationPermission(true);
-          return true;
-        } else {
-          console.log('위치 권한 거부됨');
-          setError('위치 권한이 거부되었습니다. 설정에서 위치 권한을 허용해주세요.');
-          setHasLocationPermission(false);
-          return false;
-        }
-      } catch (err) {
-        console.warn(err);
-        setError('위치 권한 확인 중 오류가 발생했습니다.');
-        return false;
-      }
-    } else {
-      // iOS의 경우 Geolocation 요청 시 자동으로 권한 요청
-      setHasLocationPermission(true);
-      return true;
-    }
-  };
-
   const getCurrentLocation = async () => {
     console.log('Getting current location...');
     setIsLoading(true);
     setError(null);
-
-    // 위치 권한 확인
-    const hasPermission = await checkLocationPermission();
-    if (!hasPermission) {
-      setIsLoading(false);
-      return;
-    }
-
-    // GPS가 켜져있는지 확인 (Android only)
-    if (Platform.OS === 'android') {
-      try {
-        const locationEnabled = await NativeModules.LocationModule.isLocationEnabled();
-        if (!locationEnabled) {
-          setError('GPS가 꺼져 있습니다. GPS를 켜고 다시 시도해주세요.');
-          setIsLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.warn('GPS 상태 확인 실패:', err);
-      }
-    }
 
     // 위치 정보 가져오기 시도 (저정확도)
     const getLocationWithAccuracy = (highAccuracy: boolean) => {
@@ -300,8 +239,7 @@ const PharmacyMapScreen = () => {
               location.longitude,
               item.geometry.location.lat,
               item.geometry.location.lng
-            ),
-            isOpen: item.opening_hours?.some((day: string) => day.includes('Open'))
+            )
           }))
           .filter((item: Pharmacy) => item.distance && item.distance <= 3)
           .sort((a: Pharmacy, b: Pharmacy) => (a.distance || 0) - (b.distance || 0));
@@ -354,8 +292,7 @@ const PharmacyMapScreen = () => {
               currentLocation.longitude,
               item.geometry.location.lat,
               item.geometry.location.lng
-            ),
-            isOpen: item.opening_hours?.some((day: string) => day.includes('Open'))
+            )
           }))
           .filter((item: Pharmacy) => item.distance && item.distance <= 3)
           .sort((a: Pharmacy, b: Pharmacy) => (a.distance || 0) - (b.distance || 0));
@@ -391,9 +328,13 @@ const PharmacyMapScreen = () => {
 
       webViewRef.current.injectJavaScript(`
         try {
+          if (typeof markers === 'undefined') {
+            markers = [];
+          }
+          
           // 기존 마커 제거
-          if (window.markers && window.markers.length) {
-            window.markers.forEach(marker => {
+          if (markers.length > 0) {
+            markers.forEach(marker => {
               if (marker && marker.setMap) {
                 marker.setMap(null);
                 if (marker.infowindow) {
@@ -401,8 +342,8 @@ const PharmacyMapScreen = () => {
                 }
               }
             });
+            markers = [];
           }
-          window.markers = [];
 
           // 새 마커 추가
           const markersData = ${JSON.stringify(markersData)};
@@ -415,7 +356,7 @@ const PharmacyMapScreen = () => {
               icon: {
                 path: google.maps.SymbolPath.CIRCLE,
                 scale: 12,
-                fillColor: '#4285F4',  // 파란색으로 변경
+                fillColor: '#4285F4',
                 fillOpacity: 0.8,
                 strokeColor: '#FFFFFF',
                 strokeWeight: 2
@@ -430,7 +371,7 @@ const PharmacyMapScreen = () => {
             });
 
             marker.addListener('click', () => {
-              window.markers.forEach(m => {
+              markers.forEach(m => {
                 if (m.infowindow) {
                   m.infowindow.close();
                 }
@@ -443,15 +384,13 @@ const PharmacyMapScreen = () => {
             });
 
             marker.infowindow = infowindow;
-            window.markers.push(marker);
+            markers.push(marker);
           });
 
-          if (window.markers.length > 0) {
+          if (markers.length > 0) {
             const bounds = new google.maps.LatLngBounds();
-            window.markers.forEach(marker => {
-              if (marker && marker.getPosition) {
-                bounds.extend(marker.getPosition());
-              }
+            markers.forEach(marker => {
+              bounds.extend(marker.getPosition());
             });
             map.fitBounds(bounds);
             if (map.getZoom() > 15) {
@@ -471,29 +410,19 @@ const PharmacyMapScreen = () => {
     }
   };
 
-  const handleMarkerClick = (pharmacyId: string) => {
+  const focusPharmacyOnMap = (pharmacyId: string) => {
     const pharmacy = pharmacies.find(p => p.place_id === pharmacyId);
     if (pharmacy) {
       setSelectedPharmacy(pharmacy);
-      // 지도에서 해당 마커 포커싱
       webViewRef.current?.injectJavaScript(`
-        try {
-          const marker = markers.find(m => m.pharmacyId === '${pharmacyId}');
-          if (marker) {
-            // 다른 정보창들 닫기
-            markers.forEach(m => m.infowindow?.close());
-            // 선택된 마커의 정보창 열기
-            marker.infowindow.open(map, marker);
-            // 지도 중심 이동
-            map.panTo({ lat: ${pharmacy.lat}, lng: ${pharmacy.lng} });
-            map.setZoom(16);
-          }
-        } catch (error) {
-          console.error('Error focusing marker:', error);
-        }
+        window.focusMarker('${pharmacyId}', ${pharmacy.lat}, ${pharmacy.lng});
         true;
       `);
     }
+  };
+
+  const handleMarkerClick = (pharmacyId: string) => {
+    focusPharmacyOnMap(pharmacyId);
   };
 
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
@@ -505,14 +434,14 @@ const PharmacyMapScreen = () => {
         case 'MAP_LOADED':
           console.log('Map loaded successfully');
           setIsLoading(false);
-          // 지도가 로드되면 바로 약국 검색 실행
+          // 지도 로드 완료 시 즉시 약국 검색 실행
           if (currentLocation) {
             fetchNearbyPharmacies(currentLocation);
           }
           break;
         case 'MARKER_CLICKED':
           if (message.data) {
-            handleMarkerClick(message.data);
+            focusPharmacyOnMap(message.data);
           }
           break;
         case 'ERROR':
@@ -527,135 +456,111 @@ const PharmacyMapScreen = () => {
     }
   };
 
-  // 지도 포커싱 함수
-  const focusMapOnPharmacy = (pharmacy: Pharmacy) => {
-    const script = `
-      const targetMarker = markers.find(marker => marker.getTitle() === "${pharmacy.name}");
-      if (targetMarker) {
-        map.setCenter(targetMarker.getPosition());
-        map.setZoom(17);
-        
-        // 기존 선택된 마커 스타일 초기화
-        markers.forEach(marker => {
-          marker.setAnimation(null);
-        });
-        
-        // 선택된 마커 바운스 애니메이션 적용
-        targetMarker.setAnimation(google.maps.Animation.BOUNCE);
-        setTimeout(() => {
-          targetMarker.setAnimation(null);
-        }, 2100);
-      }
-    `;
-    webViewRef.current?.injectJavaScript(script);
-  };
-
-  // 약국 목록 렌더링
-  const renderPharmacyList = () => {
-    return (
-      <ScrollView style={styles.pharmacyListContainer}>
-        {pharmacies.map((pharmacy, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.pharmacyItem,
-              selectedPharmacy?.name === pharmacy.name && styles.selectedPharmacyItem
-            ]}
-            onPress={() => {
-              setSelectedPharmacy(pharmacy);
-              focusMapOnPharmacy(pharmacy);
-            }}
-          >
-            <View style={styles.pharmacyInfo}>
-              <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
-              <Text style={styles.pharmacyAddress}>{pharmacy.address}</Text>
-              {pharmacy.phone && (
-                <Text style={styles.pharmacyPhone}>{pharmacy.phone}</Text>
-              )}
-            </View>
-            <View style={styles.pharmacyStatus}>
-              <Text style={[
-                styles.statusText,
-                { color: pharmacy.isOpen ? '#4CAF50' : '#F44336' }
-              ]}>
-                {pharmacy.isOpen ? '영업중' : '영업종료'}
-              </Text>
-              {pharmacy.distance && (
-                <Text style={styles.distanceText}>{pharmacy.distance}km</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    );
-  };
-
-  // WebView HTML 수정 (마커 변수를 전역으로 저장)
-  const getHtml = () => `
+  const mapHTML = `
     <!DOCTYPE html>
     <html>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-          #map { height: 100vh; width: 100%; }
+          html, body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            width: 100%; 
+          }
+          #map { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            background-color: #f0f0f0;
+          }
         </style>
       </head>
       <body>
         <div id="map"></div>
         <script>
           let map;
-          let markers = []; // 마커 배열을 전역 변수로 저장
+          let markers = [];
+
+          // 마커 포커싱을 위한 전역 함수
+          window.focusMarker = function(markerId, lat, lng) {
+            const marker = markers.find(m => m.pharmacyId === markerId);
+            if (marker) {
+              markers.forEach(m => m.infowindow?.close());
+              marker.infowindow.open(map, marker);
+              map.panTo({ lat: lat, lng: lng });
+              map.setZoom(16);
+            }
+          }
 
           function initMap() {
-            const initialLocation = {
-              lat: ${currentLocation?.latitude || DEFAULT_LOCATION.latitude},
-              lng: ${currentLocation?.longitude || DEFAULT_LOCATION.longitude}
-            };
-
-            map = new google.maps.Map(document.getElementById('map'), {
-              center: initialLocation,
-              zoom: 15,
-            });
-
-            // 현재 위치 마커
-            const currentMarker = new google.maps.Marker({
-              position: initialLocation,
-              map: map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 10,
-                fillColor: '#4285F4',
-                fillOpacity: 1,
-                strokeColor: '#FFFFFF',
-                strokeWeight: 2,
-              },
-              title: '현재 위치'
-            });
-
-            // 약국 마커 추가
-            ${pharmacies.map((pharmacy) => `
-              const marker = new google.maps.Marker({
-                position: { lat: ${pharmacy.lat}, lng: ${pharmacy.lng} },
-                map: map,
-                icon: {
-                  url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-                },
-                title: '${pharmacy.name}'
+            try {
+              const currentLocation = {
+                lat: ${currentLocation.latitude},
+                lng: ${currentLocation.longitude}
+              };
+              
+              console.log('Initializing map with location:', currentLocation);
+              
+              map = new google.maps.Map(document.getElementById('map'), {
+                center: currentLocation,
+                zoom: 15,
+                mapTypeControl: false,
+                fullscreenControl: false,
+                streetViewControl: false,
+                zoomControl: true
               });
-              markers.push(marker);
-            `).join('')}
+
+              // 현재 위치 마커 (빨간색)
+              const currentLocationMarker = new google.maps.Marker({
+                position: currentLocation,
+                map: map,
+                title: '현재 위치',
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 10,
+                  fillColor: '#EA4335',
+                  fillOpacity: 1,
+                  strokeColor: '#ffffff',
+                  strokeWeight: 2,
+                }
+              });
+
+              window.markers = [];
+
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'MAP_LOADED',
+                message: 'Map initialized successfully'
+              }));
+
+            } catch (error) {
+              console.error('Error in initMap:', error);
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'ERROR',
+                message: 'Map initialization failed: ' + error.message
+              }));
+            }
           }
         </script>
-        <script async defer
-          src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap">
-        </script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap" async defer></script>
       </body>
     </html>
   `;
 
+  useEffect(() => {
+    if (currentLocation) {
+      console.log('Current location updated, fetching pharmacies...', currentLocation);
+      fetchNearbyPharmacies(currentLocation);
+    }
+  }, [currentLocation]);
+
   // 재시도 버튼 클릭 핸들러
   const handleRetry = () => {
-    getCurrentLocation();  // 위치 권한부터 다시 확인
+    // 기본 위치로 설정하고 약국 검색 실행
+    setCurrentLocation(DEFAULT_LOCATION);
+    fetchNearbyPharmacies(DEFAULT_LOCATION);
   };
 
   // 검색어에 따른 약국 필터링
@@ -693,26 +598,34 @@ const PharmacyMapScreen = () => {
     );
   }
 
-  if (!currentLocation || error) {
+  if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || '위치를 찾을 수 없습니다.'}</Text>
+        <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity 
           style={styles.retryButton} 
           onPress={handleRetry}
         >
           <Text style={styles.retryButtonText}>다시 시도</Text>
         </TouchableOpacity>
-        {!hasLocationPermission && Platform.OS === 'android' && (
-          <TouchableOpacity 
-            style={[styles.retryButton, { marginTop: 10, backgroundColor: '#666' }]}
-            onPress={() => {
-              Linking.openSettings();
-            }}
-          >
-            <Text style={styles.retryButtonText}>위치 권한 설정</Text>
-          </TouchableOpacity>
-        )}
+      </View>
+    );
+  }
+
+  if (!currentLocation) {
+    return (
+      <View style={styles.container}>
+        <Text>위치를 찾을 수 없습니다.</Text>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={() => {
+            if (currentLocation) {
+              fetchNearbyPharmacies(currentLocation);
+            }
+          }}
+        >
+          <Text style={styles.retryButtonText}>다시 시도</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -754,7 +667,7 @@ const PharmacyMapScreen = () => {
       <View style={styles.mapContainer}>
         <WebView
           ref={webViewRef}
-          source={{ html: getHtml() }}
+          source={{ html: mapHTML }}
           style={styles.map}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -773,7 +686,28 @@ const PharmacyMapScreen = () => {
       </View>
 
       {filteredPharmacies.length > 0 ? (
-        renderPharmacyList()
+        <FlatList
+          data={filteredPharmacies}
+          keyExtractor={(item) => item.place_id}
+          style={styles.pharmacyList}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={[
+                styles.pharmacyItem,
+                selectedPharmacy?.place_id === item.place_id && styles.selectedItem
+              ]} 
+              onPress={() => focusPharmacyOnMap(item.place_id)}
+            >
+              <View style={styles.pharmacyInfo}>
+                <Text style={styles.pharmacyName}>{item.name}</Text>
+                <Text style={styles.pharmacyAddress}>{item.address || item.vicinity}</Text>
+                {item.phone && (
+                  <Text style={styles.pharmacyPhone}>{item.phone}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+        />
       ) : (
         <View style={styles.noResultContainer}>
           <Text style={styles.noResult}>주변 약국을 검색중입니다...</Text>
@@ -870,7 +804,7 @@ const styles = StyleSheet.create({
   map: { 
     flex: 1,
   },
-  pharmacyListContainer: {
+  pharmacyList: {
     flex: 1,
     backgroundColor: '#fff',
   },
@@ -880,7 +814,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
   },
-  selectedPharmacyItem: {
+  selectedItem: {
     backgroundColor: '#f0f7ff',
   },
   pharmacyName: { 
@@ -990,18 +924,6 @@ const styles = StyleSheet.create({
   },
   pharmacyInfo: {
     flex: 1,
-  },
-  pharmacyStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  distanceText: {
-    fontSize: 14,
-    color: '#666',
   },
 });
 
