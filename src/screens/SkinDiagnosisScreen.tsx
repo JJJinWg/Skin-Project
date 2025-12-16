@@ -12,6 +12,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
 } from "react-native"
 import { type NavigationProp, useNavigation } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
@@ -26,7 +28,32 @@ const SkinDiagnosisScreen = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // 카메라로 사진 촬영
-  const handleTakePhoto = () => {
+  const handleTakePhoto = async () => {
+    // Android에서 카메라 권한 요청
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: '카메라 권한',
+            message: '사진 촬영을 위해 카메라 권한이 필요합니다.',
+            buttonNeutral: '나중에',
+            buttonNegative: '거부',
+            buttonPositive: '허용',
+          }
+        );
+        
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('권한 필요', '카메라 사용을 위해 권한이 필요합니다.');
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+        Alert.alert('오류', '권한 요청 중 문제가 발생했습니다.');
+        return;
+      }
+    }
+
     launchCamera(
       {
         mediaType: "photo",
@@ -164,6 +191,17 @@ const SkinDiagnosisScreen = () => {
 
         {/* 사진 선택 버튼 */}
         <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
+            <LinearGradient
+              colors={["#FFC3A0", "#FFAFBD"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.photoButtonGradient}
+            >
+              <Text style={styles.photoButtonText}>카메라로 촬영</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.photoButton} onPress={handleSelectPhoto}>
             <LinearGradient
               colors={["#84FAB0", "#8FD3F4"]}

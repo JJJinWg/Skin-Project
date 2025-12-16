@@ -1,10 +1,12 @@
 // 홈화면
 
-import { type NavigationProp, useNavigation } from "@react-navigation/native"
+import { type NavigationProp, useNavigation, useFocusEffect } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { appointmentService, productService } from "../services"
+import { userService } from '../services/userService'
+import type { UserInfo } from '../services/userService'
 
 import {
   View,
@@ -18,6 +20,8 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  BackHandler,
+  ToastAndroid,
 } from "react-native"
 
 const { width } = Dimensions.get("window")
@@ -28,6 +32,8 @@ const HomeScreen = () => {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [productsLoading, setProductsLoading] = useState(true)
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [backPressCount, setBackPressCount] = useState(0)
 
   // 의사 목록 로드
   useEffect(() => {
@@ -97,6 +103,43 @@ const HomeScreen = () => {
     loadProducts()
   }, [])
 
+  useEffect(() => {
+    loadUserInfo();
+  }, []);
+
+  // 홈 화면에서만 뒤로가기 처리 (화면이 포커스 상태일 때만)
+  useFocusEffect(
+    useCallback(() => {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (backPressCount === 0) {
+          setBackPressCount(1);
+          ToastAndroid.show('한 번 더 누르면 앱이 종료됩니다.', ToastAndroid.SHORT);
+          
+          // 2초 후 카운트 리셋
+          setTimeout(() => {
+            setBackPressCount(0);
+          }, 2000);
+          
+          return true; // 기본 뒤로가기 동작 방지
+        } else {
+          BackHandler.exitApp(); // 앱 종료
+          return false;
+        }
+      });
+
+      return () => backHandler.remove();
+    }, [backPressCount])
+  );
+
+  const loadUserInfo = async () => {
+    try {
+      const userInfo = await userService.getCurrentUser();
+      setUser(userInfo);
+    } catch (error) {
+      console.error('❌ 사용자 정보 로딩 실패:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -105,7 +148,7 @@ const HomeScreen = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>안녕하세요 👋</Text>
-            <Text style={styles.headerText}>홍길동님</Text>
+            <Text style={styles.headerText}>{user?.name || "홍길동님"}</Text>
           </View>
           <TouchableOpacity
             style={styles.profileButton}
@@ -155,7 +198,7 @@ const HomeScreen = () => {
               data={doctors}
               horizontal
               keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
+              scrollEnabled={true}
               nestedScrollEnabled={true}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.doctorCard}>
@@ -270,7 +313,7 @@ const HomeScreen = () => {
                     <Text style={styles.productName}>{item.name}</Text>
                     <View style={styles.ratingContainer}>
                       <Text style={styles.productRating}>⭐ {item.rating}</Text>
-                      <Text style={styles.reviewCount}>({item.reviews})</Text>
+                      <Text style={styles.reviewCount}>리뷰 {item.reviewCount}개</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -473,34 +516,35 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   aiCardGradient: {
-    padding: 20,
+    padding: 15,
     height: 160,
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
   },
   aiIconContainer: {
-    position: "absolute",
-    top: 15,
-    left: 15,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 35,
+    height: 35,
+    borderRadius: 18,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  aiIcon: {
-    fontSize: 20,
-  },
-  aiTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#FFFFFF",
     marginBottom: 5,
   },
+  aiIcon: {
+    fontSize: 18,
+  },
+  aiTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 8,
+    textAlign: "left",
+  },
   aiDescription: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#FFFFFF",
     opacity: 0.9,
+    lineHeight: 16,
+    textAlign: "left",
   },
   productList: {
     paddingRight: 20,

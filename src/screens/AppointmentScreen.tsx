@@ -1,6 +1,6 @@
 // 의사 예약 화면
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -12,23 +12,17 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  TextInput,
 } from "react-native"
 import { Calendar, type DateData } from "react-native-calendars"
-import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native"
+import { type RouteProp, useNavigation, useRoute, useFocusEffect } from "@react-navigation/native"
 import LinearGradient from "react-native-linear-gradient"
-import { launchCamera, launchImageLibrary } from "react-native-image-picker"
+import { appointmentService } from '../services/appointmentService'
+import { diagnosisService, type DiagnosisRequest } from '../services/diagnosisService'
 
 type AppointmentScreenRouteProp = RouteProp<
   { params: { doctorId: number; doctorName: string; specialty: string } },
   "params"
 >
-
-type ImageType = {
-  uri: string
-  type?: string
-  name?: string
-}
 
 const AppointmentScreen = () => {
   const navigation = useNavigation()
@@ -41,9 +35,10 @@ const AppointmentScreen = () => {
   const [markedDates, setMarkedDates] = useState<any>({})
   const [loading, setLoading] = useState(false)
 
-  // 증상 관련 상태 추가
-  const [symptoms, setSymptoms] = useState("")
-  const [images, setImages] = useState<ImageType[]>([])
+  // 진료 요청서 관련 상태 추가
+  const [diagnosisRequests, setDiagnosisRequests] = useState<DiagnosisRequest[]>([])
+  const [selectedDiagnosisRequest, setSelectedDiagnosisRequest] = useState<DiagnosisRequest | null>(null)
+  const [loadingRequests, setLoadingRequests] = useState(false)
 
   // 오늘 날짜 구하기
   const today = new Date()
@@ -53,6 +48,36 @@ const AppointmentScreen = () => {
   const maxDate = new Date()
   maxDate.setDate(today.getDate() + 30)
   const maxDateString = maxDate.toISOString().split("T")[0]
+
+  // 진료 요청서 목록 조회
+  useEffect(() => {
+    loadDiagnosisRequests()
+  }, [])
+
+  // 화면 포커스 시 목록 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      loadDiagnosisRequests()
+    }, [])
+  )
+
+  const loadDiagnosisRequests = async () => {
+    try {
+      setLoadingRequests(true)
+      const userId = 1 // 실제로는 로그인한 사용자 ID
+      const requests = await diagnosisService.getDiagnosisRequests(userId)
+      // 제출된 요청서만 필터링 (status가 'submitted' 또는 'pending')
+      const availableRequests = requests.filter(req => 
+        req.status === 'submitted' || req.status === 'pending'
+      )
+      setDiagnosisRequests(availableRequests)
+    } catch (error) {
+      console.error('진료 요청서 목록 조회 실패:', error)
+      Alert.alert('오류', '진료 요청서 목록을 불러올 수 없습니다.')
+    } finally {
+      setLoadingRequests(false)
+    }
+  }
 
   // 선택 가능한 시간대 생성 (실제로는 API에서 가져올 수 있음)
   const generateAvailableTimes = async (date: string) => {
@@ -102,93 +127,51 @@ const AppointmentScreen = () => {
     setSelectedTime(time)
   }
 
-  // 이미지 선택 핸들러
-  const handleSelectImage = () => {
+  // 진료 요청서 선택 핸들러
+  const handleSelectDiagnosisRequest = async (request: DiagnosisRequest) => {
+    try {
+      setLoading(true)
+      
+      // 상세 데이터 조회
+      const detailResponse = await diagnosisService.getDiagnosisRequestById(request.id)
+      
+      if (detailResponse && (detailResponse as any).data) {
+        setSelectedDiagnosisRequest((detailResponse as any).data)
+        console.log('🔍 상세 진료 요청서 데이터:', (detailResponse as any).data)
+      } else if (detailResponse) {
+        // 응답이 바로 데이터인 경우
+        setSelectedDiagnosisRequest(detailResponse)
+        console.log('🔍 상세 진료 요청서 데이터 (직접):', detailResponse)
+      } else {
+        // 상세 조회 실패 시 기본 데이터 사용
+        setSelectedDiagnosisRequest(request)
+        console.log('⚠️ 상세 조회 실패, 기본 데이터 사용:', request)
+      }
+    } catch (error) {
+      console.error('진료 요청서 상세 조회 실패:', error)
+      // 에러 시 기본 데이터 사용
+      setSelectedDiagnosisRequest(request)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 새 진료 요청서 작성하기
+  const handleCreateNewDiagnosisRequest = () => {
     Alert.alert(
-      "사진 첨부",
-      "사진을 첨부할 방법을 선택하세요",
+      "진료 요청서 작성",
+      "새로운 진료 요청서를 작성하시겠습니까?",
       [
-        {
-          text: "카메라로 촬영",
-          onPress: () => handleLaunchCamera(),
-        },
-        {
-          text: "갤러리에서 선택",
-          onPress: () => handleLaunchImageLibrary(),
-        },
-        {
-          text: "취소",
-          style: "cancel",
-        },
-      ],
-      { cancelable: true },
-    )
-  }
-
-  // 카메라 실행 핸들러
-  const handleLaunchCamera = () => {
-    launchCamera(
-      {
-        mediaType: "photo",
-        includeBase64: false,
-        maxHeight: 800,
-        maxWidth: 800,
-      },
-      (response) => {
-        if (response.didCancel) {
-          console.log("User cancelled camera picker")
-        } else if (response.errorCode) {
-          console.log("Camera Error: ", response.errorMessage)
-        } else if (response.assets && response.assets.length > 0) {
-          const asset = response.assets[0]
-          if (asset.uri) {
-            const newImage = {
-              uri: asset.uri,
-              type: asset.type,
-              name: asset.fileName,
-            }
-            setImages([...images, newImage])
+        { text: "취소", style: "cancel" },
+        { 
+          text: "작성하기", 
+          onPress: () => {
+            // DiagnosisHistoryScreen으로 이동 (진료 요청서 작성 화면)
+            navigation.navigate('DiagnosisHistoryScreen' as never)
           }
-        }
-      },
+        },
+      ]
     )
-  }
-
-  // 갤러리 실행 핸들러
-  const handleLaunchImageLibrary = () => {
-    launchImageLibrary(
-      {
-        mediaType: "photo",
-        includeBase64: false,
-        maxHeight: 800,
-        maxWidth: 800,
-        selectionLimit: 3 - images.length, // 최대 3장까지만 선택 가능
-      },
-      (response) => {
-        if (response.didCancel) {
-          console.log("User cancelled image picker")
-        } else if (response.errorCode) {
-          console.log("ImagePicker Error: ", response.errorMessage)
-        } else if (response.assets && response.assets.length > 0) {
-          const newImages = response.assets.map((asset) => ({
-            uri: asset.uri || "",
-            type: asset.type,
-            name: asset.fileName,
-          }))
-
-          // 최대 3장까지만 추가
-          const updatedImages = [...images, ...newImages].slice(0, 3)
-          setImages(updatedImages)
-        }
-      },
-    )
-  }
-
-  // 이미지 삭제 핸들러
-  const handleRemoveImage = (index: number) => {
-    const newImages = [...images]
-    newImages.splice(index, 1)
-    setImages(newImages)
   }
 
   // 예약 완료 핸들러
@@ -198,27 +181,37 @@ const AppointmentScreen = () => {
       return
     }
 
+    if (!selectedDiagnosisRequest) {
+      Alert.alert("알림", "진료 요청서를 선택해주세요.")
+      return
+    }
+
     try {
       setLoading(true)
       
-      // 실제 API 호출
+      // 실제 API 호출 - 모든 필수 DB 필드 포함
       const appointmentData = {
         doctorId: doctorId,
         userId: 1, // 실제로는 로그인한 사용자 ID
-        date: selectedDate,
-        time: selectedTime,
-        symptoms: symptoms || '',
-        images: images.map(img => img.uri) // 이미지 URI 배열
+        hospitalId: 1, // 기본 병원 ID
+        date: selectedDate, // 백엔드에서 appointment_date로 변환됨
+        time: selectedTime, // 백엔드에서 appointment_time으로 변환됨
+        diagnosisRequestId: selectedDiagnosisRequest.id, // 백엔드에서 diagnosis_request_id로 변환됨
+        consultationType: '일반진료', // 백엔드 enum에 맞는 값 사용
+        status: 'pending',
+        symptoms: selectedDiagnosisRequest.symptoms, // 진료 요청서의 증상
+        notes: selectedDiagnosisRequest.additionalNotes || '' // 진료 요청서의 추가 메모
       }
       
       console.log('📅 예약 생성 중...', appointmentData)
+      console.log('🔍 선택된 진료 요청서:', selectedDiagnosisRequest)
       const result = await appointmentService.createAppointment(appointmentData)
       
       console.log('✅ 예약 생성 완료:', result)
       
       Alert.alert(
         "예약 완료",
-        `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 예약이 완료되었습니다.${symptoms ? `\n\n증상: ${symptoms}` : ""}${images.length > 0 ? `\n\n첨부된 사진: ${images.length}장` : ""}`,
+        `${doctorName} 선생님과 ${selectedDate} ${selectedTime}에 비대면 진료 예약이 완료되었습니다.\n\n선택된 진료 요청서: ${selectedDiagnosisRequest.symptoms.substring(0, 30)}...`,
         [
           {
             text: "확인",
@@ -266,6 +259,16 @@ const AppointmentScreen = () => {
     return `${year}년 ${month}월 ${day}일`
   }
 
+  // 심각도 텍스트 변환
+  const getSeverityText = (severity: "mild" | "moderate" | "severe") => {
+    switch (severity) {
+      case "mild": return "경미함"
+      case "moderate": return "보통"  
+      case "severe": return "심각함"
+      default: return ""
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -275,7 +278,7 @@ const AppointmentScreen = () => {
         <TouchableOpacity style={styles.backButton} >
           
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>진료 예약</Text>
+        <Text style={styles.headerTitle}>비대면 진료 예약</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -285,14 +288,79 @@ const AppointmentScreen = () => {
           <Image source={require("../assets/doctor1.png")} style={styles.doctorImage} />
           <Text style={styles.doctorName}>{doctorName}</Text>
           <Text style={styles.doctorSpecialty}>{specialty}</Text>
+          <View style={styles.telemedicineBadge}>
+            <Text style={styles.telemedicineBadgeText}>비대면 진료</Text>
+          </View>
         </View>
 
         {/* 예약 안내 */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>예약 안내</Text>
+          <Text style={styles.infoTitle}>비대면 진료 안내</Text>
+          <Text style={styles.infoText}>• 화상 통화를 통한 원격 진료를 제공합니다.</Text>
           <Text style={styles.infoText}>• 예약은 30일 이내에만 가능합니다.</Text>
           <Text style={styles.infoText}>• 예약 취소는 24시간 전까지 가능합니다.</Text>
           <Text style={styles.infoText}>• 진료 시간은 약 15-20분 소요됩니다.</Text>
+        </View>
+
+        {/* 진료 요청서 선택 */}
+        <View style={styles.diagnosisRequestContainer}>
+          <Text style={styles.sectionTitle}>진료 요청서 선택 *</Text>
+          {loadingRequests ? (
+            <ActivityIndicator size="large" color="#FF9A9E" style={styles.loader} />
+          ) : diagnosisRequests.length > 0 ? (
+            <>
+              {diagnosisRequests.map((request) => (
+                <TouchableOpacity
+                  key={request.id}
+                  style={[
+                    styles.diagnosisRequestItem,
+                    selectedDiagnosisRequest?.id === request.id && styles.diagnosisRequestItemSelected
+                  ]}
+                  onPress={() => handleSelectDiagnosisRequest(request)}
+                >
+                  <View style={styles.diagnosisRequestHeader}>
+                    <Text style={styles.diagnosisRequestDate}>
+                      {new Date(request.createdAt).toLocaleDateString('ko-KR')}
+                    </Text>
+                    <View style={[styles.severityBadge, { backgroundColor: request.severity === 'mild' ? '#4CAF50' : request.severity === 'moderate' ? '#FF9800' : '#F44336' }]}>
+                      <Text style={styles.severityBadgeText}>
+                        {getSeverityText(request.severity)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.diagnosisRequestSymptoms} numberOfLines={2}>
+                    {request.symptoms}
+                  </Text>
+                  <Text style={styles.diagnosisRequestDuration}>
+                    지속기간: {request.duration}
+                  </Text>
+                  {selectedDiagnosisRequest?.id === request.id && (
+                    <View style={styles.selectedIndicator}>
+                      <Text style={styles.selectedIndicatorText}>✓ 선택됨</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+              
+              {/* 새 진료 요청서 작성 버튼 */}
+              <TouchableOpacity 
+                style={styles.createNewRequestButton}
+                onPress={handleCreateNewDiagnosisRequest}
+              >
+                <Text style={styles.createNewRequestText}>+ 새 진료 요청서 작성</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.noRequestsContainer}>
+              <Text style={styles.noRequestsText}>등록된 진료 요청서가 없습니다.</Text>
+              <TouchableOpacity 
+                style={styles.createFirstRequestButton}
+                onPress={handleCreateNewDiagnosisRequest}
+              >
+                <Text style={styles.createFirstRequestText}>첫 진료 요청서 작성하기</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* 달력 */}
@@ -341,74 +409,16 @@ const AppointmentScreen = () => {
           </View>
         )}
 
-        {/* 증상 입력 */}
-        <View style={styles.symptomsContainer}>
-          <Text style={styles.sectionTitle}>증상 입력</Text>
-          <TextInput
-            style={styles.symptomsInput}
-            placeholder="어떤 증상이 있으신가요? (선택사항)"
-            placeholderTextColor="#ADB5BD"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            value={symptoms}
-            onChangeText={setSymptoms}
-          />
-        </View>
-
-        {/* 사진 첨부 */}
-        <View style={styles.imagesContainer}>
-          <Text style={styles.sectionTitle}>사진 첨부 (선택사항, 최대 3장)</Text>
-          <View style={styles.imagesGrid}>
-            {images.map((image, index) => (
-              <View key={index} style={styles.imageContainer}>
-                <Image source={{ uri: image.uri }} style={styles.attachedImage} />
-                <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
-                  <Text style={styles.removeImageButtonText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < 3 && (
-              <TouchableOpacity style={styles.addImageButton} onPress={handleSelectImage}>
-                <Text style={styles.addImageButtonText}>+</Text>
-                <Text style={styles.addImageButtonLabel}>사진 추가</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.imageHelpText}>증상과 관련된 사진을 첨부하시면 의사의 진단에 도움이 됩니다.</Text>
-        </View>
-
-        {/* 선택된 예약 정보 */}
-        {selectedDate && selectedTime && (
-          <View style={styles.selectedInfoContainer}>
-            <Text style={styles.selectedInfoTitle}>선택한 예약 정보</Text>
-            <View style={styles.selectedInfoRow}>
-              <Text style={styles.selectedInfoLabel}>의사</Text>
-              <Text style={styles.selectedInfoValue}>
-                {doctorName} ({specialty})
-              </Text>
-            </View>
-            <View style={styles.selectedInfoRow}>
-              <Text style={styles.selectedInfoLabel}>날짜</Text>
-              <Text style={styles.selectedInfoValue}>{formatDate(selectedDate)}</Text>
-            </View>
-            <View style={styles.selectedInfoRow}>
-              <Text style={styles.selectedInfoLabel}>시간</Text>
-              <Text style={styles.selectedInfoValue}>{formatTime(selectedTime)}</Text>
-            </View>
-          </View>
-        )}
-
         {/* 하단 여백 */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* 예약 버튼 */}
+      {/* 예약 확정 버튼 */}
       <View style={styles.bottomButtonContainer}>
         <TouchableOpacity
-          style={[styles.confirmButton, (!selectedDate || !selectedTime) && styles.confirmButtonDisabled]}
+          style={[styles.confirmButton, (!selectedDate || !selectedTime || !selectedDiagnosisRequest) && styles.confirmButtonDisabled]}
           onPress={handleConfirmAppointment}
-          disabled={!selectedDate || !selectedTime || loading}
+          disabled={!selectedDate || !selectedTime || !selectedDiagnosisRequest || loading}
         >
           <LinearGradient
             colors={["#FF9A9E", "#FAD0C4"]}
@@ -419,7 +429,7 @@ const AppointmentScreen = () => {
             {loading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.confirmButtonText}>예약하기</Text>
+              <Text style={styles.confirmButtonText}>비대면 진료 예약 확정</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -496,6 +506,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6C757D",
   },
+  telemedicineBadge: {
+    backgroundColor: "#FF9A9E",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  telemedicineBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
   infoCard: {
     marginHorizontal: 20,
     marginBottom: 20,
@@ -516,7 +538,7 @@ const styles = StyleSheet.create({
     color: "#6C757D",
     marginBottom: 5,
   },
-  calendarContainer: {
+  diagnosisRequestContainer: {
     marginHorizontal: 20,
     marginBottom: 20,
     backgroundColor: "#FFFFFF",
@@ -533,6 +555,104 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#212529",
     marginBottom: 15,
+  },
+  diagnosisRequestItem: {
+    padding: 10,
+    borderWidth: 2,
+    borderColor: "#E9ECEF",
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  diagnosisRequestItemSelected: {
+    borderColor: "#FF9A9E",
+  },
+  diagnosisRequestHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  diagnosisRequestDate: {
+    fontSize: 14,
+    color: "#6C757D",
+  },
+  severityBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  severityBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  diagnosisRequestSymptoms: {
+    fontSize: 14,
+    color: "#212529",
+  },
+  diagnosisRequestDuration: {
+    fontSize: 12,
+    color: "#6C757D",
+    marginTop: 5,
+  },
+  selectedIndicator: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    backgroundColor: "#FF9A9E",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  selectedIndicatorText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  createNewRequestButton: {
+    padding: 10,
+    borderWidth: 2,
+    borderColor: "#FF9A9E",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  createNewRequestText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FF9A9E",
+  },
+  noRequestsContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noRequestsText: {
+    fontSize: 14,
+    color: "#6C757D",
+    marginBottom: 20,
+  },
+  createFirstRequestButton: {
+    padding: 10,
+    borderWidth: 2,
+    borderColor: "#FF9A9E",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  createFirstRequestText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FF9A9E",
+  },
+  calendarContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   timeSelectionContainer: {
     marginHorizontal: 20,
@@ -583,138 +703,6 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 20,
   },
-  // 증상 입력 스타일
-  symptomsContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  symptomsInput: {
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: "#212529",
-    height: 100,
-    textAlignVertical: "top",
-  },
-  // 이미지 첨부 스타일
-  imagesContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  imagesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 10,
-  },
-  imageContainer: {
-    width: 100,
-    height: 100,
-    marginRight: 10,
-    marginBottom: 10,
-    position: "relative",
-  },
-  attachedImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#FF9A9E",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-  removeImageButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  addImageButton: {
-    width: 100,
-    height: 100,
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    borderStyle: "dashed",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addImageButtonText: {
-    fontSize: 24,
-    color: "#ADB5BD",
-    marginBottom: 5,
-  },
-  addImageButtonLabel: {
-    fontSize: 12,
-    color: "#6C757D",
-  },
-  imageHelpText: {
-    fontSize: 12,
-    color: "#6C757D",
-    fontStyle: "italic",
-    marginTop: 5,
-  },
-  selectedInfoContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  selectedInfoTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 15,
-  },
-  selectedInfoRow: {
-    flexDirection: "row",
-    marginBottom: 10,
-  },
-  selectedInfoLabel: {
-    width: 60,
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  selectedInfoValue: {
-    flex: 1,
-    fontSize: 14,
-    color: "#212529",
-    fontWeight: "500",
-  },
   bottomSpacer: {
     height: 100,
   },
@@ -723,22 +711,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
     backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     borderTopWidth: 1,
-    borderTopColor: "#F1F3F5",
+    borderTopColor: "#E9ECEF",
   },
   confirmButton: {
     borderRadius: 12,
     overflow: "hidden",
   },
   confirmButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   confirmButtonGradient: {
     paddingVertical: 15,
     alignItems: "center",
-    justifyContent: "center",
   },
   confirmButtonText: {
     color: "#FFFFFF",

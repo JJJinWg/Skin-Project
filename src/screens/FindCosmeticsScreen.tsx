@@ -17,7 +17,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native"
-import { type NavigationProp, useNavigation } from "@react-navigation/native"
+import { type NavigationProp, useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
 import LinearGradient from "react-native-linear-gradient"
 import { productService, type Product } from "../services/productService"
@@ -36,6 +36,8 @@ interface SkinOptions {
 
 const FindCosmeticsScreen = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>()
+  const route = useRoute<RouteProp<RootStackParamList, 'FindCosmeticsScreen'>>()
+  
   const [selectedSkinType, setSelectedSkinType] = useState<string>("")
   const [selectedSensitivity, setSelectedSensitivity] = useState<string>("")
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([])
@@ -47,26 +49,85 @@ const FindCosmeticsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("전체")
   const [skinOptions, setSkinOptions] = useState<SkinOptions>({ skinTypes: [], concerns: [] })
   const [isLoadingOptions, setIsLoadingOptions] = useState(true)
+  const [isHistoryView, setIsHistoryView] = useState(false)
 
   // 피부 민감도 옵션
   const sensitivityOptions = ["낮음", "보통", "높음"];
 
+  // 전달받은 추천 내역 데이터 처리
+  useEffect(() => {
+    if (route.params?.showResults && route.params?.recommendationData) {
+      const { recommendationData } = route.params;
+      
+      // 내역 데이터로 화면 설정
+      setSelectedSkinType(recommendationData.skinType);
+      setSelectedConcerns(recommendationData.concerns);
+      
+      // 제품 데이터를 Cosmetic 타입으로 변환 (타입 캐스팅 사용)
+      const cosmeticsWithFields = recommendationData.recommendedProducts.map(product => ({
+        ...product,
+        price: (product as any).price || '가격 정보 없음',
+        rating: (product as any).rating || 4.0,
+        reviewCount: (product as any).reviewCount || 0,
+        suitableFor: recommendationData.concerns || [], // 선택된 고민사항을 기본값으로 사용
+        notSuitableFor: [] // 빈 배열로 초기화
+      })) as unknown as Cosmetic[];
+      
+      setRecommendedCosmetics(cosmeticsWithFields);
+      setAiExplanation(recommendationData.explanation);
+      setShowResults(true);
+      setIsHistoryView(recommendationData.isHistoryView || false);
+      
+      console.log('📋 추천 내역 데이터 로드됨:', recommendationData);
+      console.log('🔄 변환된 제품 데이터:', cosmeticsWithFields);
+    }
+  }, [route.params]);
+
   // 피부 타입과 고민 옵션 로드
   useEffect(() => {
-    const loadSkinOptions = async () => {
-      try {
-        const response = await productService.getSkinOptions();
-        setSkinOptions(response);
-      } catch (error) {
-        console.error('피부 옵션 로드 실패:', error);
-        Alert.alert('오류', '피부 타입과 고민 옵션을 불러오는데 실패했습니다.');
-      } finally {
-        setIsLoadingOptions(false);
-      }
-    };
+    // 내역 보기가 아닌 경우에만 옵션 로드
+    if (!route.params?.showResults) {
+      const loadSkinOptions = async () => {
+        try {
+          const response = await productService.getSkinOptions();
+          setSkinOptions(response);
+        } catch (error) {
+          console.error('피부 옵션 로드 실패:', error);
+          Alert.alert('오류', '피부 타입과 고민 옵션을 불러오는데 실패했습니다.');
+        } finally {
+          setIsLoadingOptions(false);
+        }
+      };
 
-    loadSkinOptions();
-  }, []);
+      loadSkinOptions();
+    } else {
+      setIsLoadingOptions(false);
+    }
+  }, [route.params]);
+
+  // AI 분석 결과에서 전달된 데이터 처리
+  useEffect(() => {
+    if (route.params?.prefilledData) {
+      const { prefilledData } = route.params;
+      console.log('🔬 AI 분석 결과 데이터 수신:', prefilledData);
+      
+      // 폼 필드들 자동 채우기
+      if (prefilledData.skinType) {
+        setSelectedSkinType(prefilledData.skinType);
+      }
+      if (prefilledData.sensitivity) {
+        setSelectedSensitivity(prefilledData.sensitivity);
+      }
+      if (prefilledData.concerns && Array.isArray(prefilledData.concerns)) {
+        setSelectedConcerns(prefilledData.concerns);
+      }
+      if (prefilledData.additionalInfo) {
+        setAdditionalInfo(prefilledData.additionalInfo);
+      }
+      
+      console.log('✅ AI 분석 결과 데이터가 폼에 자동으로 적용되었습니다.');
+    }
+  }, [route.params?.prefilledData]);
 
   // 피부 고민 선택/해제 처리
   const toggleConcern = (concern: string) => {
@@ -84,18 +145,38 @@ const FindCosmeticsScreen = () => {
 
   // 화장품 카테고리 필터링
   const filteredCosmetics = useMemo(() => {
+    console.log('🔍 필터링 시작:', {
+      전체제품수: recommendedCosmetics.length,
+      선택된카테고리: selectedCategory,
+      선택된고민: selectedConcerns,
+      내역보기여부: isHistoryView
+    });
+    
     return recommendedCosmetics.filter((cosmetic) => {
+      // 카테고리 필터링
       if (selectedCategory !== "전체" && cosmetic.category !== selectedCategory) {
+        console.log(`❌ 카테고리 필터링으로 제외: ${cosmetic.name} (${cosmetic.category})`);
         return false
       }
-      if (selectedConcerns.length > 0) {
-        return selectedConcerns.some((concern) => 
-          cosmetic.suitableFor?.includes(concern)
-        )
+      
+      // 내역 보기일 때는 고민 필터링을 완전히 건너뜀
+      if (!isHistoryView && selectedConcerns.length > 0) {
+        const hasSuitableFor = cosmetic.suitableFor && cosmetic.suitableFor.length > 0;
+        if (hasSuitableFor) {
+          const matches = selectedConcerns.some((concern) => 
+            cosmetic.suitableFor?.includes(concern)
+          );
+          if (!matches) {
+            console.log(`❌ 고민 필터링으로 제외: ${cosmetic.name}`);
+            return false;
+          }
+        }
       }
+      
+      console.log(`✅ 필터링 통과: ${cosmetic.name}`);
       return true
     })
-  }, [recommendedCosmetics, selectedCategory, selectedConcerns])
+  }, [recommendedCosmetics, selectedCategory, selectedConcerns, isHistoryView])
 
   // 화장품 추천 분석 시작
   const handleAnalyze = async () => {
@@ -125,7 +206,36 @@ const FindCosmeticsScreen = () => {
         additionalInfo: additionalInfo      // 추가 정보는 유지
       });
 
-      setRecommendedCosmetics(result.products);
+      // 추천받은 제품들의 실제 이미지 정보 업데이트 (ProfileScreen 방식 적용)
+      const updatedProducts: Cosmetic[] = [];
+      
+      for (const product of result.products) {
+        try {
+          console.log(`🔍 추천 제품 ${product.id} 실제 정보 조회 중...`);
+          const actualProduct = await productService.getProductById(product.id);
+          
+          if (actualProduct) {
+            console.log(`✅ 추천 제품 ${product.id} 실제 이미지:`, actualProduct.image);
+            updatedProducts.push({
+              ...product,
+              image: actualProduct.image, // 실제 제품 이미지 사용
+              brand: actualProduct.brand,
+              name: actualProduct.name,
+              price: actualProduct.price,
+              rating: actualProduct.rating,
+              reviewCount: actualProduct.reviewCount,
+            });
+          } else {
+            console.warn(`⚠️ 추천 제품 ${product.id} 정보를 찾을 수 없습니다.`);
+            updatedProducts.push(product); // 원본 그대로 사용
+          }
+        } catch (error) {
+          console.warn(`⚠️ 추천 제품 ${product.id} 정보 조회 실패:`, error);
+          updatedProducts.push(product); // 원본 그대로 사용
+        }
+      }
+
+      setRecommendedCosmetics(updatedProducts);
       setAiExplanation(result.explanation);
       setShowResults(true);
     } catch (error) {
@@ -139,15 +249,25 @@ const FindCosmeticsScreen = () => {
   // 뒤로가기
   const handleBackPress = () => {
     if (showResults) {
-      // 결과 화면에서 뒤로가기 시 입력 화면으로
-      setShowResults(false)
-      setRecommendedCosmetics([])
-      setSelectedCategory("전체")
-      setAiExplanation("")
+      if (isHistoryView) {
+        // 내역 보기에서 뒤로가기 시 이전 화면으로
+        navigation.goBack()
+      } else {
+        // 일반 결과 화면에서 뒤로가기 시 홈 화면으로 (작성 화면으로 가지 않음)
+        navigation.navigate('Home')
+      }
     } else {
       // 입력 화면에서 뒤로가기 시 이전 화면으로
       navigation.goBack()
     }
+  }
+
+  // 확인 버튼 클릭 처리 (홈 화면으로 이동)
+  const handleConfirm = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    })
   }
 
   // 별점 렌더링 함수
@@ -216,12 +336,12 @@ const FindCosmeticsScreen = () => {
 
       {/* 헤더 */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress}>
+        <TouchableOpacity >
           <Text style={styles.backButtonText}>
-            뒤로
+            
           </Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{showResults ? "         맞춤 화장품 추천" : "          화장품 추천받기"}</Text>
+        <Text style={styles.headerTitle}>{showResults ? "       맞춤 화장품 추천" : "          화장품 추천받기"}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -280,6 +400,18 @@ const FindCosmeticsScreen = () => {
             <Text style={styles.sectionTitle}>추천 화장품</Text>
             {renderFilteredCosmetics()}
           </View>
+
+          {/* 확인 버튼 */}
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
+            <LinearGradient
+              colors={["#84FAB0", "#8FD3F4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.confirmButtonGradient}
+            >
+              <Text style={styles.confirmButtonText}>확인</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {/* 하단 여백 */}
           <View style={styles.bottomSpacer} />
@@ -343,25 +475,33 @@ const FindCosmeticsScreen = () => {
           {/* 피부 고민 선택 */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>피부 고민</Text>
-            <Text style={styles.sectionSubtitle}>주요 피부 고민을 최대 3개까지 선택해주세요.</Text>
-            <View style={styles.concernsContainer}>
-              {skinOptions.concerns.map((concern) => (
-                <TouchableOpacity
-                  key={concern}
-                  style={[styles.concernButton, selectedConcerns.includes(concern) && styles.selectedConcernButton]}
-                  onPress={() => toggleConcern(concern)}
-                >
-                  <Text
-                    style={[
-                      styles.concernButtonText,
-                      selectedConcerns.includes(concern) && styles.selectedConcernButtonText,
-                    ]}
+            <Text style={styles.sectionSubtitle}>
+              주요 피부 고민을 최대 3개까지 선택해주세요. (총 {skinOptions.concerns.length}개 옵션)
+            </Text>
+            <ScrollView 
+              style={styles.concernsScrollContainer}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              <View style={styles.concernsContainer}>
+                {skinOptions.concerns.map((concern) => (
+                  <TouchableOpacity
+                    key={concern}
+                    style={[styles.concernButton, selectedConcerns.includes(concern) && styles.selectedConcernButton]}
+                    onPress={() => toggleConcern(concern)}
                   >
-                    {concern}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.concernButtonText,
+                        selectedConcerns.includes(concern) && styles.selectedConcernButtonText,
+                      ]}
+                    >
+                      {concern}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
           {/* 추가 정보 입력 */}
@@ -522,22 +662,24 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   concernButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#E9ECEF",
     backgroundColor: "#FFFFFF",
     marginRight: 8,
-    marginBottom: 8,
+    marginBottom: 10,
+    minWidth: 80,
   },
   selectedConcernButton: {
     borderColor: "#8FD3F4",
     backgroundColor: "rgba(143, 211, 244, 0.1)",
   },
   concernButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#495057",
+    textAlign: 'center',
   },
   selectedConcernButtonText: {
     color: "#212529",
@@ -742,6 +884,29 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  concernsScrollContainer: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: '#FAFAFA',
+  },
+  confirmButton: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  confirmButtonGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 })
 

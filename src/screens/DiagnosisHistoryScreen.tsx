@@ -34,6 +34,7 @@ type DiagnosisRequest = {
   previousTreatment: string
   allergies: string
   medications: string
+  medicalHistory: string
   additionalNotes: string
   images: ImageType[]
 }
@@ -48,6 +49,7 @@ const DiagnosisHistoryScreen = () => {
     previousTreatment: "",
     allergies: "",
     medications: "",
+    medicalHistory: "",
     additionalNotes: "",
     images: [],
   })
@@ -159,29 +161,26 @@ const DiagnosisHistoryScreen = () => {
     return true
   }
 
-  // 진료 요청서 제출
+  // 진료 요청서 저장
   const handleSubmit = async () => {
     if (!validateForm()) return
 
     try {
       setLoading(true)
 
-      // 실제 서비스를 통한 진료 요청서 제출
+      // 실제 서비스를 통한 진료 요청서 저장
       const result = await diagnosisService.submitDiagnosisRequest(formData)
 
       if (result.success) {
         Alert.alert(
-          "제출 완료",
+          "저장 완료",
           `${result.message} 요청서 번호: ${result.requestId}`,
           [
             {
               text: "확인",
               onPress: () => {
-                // 홈 화면으로 이동
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'HomeScreen' }],
-                })
+                // 이전 화면으로 돌아가기 (예약 화면)
+                navigation.goBack()
               },
             },
           ],
@@ -191,8 +190,8 @@ const DiagnosisHistoryScreen = () => {
         Alert.alert("오류", result.message)
       }
     } catch (error) {
-      console.error('진료 요청서 제출 실패:', error)
-      Alert.alert("오류", "진료 요청서 제출에 실패했습니다. 다시 시도해주세요.")
+      console.error('진료 요청서 저장 실패:', error)
+      Alert.alert("오류", "진료 요청서 저장에 실패했습니다. 다시 시도해주세요.")
     } finally {
       setLoading(false)
     }
@@ -336,6 +335,21 @@ const DiagnosisHistoryScreen = () => {
           />
         </View>
 
+        {/* 과거 병력 */}
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>과거 병력</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="과거에 겪은 병력이나 수술 이력을 작성해주세요"
+            placeholderTextColor="#ADB5BD"
+            value={formData.medicalHistory}
+            onChangeText={(text) => setFormData(prev => ({ ...prev, medicalHistory: text }))}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+        </View>
+
         {/* 추가 메모 */}
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>추가 메모</Text>
@@ -398,7 +412,7 @@ const DiagnosisHistoryScreen = () => {
             {loading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.submitButtonText}>진료 요청서 제출</Text>
+              <Text style={styles.submitButtonText}>진료 요청서 저장</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>

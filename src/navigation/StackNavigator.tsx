@@ -20,6 +20,7 @@ import EditProfileScreen from "../screens/EditProfileScreen";
 import EditReviewScreen from "../screens/EditReviewScreen";
 // import DiagnosisHistoryScreen from "../screens/DiagnosisHistoryScreen";
 import DiagnosisDetailScreen from "../screens/DiagnosisDetailScreen";
+import DiagnosisRequestScreen from "../screens/DiagnosisRequestScreen";
 import SkinDiagnosisScreen from "../screens/SkinDiagnosisScreen"
 import SkinAnalysisResultScreen from "../screens/SkinAnalysisResultScreen"
 import SkinHistoryScreen from "../screens/SkinHistoryScreen"
@@ -35,19 +36,22 @@ const StackNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator
+        id={undefined}
+        screenOptions={{
+          headerShown: false, // 모든 화면에서 헤더 숨김
+        }}
+      >
         {!isAuthenticated ? (
           // 비인증 상태의 스택
           <>
             <Stack.Screen 
               name="Login" 
               component={LoginForm}
-              options={{ headerShown: false }}
             />
             <Stack.Screen 
               name="Register" 
               component={RegisterUser}
-              options={{ headerShown: false }}
             />
             <Stack.Screen name="FindPasswordScreen" component={FindPasswordScreen} />
             <Stack.Screen name="FindIdScreen" component={FindIdScreen} />
@@ -58,7 +62,6 @@ const StackNavigator = () => {
             <Stack.Screen 
               name="Home" 
               component={HomeScreen}
-              options={{ headerShown: false }}
             />
             <Stack.Screen name="ReservationScreen" component={ReservationScreen} />
             <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} /> 
@@ -74,6 +77,7 @@ const StackNavigator = () => {
             <Stack.Screen name="EditReviewScreen" component={EditReviewScreen} />
             {/* //<Stack.Screen name="DiagnosisHistoryScreen" component={DiagnosisHistoryScreen} /> */}
             <Stack.Screen name="DiagnosisDetailScreen" component={DiagnosisDetailScreen} />
+            <Stack.Screen name="DiagnosisRequestScreen" component={DiagnosisRequestScreen} />
             <Stack.Screen name="SkinAnalysisResultScreen" component={SkinAnalysisResultScreen} />
             <Stack.Screen name="SkinDiagnosisScreen" component={SkinDiagnosisScreen} />
             <Stack.Screen name="SkinHistoryScreen" component={SkinHistoryScreen} />

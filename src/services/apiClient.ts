@@ -5,12 +5,20 @@ import { Platform } from 'react-native';
 const getApiBaseUrl = () => {
   if (__DEV__) {
     // 개발 환경: React Native에서는 localhost 대신 실제 IP 주소 사용
-    // Android 에뮬레이터: 10.0.2.2:8000
-    // iOS 시뮬레이터: localhost:8000
     
     if (Platform.OS === 'android') {
-      // Android 에뮬레이터에서는 10.0.2.2가 호스트 머신의 localhost를 가리킴
-      return process.env.REACT_APP_API_URL || 'http://10.0.2.2:8000';
+      // 환경변수가 설정되어 있으면 우선 사용
+      if (process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
+      }
+      
+      // Port forwarding 사용 시: adb port-forward 8000 8000
+      // 또는 ADB reverse 사용 시: adb reverse tcp:8000 tcp:8000
+      // 그러면 실제 기기에서도 localhost:8000 사용 가능
+      // return 'http://localhost:8000';
+      
+      // 에뮬레이터 전용 주소 (port forwarding 미사용 시)
+      return 'http://10.0.2.2:8000';
     } else {
       // iOS 시뮬레이터에서는 localhost 사용 가능
       return process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -42,8 +50,13 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // FormData인 경우 Content-Type을 설정하지 않음 (브라우저가 자동으로 multipart/form-data로 설정)
+    const isFormData = options.body instanceof FormData;
+    
     const config: RequestInit = {
-      headers: {
+      headers: isFormData ? {
+        ...options.headers,
+      } : {
         'Content-Type': 'application/json',
         ...options.headers,
       },
@@ -52,6 +65,9 @@ class ApiClient {
 
     try {
       console.log(`🌐 API 요청: ${config.method || 'GET'} ${url}`);
+      if (isFormData) {
+        console.log('📎 FormData 전송');
+      }
       
       // 30초 타임아웃 설정 (AI 추천을 위해)
       const controller = new AbortController();
@@ -73,7 +89,12 @@ class ApiClient {
       
       return data;
     } catch (error) {
-      console.error(`❌ API 요청 실패: ${url}`, error);
+      // 404 에러는 데이터가 없을 수 있는 정상적인 경우이므로 구분하여 처리
+      if (error instanceof Error && error.message.includes('status: 404')) {
+        console.log(`📭 요청된 리소스가 없습니다: ${url}`);
+      } else {
+        console.error(`❌ API 요청 실패: ${url}`, error);
+      }
       throw error;
     }
   }
@@ -87,7 +108,7 @@ class ApiClient {
   async post<T>(endpoint: string, data: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     });
   }
 
@@ -141,6 +162,7 @@ export const medicalApi = {
   getDoctor: (id: number) => apiClient.get(`/api/medical/doctors/${id}`),
   getDoctorAvailableTimes: (doctorId: number, date: string) => 
     apiClient.get(`/api/medical/doctors/${doctorId}/available-times?date=${date}`),
+  getDoctorReviews: (doctorId: number) => apiClient.get(`/api/medical/doctors/${doctorId}/reviews`),
 
   // 예약 관련 API
   createAppointment: (data: any) => apiClient.post('/api/medical/appointments', data),
@@ -149,6 +171,8 @@ export const medicalApi = {
   updateAppointmentStatus: (id: number, status: string) => 
     apiClient.patch(`/api/medical/appointments/${id}`, { status }),
   cancelAppointment: (id: number) => apiClient.delete(`/api/medical/appointments/${id}`),
+  cancelAppointmentWithReason: (id: number, cancellationReason: string) => 
+    apiClient.delete(`/api/medical/appointments/${id}?reason=${encodeURIComponent(cancellationReason)}`),
 
   // 진료 요청서 관련 API
   createDiagnosisRequest: (data: any) => apiClient.post('/api/medical/diagnosis-requests', data),
@@ -167,7 +191,7 @@ export const medicalApi = {
   // 진단 내역 관련 API
   getUserDiagnoses: (userId: number) => apiClient.get(`/api/medical/diagnoses/user/${userId}`),
   getDiagnosisDetail: (diagnosisId: number) => apiClient.get(`/api/medical/diagnoses/${diagnosisId}`),
-  analyzeSkin: (formData: FormData) => apiClient.post('/api/medical/skin-analysis', formData),
+  analyzeSkin: (formData: FormData) => apiClient.post('/api/ai/analyze-skin', formData),
 
   // 리뷰 관련 API
   createReview: (data: any) => apiClient.post('/api/reviews', data),
@@ -206,6 +230,12 @@ export const medicalApi = {
   saveRecommendationHistory: (data: any) => apiClient.post('/api/recommendations/save', data),
   getRecommendationHistory: (userId: number) => apiClient.get(`/api/recommendations/history/${userId}`),
   deleteRecommendationHistory: (historyId: number) => apiClient.delete(`/api/recommendations/${historyId}`),
+
+  // AI 피부 분석 관련 API
+  saveSkinAnalysis: (data: any) => apiClient.post('/api/skin-analysis/save', data),
+  getSkinAnalysisHistory: (userId: number) => apiClient.get(`/api/skin-analysis/history/${userId}`),
+  getSkinAnalysisDetail: (analysisId: number) => apiClient.get(`/api/skin-analysis/${analysisId}`),
+  deleteSkinAnalysis: (analysisId: number) => apiClient.delete(`/api/skin-analysis/${analysisId}`),
 };
 
 // 기타 API

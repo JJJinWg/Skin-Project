@@ -12,6 +12,8 @@ import {
   Switch,
   FlatList,
   Alert,
+  TextInput,
+  Platform,
 } from "react-native"
 import { type NavigationProp, useNavigation, useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native"
 import type { RootStackParamList } from "../types/navigation"
@@ -26,6 +28,7 @@ import type { UserInfo } from '../services/userService'
 import type { ProfileAppointment } from '../services/appointmentService'
 import type { Review } from '../services/reviewService'
 import { profileStyles as styles } from '../styles/ProfileScreenStyles'
+import { diagnosisService } from '../services/diagnosisService'
 
 interface ApiResponse<T> {
   data: T;
@@ -105,25 +108,99 @@ const ProfileScreen = () => {
         const response = await medicalApi.getUserReviews(1) as ApiResponse<any[]>;
         const reviewsData = response.data;
         
-        // API 응답을 Review 타입에 맞게 변환
-        const formattedReviews: Review[] = reviewsData.map((review: any) => ({
-          id: review.id,
-          productId: review.productId,
-          productName: review.productName,
-          productImage: review.productImage,
-          rating: review.rating,
-          content: review.content,
-          date: review.date,
-          images: review.images || [],
-          likes: review.likes || 0,
-          helpful: review.helpful || 0,
-        }));
+        // 제품 이미지 처리 함수 (ProductReviewScreen과 동일한 로직)
+        const getProductImage = (imageUrl: string | null, productId: number, review?: any) => {
+          // 여러 가능한 이미지 소스 확인
+          const imageSource = imageUrl || 
+                             review?.productImage?.uri || 
+                             review?.product?.image?.uri ||
+                             review?.product?.image_url ||
+                             review?.product?.imageUrl;
+                             
+          if (imageSource) {
+            return { uri: imageSource };
+          }
+          // 기본 이미지 URL 반환
+          return { uri: `https://via.placeholder.com/150?text=Product+${productId}` };
+        };
+        
+        // API 응답을 Review 타입에 맞게 변환 - 각 제품 정보도 함께 조회
+        const formattedReviews: Review[] = [];
+        
+        for (const review of reviewsData) {
+          console.log(`🖼️ 리뷰 ${review.id} 제품 이미지 처리:`, {
+            productId: review.productId,
+            productImage: review.productImage,
+            productData: review.product
+          });
+          
+          let productImage;
+          
+          try {
+            // productId를 이용해서 실제 제품 정보 조회
+            console.log(`🔍 제품 ${review.productId} 정보 조회 중...`);
+            const productData = await medicalApi.getProduct(review.productId) as any;
+            console.log(`📦 제품 ${review.productId} 정보:`, productData);
+            
+            // 이미지 필드 상세 로깅
+            console.log(`🖼️ 제품 ${review.productId} 이미지 필드들:`, {
+              image: productData.image,
+              image_url: productData.image_url,
+              imageUrl: productData.imageUrl,
+              thumbnail: productData.thumbnail,
+              photo: productData.photo
+            });
+            
+            // ProductReviewScreen과 정확히 동일한 방식으로 이미지 처리
+            const productAny = productData as any;
+            const imageSource = productData.image || productAny.image_url || productAny.imageUrl;
+            
+            console.log(`🔍 추출된 이미지 소스:`, imageSource);
+            
+            if (imageSource) {
+              productImage = { uri: imageSource };
+            } else {
+              productImage = { uri: `https://via.placeholder.com/150?text=Product+${review.productId}` };
+            }
+          } catch (productError) {
+            console.warn(`⚠️ 제품 ${review.productId} 정보 조회 실패:`, productError);
+            // 제품 정보 조회 실패 시 기본 처리
+            productImage = getProductImage(
+              review.productImage, 
+              review.productId, 
+              review
+            );
+          }
+          
+          console.log(`✅ 리뷰 ${review.id} 최종 이미지:`, productImage);
+          
+          formattedReviews.push({
+            id: review.id,
+            productId: review.productId || 0,
+            productName: review.productName || '제품명 없음',
+            productImage: productImage,
+            rating: isNaN(Number(review.rating)) ? 0 : Number(review.rating),
+            content: review.content || '',
+            date: review.date || new Date().toISOString().split('T')[0],
+            images: review.images || [],
+            likes: isNaN(Number(review.likes)) ? 0 : Number(review.likes),
+            helpful: isNaN(Number(review.helpful)) ? 0 : Number(review.helpful),
+          });
+        }
         
         setReviews(formattedReviews);
       } catch (error) {
-        console.error('리뷰 내역 로드 실패:', error);
-        Alert.alert('오류', '리뷰 내역을 불러오는데 실패했습니다.');
-        setReviews([]);
+        console.log('📝 리뷰 내역 조회:', error);
+        // 404 에러나 데이터가 없는 경우는 정상적인 상황으로 처리
+        if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+          console.log('📝 아직 작성한 리뷰가 없습니다.');
+          setReviews([]);
+        } else {
+          console.error('리뷰 내역 로드 실패:', error);
+          // 네트워크 오류 등 실제 문제가 있는 경우에만 에러 표시
+          Alert.alert('오류', '리뷰 내역을 불러오는데 실패했습니다.');
+          setReviews([]);
+        }
       } finally {
         setReviewsLoading(false);
       }
@@ -137,8 +214,10 @@ const ProfileScreen = () => {
     const loadDiagnoses = async () => {
       try {
         setDiagnosesLoading(true);
-        const response = await medicalApi.getUserDiagnoses(1) as ApiResponse<any[]>;
-        setDiagnoses(response.data);
+        
+        // diagnosisService 사용하여 진단 내역 조회
+        const diagnosesData = await diagnosisService.getUserDiagnoses(1);
+        setDiagnoses(diagnosesData);
       } catch (error) {
         console.error('진단 내역 로드 실패:', error);
         Alert.alert('오류', '진단 내역을 불러오는데 실패했습니다.');
@@ -228,30 +307,89 @@ const ProfileScreen = () => {
         },
         {
           text: "예",
-          onPress: async () => {
-            try {
-              // 실제 예약 취소 API 호출
-              const result = await appointmentService.cancelAppointment(id);
-              
-              if (result) {
-                // API 호출 성공 시 로컬 상태 업데이트
-                const updatedAppointments = appointments.map((appointment) =>
-                  appointment.id === id ? { ...appointment, status: "cancelled" as const } : appointment,
-                )
-                setAppointments(updatedAppointments)
-                Alert.alert("성공", "예약이 취소되었습니다.")
-              } else {
-                Alert.alert("오류", "예약 취소에 실패했습니다. 다시 시도해주세요.")
-              }
-            } catch (error) {
-              console.error('예약 취소 실패:', error);
-              Alert.alert("오류", "예약 취소 중 오류가 발생했습니다.")
-            }
-          },
+          onPress: () => showCancellationReasonInput(id),
         },
       ],
-      { cancelable: true },
-    )
+      { cancelable: true }
+    );
+  }
+
+  // 취소 사유 입력 화면 표시
+  const showCancellationReasonInput = (id: number) => {
+    // iOS에서만 Alert.prompt 사용
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        "취소 사유 입력",
+        "취소 사유를 입력해주세요:",
+        [
+          {
+            text: "취소",
+            style: "cancel",
+          },
+          {
+            text: "확인",
+            onPress: async (inputText) => {
+              const cancellationReason = inputText || "취소 사유 없음";
+              await performCancellation(id, cancellationReason);
+            },
+          },
+        ],
+        "plain-text",
+        "", // 기본값
+        "default"
+      );
+    } else {
+      // Android에서는 미리 정의된 옵션 중 선택
+      Alert.alert(
+        "취소 사유 선택",
+        "취소 사유를 선택해주세요:",
+        [
+          {
+            text: "개인 사정",
+            onPress: () => performCancellation(id, "개인 사정으로 인한 취소")
+          },
+          {
+            text: "일정 변경",
+            onPress: () => performCancellation(id, "일정 변경으로 인한 취소")
+          },
+          {
+            text: "증상 호전",
+            onPress: () => performCancellation(id, "증상 호전으로 인한 취소")
+          },
+          {
+            text: "기타",
+            onPress: () => performCancellation(id, "기타 사유로 인한 취소")
+          },
+          {
+            text: "돌아가기",
+            style: "cancel"
+          }
+        ],
+        { cancelable: true }
+      );
+    }
+  }
+
+  // 실제 취소 수행 함수
+  const performCancellation = async (id: number, cancellationReason: string) => {
+    try {
+      // 실제 예약 취소 API 호출 (취소 사유 포함)
+      const result = await appointmentService.cancelAppointmentWithReason(id, cancellationReason);
+      
+      if (result) {
+        // API 호출 성공 시 로컬 상태 업데이트
+        const updatedAppointments = appointments.map((appointment) =>
+          appointment.id === id ? { ...appointment, status: "cancelled" as const } : appointment,
+        )
+        setAppointments(updatedAppointments)
+        Alert.alert("성공", "예약이 취소되었습니다.")
+      } else {
+        Alert.alert("오류", "예약 취소에 실패했습니다. 다시 시도해주세요.")
+      }
+    } catch (error) {
+      console.error('예약 취소 실패:', error);
+      Alert.alert("오류", "예약 취소 중 오류가 발생했습니다.")
+    }
   }
 
   // 리뷰 삭제 처리
@@ -365,7 +503,7 @@ const ProfileScreen = () => {
       {/* 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backButtonText}>←</Text>
+          
         </TouchableOpacity>
         <Text style={styles.headerTitle}>내 정보</Text>
         <View style={styles.placeholder} />
@@ -475,25 +613,30 @@ const ProfileScreen = () => {
                 renderItem={({ item }) => (
                   <View style={styles.appointmentCard}>
                     <View style={styles.appointmentHeader}>
-                      <Text style={styles.doctorName}>{item.doctorName}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                        <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                      <Image 
+                        source={item.doctorImage || require('../assets/doctor1.png')} 
+                        style={styles.doctorImageSmall} 
+                      />
+                      <View style={styles.appointmentHeaderInfo}>
+                        <Text style={styles.doctorName}>{item.doctorName}</Text>
+                        <Text style={styles.specialty}>{item.specialty}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                        </View>
                       </View>
                     </View>
-                    <Text style={styles.specialty}>{item.specialty}</Text>
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.appointmentDate}>
-                        {formatDate(item.date)} {item.time}
+                        📅 {formatDate(item.date)} {item.time}
                       </Text>
+                      {item.symptoms && (
+                        <Text style={styles.appointmentSymptoms}>
+                          🩺 {item.symptoms}
+                        </Text>
+                      )}
                     </View>
                     {(item.status === "pending" || item.status === "confirmed") && (
                       <View style={styles.appointmentActions}>
-                        <TouchableOpacity
-                          style={styles.rescheduleButton}
-                          onPress={() => Alert.alert("일정 변경", "이 기능은 아직 구현되지 않았습니다.")}
-                        >
-                          <Text style={styles.rescheduleButtonText}>일정 변경</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancelAppointment(item.id)}>
                           <Text style={styles.cancelButtonText}>예약 취소</Text>
                         </TouchableOpacity>
@@ -546,7 +689,9 @@ const ProfileScreen = () => {
                         <Text style={styles.productName}>{item.productName}</Text>
                         <View style={styles.ratingContainer}>
                           {renderStars(item.rating)}
-                          <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                          <Text style={styles.ratingText}>
+                            {isNaN(item.rating) ? '0.0' : item.rating.toFixed(1)}
+                          </Text>
                         </View>
                         <Text style={styles.reviewDate}>{formatDate(item.date)}</Text>
                       </View>
@@ -560,8 +705,12 @@ const ProfileScreen = () => {
                       </View>
                     )}
                     <View style={styles.reviewStats}>
-                      <Text style={styles.reviewStatsText}>👍 {item.likes} 명이 좋아합니다</Text>
-                      <Text style={styles.reviewStatsText}>🙌 {item.helpful} 명이 도움됐습니다</Text>
+                      <Text style={styles.reviewStatsText}>
+                        👍 {isNaN(item.likes) ? 0 : item.likes} 명이 좋아합니다
+                      </Text>
+                      <Text style={styles.reviewStatsText}>
+                        🙌 {isNaN(item.helpful) ? 0 : item.helpful} 명이 도움됐습니다
+                      </Text>
                     </View>
                     <View style={styles.reviewActions}>
                       <TouchableOpacity style={styles.reviewActionButton} onPress={() => handleEditReview(item)}>
@@ -581,7 +730,10 @@ const ProfileScreen = () => {
               />
             ) : (
               <View style={styles.noReviewsContainer}>
-                <Text style={styles.noReviewsText}>작성한 리뷰가 없습니다.</Text>
+                <Text style={styles.noReviewsText}>아직 작성한 리뷰가 없어요</Text>
+                <Text style={styles.noReviewsSubtext}>
+                  제품을 사용해보시고 후기를 남겨주세요!
+                </Text>
                 <TouchableOpacity
                   style={styles.writeReviewButton}
                   onPress={() => navigation.navigate("ProductReviewScreen")}

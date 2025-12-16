@@ -1,6 +1,7 @@
 // 제품 관련 서비스
 
 import { medicalApi } from './apiClient'
+import apiClient from './apiClient'
 
 // Product 타입 정의
 export interface Product {
@@ -50,6 +51,8 @@ export interface ShopInfo {
   isFreeShipping: boolean;
   isLowestPrice?: boolean;
   isCardDiscount?: boolean;
+  image?: string; // 썸네일 이미지 URL
+  link?: string;  // 쇼핑몰 상세 페이지 URL
 }
 
 // API 응답 타입 정의
@@ -166,8 +169,14 @@ export const getProductById = async (id: number): Promise<Product | null> => {
     try {
       reviews = await medicalApi.getProductReviews(id) as any[];
       console.log(`✅ 제품 ${id} 리뷰 ${reviews.length}개 조회 성공`);
-    } catch (reviewError) {
-      console.warn(`⚠️ 제품 ${id} 리뷰 조회 실패:`, reviewError);
+    } catch (reviewError: any) {
+      // 404 에러는 리뷰가 없다는 의미이므로 에러로 취급하지 않음
+      if (reviewError?.message?.includes('status: 404') || reviewError?.status === 404) {
+        console.log(`📝 제품 ${id}에 대한 리뷰가 아직 없습니다.`);
+      } else {
+        // 다른 에러인 경우에만 경고 로그 출력
+        console.warn(`⚠️ 제품 ${id} 리뷰 조회 중 오류:`, reviewError);
+      }
       reviews = [];
     }
     
@@ -416,48 +425,65 @@ export const getProductsBySkinType = async (skinType: string): Promise<Product[]
   }
 }
 
-// 쇼핑몰 이미지 맵 (임시 하드코딩)
+// 쇼핑몰 로고 매핑
 const shopLogoMap: { [key: string]: any } = {
-  'ssg': require('../assets/shop_ssg.png'),
-  'naver': require('../assets/shop_naver.png'),
-  'ohouse': require('../assets/shop_ohouse.png'),
-  'himart': require('../assets/shop_himart.png'),
-  'lotte': require('../assets/shop_lotte.png'),
-  'emart': require('../assets/shop_emart.png'),
-  'gmarket': require('../assets/shop_gmarket.png'),
-  'auction': require('../assets/shop_auction.png'),
-  'coupang': require('../assets/shop_coupang.png'),
-  '11st': require('../assets/shop_11st.png'),
+  '올리브영': require('../assets/shop_ohouse.png'), // 임시로 오하우스 로고 사용
+  '화해': require('../assets/shop_gmarket.png'), // 임시로 지마켓 로고 사용
+  '네이버쇼핑': require('../assets/shop_naver.png'),
+  '쿠팡': require('../assets/shop_coupang.png'),
 };
-const defaultShopLogo = require('../assets/shop_naver.png'); // 임시 기본값
+const defaultShopLogo = require('../assets/shop_11st.png');
 
-// 제품의 쇼핑몰 정보 조회
+// 네이버 검색 API로 제품 가격 정보 조회 (백엔드 프록시 사용)
+const getNaverProductPrices = async (productName: string): Promise<ShopInfo[]> => {
+  try {
+    const data = await apiClient.get(`/api/naver/lowest-price?query=${encodeURIComponent(productName)}`) as any;
+    return data.items.map((item: any, index: number) => ({
+      id: index + 1,
+      name: item.mallName,
+      logo: { uri: item.image }, // 썸네일 이미지를 로고로 사용
+      price: parseInt(item.lprice),
+      shipping: '무료배송',
+      shippingFee: 0,
+      isFreeShipping: true,
+      isLowestPrice: false,
+      isCardDiscount: false,
+      image: item.image,
+      link: item.link
+    }));
+  } catch (error) {
+    console.error('❌ 네이버 프록시 API 호출 실패:', error);
+    return [];
+  }
+};
+
+// 제품의 쇼핑몰 정보 조회 함수 수정
 export const getProductShops = async (productId: number): Promise<ShopInfo[]> => {
   try {
     console.log('🛍️ 제품 쇼핑몰 정보 조회 중...', productId);
     
-    // 실제 API 호출
-    const shops = await medicalApi.getProductShops(productId) as any[];
+    // 1. 먼저 제품 정보를 가져옵니다
+    const product = await getProductById(productId);
+    if (!product) {
+      throw new Error('제품 정보를 찾을 수 없습니다.');
+    }
+
+    // 2. 네이버 검색 API로 가격 정보를 가져옵니다
+    const naverPrices = await getNaverProductPrices(product.name);
     
-    // API 응답을 ShopInfo 인터페이스에 맞게 변환
-    return shops.map((shop: any) => ({
-      id: shop.id,
-      name: shop.name,
-      logo: shopLogoMap[shop.name?.toLowerCase()] || defaultShopLogo,
-      price: shop.price || 0,
-      shipping: shop.shipping || '무료배송',
-      shippingFee: shop.shippingFee || 0,
-      installment: shop.installment,
-      isFreeShipping: shop.isFreeShipping || true,
-      isLowestPrice: shop.isLowestPrice || false,
-      isCardDiscount: shop.isCardDiscount || false
+    // 3. 최저가 표시를 위해 가격 정렬
+    const sortedPrices = naverPrices.sort((a, b) => a.price - b.price);
+    
+    // 4. 최저가 표시 업데이트
+    return sortedPrices.map((shop, index) => ({
+      ...shop,
+      isLowestPrice: index === 0 // 첫 번째 항목이 최저가
     }));
   } catch (error) {
     console.error('❌ 제품 쇼핑몰 정보 조회 실패:', error);
-    console.error('💡 백엔드에 /api/products/{id}/shops 엔드포인트가 구현되지 않았습니다.');
     return [];
   }
-}
+};
 
 // 화장품 추천 요청 타입 정의 (백엔드 스키마에 맞게 수정)
 export interface CosmeticRecommendationRequest {
@@ -554,32 +580,111 @@ export interface SkinOptions {
 
 // 피부 타입과 고민 옵션 조회
 export const getSkinOptions = async (): Promise<SkinOptions> => {
+  // 기본 피부 타입 옵션들
+  const defaultSkinTypes = [
+    '건성',
+    '지성', 
+    '복합성(정상)',
+    '민감성'
+  ];
+
+  // 핵심 피부 고민 옵션들 (피부 타입과 중복 제거)
+  const defaultConcerns = [
+    '여드름',
+    '모공',
+    '주름',
+    '기미/색소침착',
+    '홍조',
+    '블랙헤드',
+    '각질',
+    '탄력 저하',
+    '다크서클',
+    '여드름 흉터',
+    '광노화',
+    '염증'
+  ];
+
   try {
     console.log('🧴 피부 옵션 조회 중...');
     
-    // API 호출
+    try {
+      // 백엔드 API 시도
     const response = await medicalApi.getSkinOptions() as any;
     
-    // 백엔드 응답 구조에 맞게 데이터 추출
+      // 백엔드 응답이 있으면 백엔드 데이터와 기본 데이터 병합
     if (response.success && response.data) {
+        const backendSkinTypes = response.data.skinTypes || [];
+        const backendConcerns = response.data.concerns || [];
+        
+        // 중복 및 유사한 옵션 제거
+        const cleanSkinTypes = Array.from(new Set([...defaultSkinTypes, ...backendSkinTypes]))
+          .filter((type, index, array) => {
+            // 유사한 옵션들 제거 (예: "복합성"과 "복합성(정상)")
+            const lowerType = type.toLowerCase().replace(/[()]/g, '');
+            return !array.slice(0, index).some(prevType => 
+              prevType.toLowerCase().replace(/[()]/g, '').includes(lowerType) ||
+              lowerType.includes(prevType.toLowerCase().replace(/[()]/g, ''))
+            );
+          });
+        
+        const cleanConcerns = Array.from(new Set([...defaultConcerns, ...backendConcerns]));
+        
       return {
-        skinTypes: response.data.skinTypes || [],
-        concerns: response.data.concerns || []
+          skinTypes: cleanSkinTypes,
+          concerns: cleanConcerns
       };
+      }
+    } catch (apiError) {
+      console.log('💡 백엔드 API를 사용할 수 없어 기본 옵션을 사용합니다.');
     }
     
-    // 기본값 반환
-    return { skinTypes: [], concerns: [] };
+    // 백엔드 API가 실패하거나 없으면 기본값 반환
+    return { 
+      skinTypes: defaultSkinTypes, 
+      concerns: defaultConcerns 
+    };
   } catch (error) {
     console.error('❌ 피부 옵션 조회 실패:', error);
-    return { skinTypes: [], concerns: [] };
+    
+    // 에러 발생시 최소한의 기본 옵션 반환
+    return {
+      skinTypes: defaultSkinTypes,
+      concerns: defaultConcerns
+    };
   }
 }
 
 export async function getSkinAnalysisHistory(userId: number): Promise<any[]> {
-  // 실제 API 호출로 대체 필요
-  // 예시: return await medicalApi.getSkinAnalysisHistory(userId);
+  try {
+    console.log('📋 피부 분석 내역 조회 중... (productService에서 diagnosisService 호출)');
+    
+    // diagnosisService의 getSkinAnalysisHistory 함수 사용
+    const { diagnosisService } = await import('./diagnosisService');
+    const history = await diagnosisService.getSkinAnalysisHistory(userId);
+    
+    // SkinHistoryScreen에서 사용하는 형식에 맞게 변환
+    return history.map((analysis: any) => ({
+      id: analysis.id,
+      date: analysis.analysisDate,
+      skinType: analysis.skinType,
+      skinAge: analysis.skinAge || 25,
+      moisture: analysis.moisture || 50,
+      wrinkles: analysis.wrinkles || 30,
+      pigmentation: analysis.pigmentation || 20,
+      pores: analysis.pores || 40,
+      acne: analysis.acne || 10,
+      imageUri: analysis.imageUrl,
+      issues: analysis.concerns.map((concern: string) => ({
+        title: concern,
+        severity: 'medium' as const
+      })),
+      analysisResult: analysis.analysisResult,
+      recommendations: analysis.recommendations || []
+    }));
+  } catch (error) {
+    console.error('❌ 피부 분석 내역 조회 실패 (productService):', error);
   return [];
+  }
 }
 
 // 추천 내역 저장
@@ -616,6 +721,7 @@ export interface CosmeticRecommendationHistory {
   date: string;
   skinType: string;
   concerns: string[];
+  explanation?: string;
   recommendedProducts: {
     id: number;
     name: string;
@@ -632,12 +738,18 @@ export const getRecommendationHistory = async (userId: number): Promise<Cosmetic
     
     const response = await medicalApi.getRecommendationHistory(userId) as any;
     
+    console.log('🔍 백엔드 추천 내역 응답:', response);
+    
     if (response.success && response.data) {
-      return response.data.map((item: any) => ({
+      return response.data.map((item: any) => {
+        console.log('🔍 개별 추천 내역 항목:', item);
+        
+        return {
         id: item.id,
         date: item.date,
         skinType: item.skinType,
         concerns: item.concerns,
+          explanation: item.explanation,
         recommendedProducts: item.recommendedProducts.map((product: any) => ({
           id: product.id,
           name: product.name,
@@ -645,7 +757,8 @@ export const getRecommendationHistory = async (userId: number): Promise<Cosmetic
           category: product.category,
           image: getProductImage(null, product.id) // 기본 이미지 사용
         }))
-      }));
+        };
+      });
     }
     
     return [];
@@ -668,6 +781,100 @@ export const deleteRecommendationHistory = async (historyId: number): Promise<bo
   }
 };
 
+// AI 분석 결과를 피부 고민 옵션으로 매핑하는 함수
+export const mapAiResultToConcerns = (analysisResult: any): string[] => {
+  const mappedConcerns: string[] = [];
+  
+  // skinDisease 매핑
+  const diseaseMapping: { [key: string]: string[] } = {
+    // 영어 키워드
+    'acne': ['여드름'],
+    'acne_vulgaris': ['여드름'],
+    'comedone': ['블랙헤드'],
+    'blackhead': ['블랙헤드'],
+    'wrinkle': ['주름'],
+    'wrinkles': ['주름'],
+    'age_spot': ['기미/색소침착'],
+    'pigmentation': ['기미/색소침착'],
+    'melasma': ['기미/색소침착'],
+    'hyperpigmentation': ['기미/색소침착'],
+    'rosacea': ['홍조'],
+    'redness': ['홍조'],
+    'inflammation': ['염증'],
+    'dermatitis': ['염증'],
+    'dryness': ['각질'],
+    'roughness': ['각질'],
+    'pore': ['모공'],
+    'enlarged_pore': ['모공'],
+    'scar': ['여드름 흉터'],
+    'acne_scar': ['여드름 흉터'],
+    'photoaging': ['광노화'],
+    'sun_damage': ['광노화'],
+    'dark_circle': ['다크서클'],
+    'sagging': ['탄력 저하'],
+    
+    // 한국어 키워드
+    '여드름': ['여드름'],
+    '블랙헤드': ['블랙헤드'],
+    '주름': ['주름'],
+    '기미': ['기미/색소침착'],
+    '색소침착': ['기미/색소침착'],
+    '홍조': ['홍조'],
+    '염증': ['염증'],
+    '모공': ['모공'],
+    '흉터': ['여드름 흉터'],
+    '광노화': ['광노화'],
+    '다크서클': ['다크서클'],
+    '탄력': ['탄력 저하'],
+    '각질': ['각질']
+  };
+
+  // skinState 매핑  
+  const stateMapping: { [key: string]: string[] } = {
+    'oily': ['모공'], // 지성 피부는 모공 문제와 연관
+    'dry': ['각질'], // 건성 피부는 각질 문제와 연관
+    'rough': ['각질'],
+    'inflamed': ['염증'],
+    'irritated': ['염증'],
+    'pigmented': ['기미/색소침착'],
+    'aged': ['주름', '탄력 저하'],
+    'wrinkled': ['주름'],
+    'enlarged_pores': ['모공']
+  };
+
+  // 영어와 한국어 모두 처리
+  const processMapping = (value: string, mapping: { [key: string]: string[] }) => {
+    if (!value || value === 'undefined') return;
+    
+    const lowerValue = value.toLowerCase();
+    
+    // 직접 매핑 확인
+    if (mapping[lowerValue]) {
+      mappedConcerns.push(...mapping[lowerValue]);
+      return;
+    }
+    
+    // 부분 매치 확인
+    Object.keys(mapping).forEach(key => {
+      if (lowerValue.includes(key) || key.includes(lowerValue)) {
+        mappedConcerns.push(...mapping[key]);
+      }
+    });
+  };
+
+  // 분석 결과 매핑
+  if (analysisResult?.skinDisease) {
+    processMapping(analysisResult.skinDisease, diseaseMapping);
+  }
+  
+  if (analysisResult?.skinState) {
+    processMapping(analysisResult.skinState, stateMapping);
+  }
+
+  // 중복 제거 및 최대 3개까지만 반환
+  return Array.from(new Set(mappedConcerns)).slice(0, 3);
+};
+
 export const productService = {
   getProducts,
   getProductById,
@@ -685,4 +892,5 @@ export const productService = {
   saveRecommendationHistory,
   getRecommendationHistory,
   deleteRecommendationHistory,
+  mapAiResultToConcerns,
 }

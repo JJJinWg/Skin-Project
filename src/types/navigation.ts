@@ -14,16 +14,51 @@ export type RootStackParamList = {
       concerns: string[];
       recommendations: string[];
       imageUrl: string;
+      skinDisease?: string;
+      skinState?: string;
+      needsMedicalAttention?: boolean;
+      confidence?: {
+        skinType?: number;
+        disease?: number;
+        state?: number;
+      };
+      detailedAnalysis?: any;
     }
   }
-  FindCosmeticsScreen: undefined;
+  FindCosmeticsScreen: {
+    showResults?: boolean;
+    recommendationData?: {
+      skinType: string;
+      concerns: string[];
+      recommendedProducts: {
+        id: number;
+        name: string;
+        brand: string;
+        category: string;
+        image: any;
+      }[];
+      explanation: string;
+      isHistoryView?: boolean;
+    };
+    prefilledData?: {
+      skinType?: string;
+      sensitivity?: string;
+      concerns?: string[];
+      additionalInfo?: string;
+      fromAnalysis?: boolean;
+    };
+  } | undefined;
   ProductReviewScreen: undefined;
   ProductDetailScreen: { id: number };
   ReservationHistoryScreen: undefined;
   RegisterUser: undefined;
   LoginForm: undefined;
   WriteReviewScreen: undefined;
-  DoctorDetailScreen: { id: number };
+  DoctorDetailScreen: { 
+    doctorId: number;
+    doctorName: string;
+    specialty: string;
+  };
   FindIdScreen: undefined
   FindPasswordScreen: undefined
   PharmacyMapScreen: undefined
@@ -73,5 +108,14 @@ export type RootStackParamList = {
   DiagnosisDetailScreen: {diagnosisId: number}
 
   SkinHistoryScreen: undefined
+
+  DiagnosisRequestScreen: {
+    prefilledData?: {
+      symptoms?: string;
+      skinType?: string;
+      aiAnalysisResult?: any;
+      imageUri?: string;
+    };
+  } | undefined;
 
 };

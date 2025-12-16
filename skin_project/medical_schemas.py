@@ -16,8 +16,20 @@ class AppointmentStatus(str, Enum):
 class ConsultationType(str, Enum):
     general = "일반진료"
     skin_analysis = "피부분석"
-    procedure_consultation = "시술상담"
+    procedure_consultation = "피부상담"
     follow_up = "재진"
+
+# 사용자 정보 스키마 (User 정보를 위한 간단한 스키마)
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    email: str
+    phone_number: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # 병원 스키마
 class HospitalBase(BaseModel):
@@ -99,6 +111,9 @@ class AppointmentBase(BaseModel):
     symptoms: Optional[str] = None
     notes: Optional[str] = None
     consultation_type: Optional[ConsultationType] = None
+    diagnosis_request_id: Optional[int] = None
+    cancellation_reason: Optional[str] = None
+    cancelled_by: Optional[str] = Field(None, pattern="^(doctor|user)$")  # 누가 취소했는지
 
 class AppointmentCreate(AppointmentBase):
     user_id: int
@@ -119,6 +134,7 @@ class Appointment(AppointmentBase):
     updated_at: datetime
     doctor: Optional[Doctor] = None
     hospital: Optional[Hospital] = None
+    user: Optional[UserInfo] = None
 
     class Config:
         from_attributes = True
@@ -126,15 +142,15 @@ class Appointment(AppointmentBase):
 # 진료 기록 스키마
 class MedicalRecordBase(BaseModel):
     diagnosis: Optional[str] = None
+    severity: Optional[str] = Field(None, pattern="^(mild|moderate|severe)$")  # 진단 심각도
     treatment: Optional[str] = None
-    prescription: Optional[str] = None
+    prescription: Optional[str] = None  # 약물 + 용법 통합
+    precautions: Optional[str] = None  # 주의사항
     next_visit_date: Optional[date] = None
     notes: Optional[str] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
     appointment_id: int
-    user_id: int
-    doctor_id: int
 
 class MedicalRecordUpdate(MedicalRecordBase):
     pass
@@ -142,11 +158,8 @@ class MedicalRecordUpdate(MedicalRecordBase):
 class MedicalRecord(MedicalRecordBase):
     id: int
     appointment_id: int
-    user_id: int
-    doctor_id: int
     created_at: datetime
     appointment: Optional[Appointment] = None
-    doctor: Optional[Doctor] = None
 
     class Config:
         from_attributes = True
@@ -159,7 +172,7 @@ class DoctorReviewBase(BaseModel):
 class DoctorReviewCreate(DoctorReviewBase):
     user_id: int
     doctor_id: int
-    appointment_id: int
+    appointment_id: Optional[int] = None
 
 class DoctorReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
@@ -169,7 +182,7 @@ class DoctorReview(DoctorReviewBase):
     id: int
     user_id: int
     doctor_id: int
-    appointment_id: int
+    appointment_id: Optional[int] = None
     created_at: datetime
     doctor: Optional[Doctor] = None
 
