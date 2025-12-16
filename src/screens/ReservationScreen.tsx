@@ -1,4 +1,5 @@
-// 의사 전체보기 및 예약가능 화면
+// 사용자의 예약내역 확인 화면
+// 사용안함 다른걸로 대체함
 
 import { useState, useEffect } from "react"
 import {
@@ -173,6 +174,7 @@ const ReservationScreen = () => {
     )
   }
 
+const ReservationHistoryScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -313,34 +315,13 @@ const ReservationScreen = () => {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F3F5",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backButtonText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#212529",
-  },
-  headerTitle: {
+  text: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#212529",
@@ -561,6 +542,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
   },
-})
+});
 
-export default ReservationScreen
+export default ReservationHistoryScreen;
